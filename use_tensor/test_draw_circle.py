@@ -5,9 +5,12 @@ Created on 2018��7��30��
 @author: sherl
 '''
 import tensorflow as tf
-import math
+import math,random
+from click.core import batch
+from sklearn.svm.tests.test_svm import test_linear_svx_uppercase_loss_penality_raises_error
 
 NUM_CLASSES = 2
+NUM_INPUTS=2
 hidden1_units = 10
 batchsize = 100
 
@@ -75,9 +78,53 @@ def training(loss, learning_rate):
     train_op = optimizer.minimize(loss, global_step=global_step)
     return train_op
 
+def get_batch_data():
+    dat=[]
+    label=[]
+    
+    rang=4
+    for i in range(batchsize):
+        x=random.random()*rang-rang/2#in -2->2
+        y=random.random()*rang-rang/2#in -2->2
+        dat.append([x,y])
+        
+        #在半径为1的圆里面为1 
+        if x**2+y**2<=1:
+            print (x,":",y,"in the circle")
+            label.append(1)
+        else: label.append(0)
+    return dat,label
+    
+
+def start():
+    dat_place = tf.placeholder(tf.float32, shape=(batchsize, NUM_INPUTS))
+    label_place= tf.placeholder(tf.float32, shape=(batchsize))
+    
+    logits=inference(dat_place)
+    loss=loss(logits, label_place)
+    
+    train_op=training(loss, 0.01)
+    
+    init = tf.global_variables_initializer()#初始化tf.Variable
+    sess = tf.Session()
+    
+    sess.run(init)
+    for step in range(1000):
+        dat,lab=get_batch_data()
+        
+        _, loss_value = sess.run([train_op, loss], feed_dict={dat_place:dat, label_place:lab})
+        
+        if step%100==0:
+            print("step:",step," loss=",loss_value)
+    
+    
+    
+    
+    
+
 
 if __name__ == '__main__':
-    a = tf.placeholder(tf.float32, shape=(batchsize, 2))
+    
     
     '''
     #b = tf.Variable([-.3], dtype=tf.float32)
@@ -89,7 +136,7 @@ sess.run(init)
 
 https://blog.csdn.net/lengguoxing/article/details/78456279
     '''
-    sess = tf.Session()
+    #sess = tf.Session()
     
     # sess.run(tf.global_variables_initializer())
     

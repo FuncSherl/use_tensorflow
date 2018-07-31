@@ -56,14 +56,14 @@ def  inference(images, hidden1_units, hidden2_units):
     #  Hidden  1
     with  tf.name_scope('hidden1'):
         weights = tf.Variable(
-                tf.truncated_normal([IMAGE_PIXELS, hidden1_units],
+                tf.truncated_normal([IMAGE_PIXELS, hidden1_units],#batchsize*hidden1_units
                                                         stddev=1.0 / math.sqrt(float(IMAGE_PIXELS))),
                 name='weights')
         biases = tf.Variable(tf.zeros([hidden1_units]),
                                                   name='biases')
         hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
     #  Hidden  2
-    with  tf.name_scope('hidden2'):
+    with  tf.name_scope('hidden2'):#batchsize*hidden2_units
         weights = tf.Variable(
                 tf.truncated_normal([hidden1_units, hidden2_units],
                                                         stddev=1.0 / math.sqrt(float(hidden1_units))),
@@ -72,7 +72,7 @@ def  inference(images, hidden1_units, hidden2_units):
                                                   name='biases')
         hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
     #  Linear
-    with  tf.name_scope('softmax_linear'):
+    with  tf.name_scope('softmax_linear'):#batchsize*num_classes
         weights = tf.Variable(
                 tf.truncated_normal([hidden2_units, NUM_CLASSES],
                                                         stddev=1.0 / math.sqrt(float(hidden2_units))),

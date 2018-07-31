@@ -132,6 +132,7 @@ def  run_training():
 
         #  Add  to  the  Graph  the  Ops  for  loss  calculation.
         loss = mnist.loss(logits, labels_placeholder)
+        #print (loss)
 
         #  Add  to  the  Graph  the  Ops  that  calculate  and  apply  gradients.
         train_op = mnist.training(loss, FLAGS.learning_rate)
