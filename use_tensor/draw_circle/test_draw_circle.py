@@ -14,9 +14,9 @@ NUM_INPUTS=2
 hidden1_units = 10
 batchsize = 100
 RANGE_circle=4
-draw_gap=100
+draw_gap=20
 max_step=50000
-lr=0.01
+lr=0.1
 
 
 
@@ -94,7 +94,9 @@ def get_batch_data():
         dat.append([x,y])
         #print (x,":",y)
         #在半径为1的圆里面为1 
-        if x**2+y**2<=1:
+        
+        #if x**2+y**2<=1:
+        if abs(x)+abs(y)<=1:
             #print (x,":",y,"in the circle")
             label.append(1)
         else: label.append(0)
@@ -102,11 +104,23 @@ def get_batch_data():
  
 plt.ion()
 
-fig = plt.figure()  
-axes = fig.add_subplot(111)
-axes.axis("equal")
+fig = plt.figure() 
+
+
+axes = fig.add_subplot(121)
+axes.axis('equal')
+plt.title('test fitness')
+
+
+axes2 = fig.add_subplot(122)
+#axes2.axis("equal")
+plt.title("loss")
+
+
+
+loss_list=[]
  
-def evaluate(sess, logits, dat_place, label_place):
+def evaluate(sess, logits, dat_place):
     kep_in=[]
     kep_out=[]
     for i in range(200):
@@ -118,18 +132,30 @@ def evaluate(sess, logits, dat_place, label_place):
             else: kep_in.append(dat[id])
     
     
+
+    
+    #plt.cla()#清屏
+    axes.cla()
+    axes2.cla()
+    
+    axes2.grid(True, color = "r")
+    axes2.plot(range(len(loss_list)), loss_list)
+    
+    axes.grid(True, color = "r")
     if len(kep_out)>0:
         tep=np.array(kep_out)
-        axes.scatter(tep[:,0],tep[:,1],c='green')#外面的是
+        axes.scatter(tep[:,0],tep[:,1],c='green',s=1,marker='.')#外面的是
         
     
     #print (kep_in)
     if len(kep_in)>0:#刚开始时weight都是随机的，所以前向的时候可能一个预测结果都不在圆里面，这时kep_in为空，要有一定判断
         tep2=np.array(kep_in)
-        axes.scatter(tep2[:,0],tep2[:,1],c='blue')#里面的是blue
-        plt.title(u'test fitness')   #对中文的支持很差！
-        plt.pause(0.001)
-        #plt.show()
+        axes.scatter(tep2[:,0],tep2[:,1],c='blue',s=1,marker='.')#里面的是blue
+    
+    plt.suptitle(u'test')   #对中文的支持很差！
+    plt.pause(0.0001)
+        
+
     
 
 def start():
@@ -150,11 +176,12 @@ def start():
         
         _, loss_value = sess.run([train_op, los], feed_dict={dat_place:dat, label_place:lab})
         
-        if step%500==0:
+        if (step+1)%100==0:
+            loss_list.append(loss_value)
             print("step:",step," loss=",loss_value)
             
         if (step+1)%draw_gap==0:
-            evaluate(sess, logits, dat_place, label_place)
+            evaluate(sess, logits, dat_place)
         
     print ("done!!!")
     
@@ -167,6 +194,8 @@ def start():
 if __name__ == '__main__':
     start()
     
+    plt.ioff()
+    plt.show()
     '''
     #b = tf.Variable([-.3], dtype=tf.float32)
     当你调用tf.constant时常量被初始化，它们的值是不可以改变的，而变量当你调用tf.Variable时没有被初始化，
