@@ -14,7 +14,7 @@ NUM_INPUTS=2
 hidden1_units = 10
 batchsize = 100
 RANGE_circle=4
-draw_gap=1000
+draw_gap=100
 max_step=50000
 lr=0.01
 
@@ -109,7 +109,7 @@ axes.axis("equal")
 def evaluate(sess, logits, dat_place, label_place):
     kep_in=[]
     kep_out=[]
-    for i in range(500):
+    for i in range(200):
         dat,lab=get_batch_data()
         l=sess.run(logits, feed_dict={dat_place:dat})
         for id,i in enumerate(l):
@@ -118,15 +118,18 @@ def evaluate(sess, logits, dat_place, label_place):
             else: kep_in.append(dat[id])
     
     
-
-    tep=np.array(kep_out)
-    axes.scatter(tep[:,0],tep[:,1],c='green')#外面的是
+    if len(kep_out)>0:
+        tep=np.array(kep_out)
+        axes.scatter(tep[:,0],tep[:,1],c='green')#外面的是
+        
     
-    tep=np.array(kep_in)
-    axes.scatter(tep[:,0],tep[:,1],c='blue')#里面的是blue
-    plt.title(u'test fitness')   #对中文的支持很差！
-    plt.pause(0.001)
-    #plt.show()
+    #print (kep_in)
+    if len(kep_in)>0:#刚开始时weight都是随机的，所以前向的时候可能一个预测结果都不在圆里面，这时kep_in为空，要有一定判断
+        tep2=np.array(kep_in)
+        axes.scatter(tep2[:,0],tep2[:,1],c='blue')#里面的是blue
+        plt.title(u'test fitness')   #对中文的支持很差！
+        plt.pause(0.001)
+        #plt.show()
     
 
 def start():
