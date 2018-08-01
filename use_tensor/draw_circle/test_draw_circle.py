@@ -5,14 +5,19 @@ Created on 2018��7��30��
 @author: sherl
 '''
 import tensorflow as tf
+import numpy as np
 import math,random
-from click.core import batch
-from sklearn.svm.tests.test_svm import test_linear_svx_uppercase_loss_penality_raises_error
+import matplotlib.pyplot as plt
 
 NUM_CLASSES = 2
 NUM_INPUTS=2
 hidden1_units = 10
 batchsize = 100
+RANGE_circle=4
+draw_gap=1000
+max_step=50000
+lr=0.01
+
 
 
 def inference(points):
@@ -82,18 +87,46 @@ def get_batch_data():
     dat=[]
     label=[]
     
-    rang=4
+
     for i in range(batchsize):
-        x=random.random()*rang-rang/2#in -2->2
-        y=random.random()*rang-rang/2#in -2->2
+        x=random.random()*RANGE_circle-RANGE_circle/2#in -2->2
+        y=random.random()*RANGE_circle-RANGE_circle/2#in -2->2
         dat.append([x,y])
-        
+        #print (x,":",y)
         #在半径为1的圆里面为1 
         if x**2+y**2<=1:
-            print (x,":",y,"in the circle")
+            #print (x,":",y,"in the circle")
             label.append(1)
         else: label.append(0)
     return dat,label
+ 
+plt.ion()
+
+fig = plt.figure()  
+axes = fig.add_subplot(111)
+axes.axis("equal")
+ 
+def evaluate(sess, logits, dat_place, label_place):
+    kep_in=[]
+    kep_out=[]
+    for i in range(500):
+        dat,lab=get_batch_data()
+        l=sess.run(logits, feed_dict={dat_place:dat})
+        for id,i in enumerate(l):
+            if i.argmax()==0:
+                kep_out.append(dat[id])
+            else: kep_in.append(dat[id])
+    
+    
+
+    tep=np.array(kep_out)
+    axes.scatter(tep[:,0],tep[:,1],c='green')#外面的是
+    
+    tep=np.array(kep_in)
+    axes.scatter(tep[:,0],tep[:,1],c='blue')#里面的是blue
+    plt.title(u'test fitness')   #对中文的支持很差！
+    plt.pause(0.001)
+    #plt.show()
     
 
 def start():
@@ -101,21 +134,26 @@ def start():
     label_place= tf.placeholder(tf.float32, shape=(batchsize))
     
     logits=inference(dat_place)
-    loss=loss(logits, label_place)
+    los=loss(logits, label_place)
     
-    train_op=training(loss, 0.01)
+    train_op=training(los, lr)
     
     init = tf.global_variables_initializer()#初始化tf.Variable
     sess = tf.Session()
     
     sess.run(init)
-    for step in range(1000):
+    for step in range(max_step):
         dat,lab=get_batch_data()
         
-        _, loss_value = sess.run([train_op, loss], feed_dict={dat_place:dat, label_place:lab})
+        _, loss_value = sess.run([train_op, los], feed_dict={dat_place:dat, label_place:lab})
         
-        if step%100==0:
+        if step%500==0:
             print("step:",step," loss=",loss_value)
+            
+        if (step+1)%draw_gap==0:
+            evaluate(sess, logits, dat_place, label_place)
+        
+    print ("done!!!")
     
     
     
@@ -124,7 +162,7 @@ def start():
 
 
 if __name__ == '__main__':
-    
+    start()
     
     '''
     #b = tf.Variable([-.3], dtype=tf.float32)
