@@ -16,7 +16,7 @@ batchsize = 100
 RANGE_circle=4
 draw_gap=20
 max_step=50000
-lr=0.1
+lr=0.01
 
 
 
@@ -195,7 +195,9 @@ if __name__ == '__main__':
     start()
     
     plt.ioff()
+    plt.savefig('./lr'+str(lr)+'_max_step'+str(max_step)+'_hidden1_units'+str(hidden1_units)+".jpg")
     plt.show()
+    
     '''
     #b = tf.Variable([-.3], dtype=tf.float32)
     当你调用tf.constant时常量被初始化，它们的值是不可以改变的，而变量当你调用tf.Variable时没有被初始化，
