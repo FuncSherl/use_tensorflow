@@ -6,7 +6,7 @@ Created on 2018��7��30��
 '''
 import tensorflow as tf
 import numpy as np
-import math,random
+import math,random,time
 import matplotlib.pyplot as plt
 
 NUM_CLASSES = 2
@@ -16,7 +16,7 @@ batchsize = 100
 RANGE_circle=4
 draw_gap=20
 max_step=50000
-lr=0.01
+lr=0.1
 
 
 
@@ -171,6 +171,7 @@ def start():
     sess = tf.Session()
     
     sess.run(init)
+    stti=time.time()
     for step in range(max_step):
         dat,lab=get_batch_data()
         
@@ -183,7 +184,7 @@ def start():
         if (step+1)%draw_gap==0:
             evaluate(sess, logits, dat_place)
         
-    print ("done!!!")
+    print ("done!!! time:",(time.time()-stti))
     
     
     
@@ -196,7 +197,7 @@ if __name__ == '__main__':
     
     plt.ioff()
     plt.savefig('./lr'+str(lr)+'_max_step'+str(max_step)+'_hidden1_units'+str(hidden1_units)+".jpg")
-    plt.show()
+    #plt.show()
     
     '''
     #b = tf.Variable([-.3], dtype=tf.float32)
