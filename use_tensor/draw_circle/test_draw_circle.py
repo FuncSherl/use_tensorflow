@@ -96,7 +96,8 @@ def get_batch_data():
         #在半径为1的圆里面为1 
         
         #if x**2+y**2<=1:
-        if abs(x)+abs(y)<=1:
+        #if abs(x)+abs(y)<=1:
+        if y<=1/x:
             #print (x,":",y,"in the circle")
             label.append(1)
         else: label.append(0)
