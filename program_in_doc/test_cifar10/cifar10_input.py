@@ -80,6 +80,7 @@ def  read_cifar10(filename_queue):
     reader  =  tf.FixedLengthRecordReader(record_bytes=record_bytes)
     result.key,  value  =  reader.read(filename_queue)
 
+    print  ("read data:",result.key,  value)
     #  Convert  from  a  string  to  a  vector  of  uint8  that  is  record_bytes  long.
     record_bytes  =  tf.decode_raw(value,  tf.uint8)
 
@@ -260,3 +261,5 @@ def  inputs(eval_data,  data_dir,  batch_size):
     return  _generate_image_and_label_batch(float_image,  read_input.label,
                                                                                   min_queue_examples,  batch_size,
                                                                                   shuffle=False)
+if __name__ == '__main__':
+    read_cifar10('./cifar10_data')
