@@ -84,6 +84,9 @@ def training(loss, learning_rate):
     return train_op
 
 def get_batch_data():
+    '''
+            这里数据的产生时标签决定了最终图形，如生成数据时在圆里面为1，则训出来的网络就按照这个圆取拟合
+    '''
     dat=[]
     label=[]
     
@@ -95,9 +98,9 @@ def get_batch_data():
         #print (x,":",y)
         #在半径为1的圆里面为1 
         
-        #if x**2+y**2<=1:
-        #if abs(x)+abs(y)<=1:
-        if y<=1/x:
+        #if x**2+y**2<=1:#拟合一个圆
+        #if abs(x)+abs(y)<=1:#拟合菱形
+        if y<=1/x:#拟合y=1/x
             #print (x,":",y,"in the circle")
             label.append(1)
         else: label.append(0)
