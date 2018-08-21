@@ -118,6 +118,7 @@ def  _generate_image_and_label_batch(image,  label,  min_queue_examples,
     """
     #  Create  a  queue  that  shuffles  the  examples,  and  then
     #  read  'batch_size'  images  +  labels  from  the  example  queue.
+    print("add one image")
     num_preprocess_threads  =  16
     if  shuffle:
         images,  label_batch  =  tf.train.shuffle_batch(
@@ -262,4 +263,10 @@ def  inputs(eval_data,  data_dir,  batch_size):
                                                                                   min_queue_examples,  batch_size,
                                                                                   shuffle=False)
 if __name__ == '__main__':
-    read_cifar10('./cifar10_data')
+    tep=distorted_inputs('./cifar10_data/cifar-10-batches-bin',100)
+    print (tf.Session.run([tep]))
+
+
+
+
+
