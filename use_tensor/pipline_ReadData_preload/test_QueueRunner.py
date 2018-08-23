@@ -11,7 +11,7 @@ import tensorflow as tf
 filenames=["file0.csv", "file1.csv"]
 
 def someread(filename_queue):
-    reader = tf.TextLineReader()
+    reader = tf.TextLineReader()#
     key, value = reader.read(filename_queue)
     
     # Default values, in case of empty columns. Also specifies the type of the
@@ -31,26 +31,41 @@ def fill_queue(batch_size=2, num_epochs=None):
     
     example, label=someread(filename_queue)
     
-    min_after_dequeue = 3
+    min_after_dequeue = 4
     capacity = min_after_dequeue + 3 * batch_size
     example_batch, label_batch = tf.train.shuffle_batch(
-      [example, label], batch_size=batch_size, capacity=capacity,
+      [example, label], 
+      batch_size=batch_size, 
+      capacity=capacity,
+      num_threads=3,
       min_after_dequeue=min_after_dequeue)
       
     with tf.Session() as sess:
-        init_op = tf.global_variables_initializer()
+        #!~~~~!!!!if 'num_epochs' is not None,the below must be done
+        init_op = tf.local_variables_initializer() #here maust be this but not global_variables_initializer()
         sess.run(init_op)
         # Start populating the filename queue.
-        coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(coord=coord)
+        
+        coord = tf.train.Coordinator()#this helps manage the threads,but without it ,it still works
+        threads = tf.train.start_queue_runners(coord=coord)#
     
-        for i in range(2):
-            # Retrieve a single instance:
-            example, label = sess.run([ example_batch, label_batch])
-            print example, "-->", label
+        try:
+            while not coord.should_stop():
+                # Run training steps or whatever!!!!!!!!
+                example, label = sess.run([ example_batch, label_batch])
+                print example, "-->", label
+        
+        except tf.errors.OutOfRangeError:
+            print 'Done training -- epoch limit reached'
+        finally:
+            # When done, ask the threads to stop.
             coord.request_stop()
-            coord.join(threads)
+            pass
+        
+        
+        
+        coord.join(threads)
         
 
 if __name__ == '__main__':
-    fill_queue(3,2)
+    fill_queue(5,2)
