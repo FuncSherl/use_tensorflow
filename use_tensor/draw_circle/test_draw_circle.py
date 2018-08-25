@@ -13,11 +13,12 @@ import datetime
 NUM_CLASSES = 2
 NUM_INPUTS=2
 hidden1_units = 10
+hidden2_units=10
 batchsize = 100
 RANGE_circle=4
 draw_gap=20
 max_step=50000
-lr=0.1
+lr=0.04
 
 today = datetime.date.today()   #datetime.date类型当前日期
 str_today = str(today)   #字符串型当前日期,2016-10-09格式
@@ -34,14 +35,22 @@ def inference(points):
                              name='biases')
         hidden1 = tf.nn.relu(tf.matmul(points, weights) + biases)
         
+    with tf.name_scope('hidden2'):
+        weights = tf.Variable(
+            tf.truncated_normal([hidden1_units, hidden2_units],
+                                stddev=1.0 / math.sqrt(float(2))), name='weights')
+        biases = tf.Variable(tf.zeros([hidden2_units]),
+                             name='biases')
+        hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
+        
     with tf.name_scope('softmax_linear'):
         weights = tf.Variable(
-            tf.truncated_normal([hidden1_units, NUM_CLASSES],
-                                stddev=1.0 / math.sqrt(float(hidden1_units))),
+            tf.truncated_normal([hidden2_units, NUM_CLASSES],
+                                stddev=1.0 / math.sqrt(float(hidden2_units))),
             name='weights')
         biases = tf.Variable(tf.zeros([NUM_CLASSES]),
                              name='biases')
-        logits = tf.matmul(hidden1, weights) + biases
+        logits = tf.matmul(hidden2, weights) + biases
     return logits
 
 
@@ -102,9 +111,9 @@ def get_batch_data():
         #print (x,":",y)
         #在半径为1的圆里面为1 
         
-        #if x**2+y**2<=1:#拟合一个圆
+        if x**2+y**2<=5 and x**2+y**2>1:#拟合一个圆
         #if abs(x)+abs(y)<=1:#拟合菱形
-        if y<=1/x:#拟合y=1/x
+        #if y<=1/x:#拟合y=1/x
             #print (x,":",y,"in the circle")
             label.append(1)
         else: label.append(0)
@@ -152,13 +161,13 @@ def evaluate(sess, logits, dat_place):
     axes.grid(True, color = "r")
     if len(kep_out)>0:
         tep=np.array(kep_out)
-        axes.scatter(tep[:,0],tep[:,1],c='green',s=1,marker='.')#外面的是
+        axes.scatter(tep[:,0],tep[:,1],color='g',s=1,marker='.')#外面的是
         
     
     #print (kep_in)
     if len(kep_in)>0:#刚开始时weight都是随机的，所以前向的时候可能一个预测结果都不在圆里面，这时kep_in为空，要有一定判断
         tep2=np.array(kep_in)
-        axes.scatter(tep2[:,0],tep2[:,1],c='blue',s=1,marker='.')#里面的是blue
+        axes.scatter(tep2[:,0],tep2[:,1],color='b',s=1,marker='.')#里面的是blue
     
     plt.suptitle(u'test')   #对中文的支持很差！
     plt.pause(0.0001)
@@ -204,7 +213,7 @@ if __name__ == '__main__':
     start()
     
     plt.ioff()
-    plt.savefig("./"+str_today+'_lr'+str(lr)+'_max_step'+str(max_step)+'_hidden1_units'+str(hidden1_units)+".jpg")
+    plt.savefig("./"+str_today+'_lr'+str(lr)+'_max_step'+str(max_step)+'_hidden1_units'+str(hidden1_units)+".png")
     #plt.show()
     
     '''
