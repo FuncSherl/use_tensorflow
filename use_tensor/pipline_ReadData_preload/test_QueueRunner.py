@@ -53,10 +53,10 @@ def fill_queue(batch_size=2, num_epochs=None):
             while not coord.should_stop():
                 # Run training steps or whatever!!!!!!!!
                 example, label = sess.run([ example_batch, label_batch])
-                print example, "-->", label
+                print (example, "-->", label)
         
         except tf.errors.OutOfRangeError:
-            print 'Done training -- epoch limit reached'
+            print ('Done training -- epoch limit reached')
         finally:
             # When done, ask the threads to stop.
             coord.request_stop()
