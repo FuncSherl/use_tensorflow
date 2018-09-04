@@ -42,7 +42,7 @@ def fill_queue(batch_size=2, num_epochs=None):
       
     with tf.Session() as sess:
         #!~~~~!!!!if 'num_epochs' is not None,the below must be done
-        init_op = tf.local_variables_initializer() #here maust be this but not global_variables_initializer()
+        init_op = tf.local_variables_initializer() #here must be this but not global_variables_initializer()
         sess.run(init_op)
         # Start populating the filename queue.
         
