@@ -11,6 +11,7 @@ b=tf.constant([1,-1],dtype=tf.float32)
 c=tf.constant([1],dtype=tf.float32)
  
 with tf.Session() as sess:
+    print (sess.run(a))
     print('bias_add:')
     print(sess.run(tf.nn.bias_add(a, b)))
     #执行下面语句错误
