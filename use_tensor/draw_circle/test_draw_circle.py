@@ -65,7 +65,9 @@ def loss(logits, labels):
         loss: Loss tensor of type float.
     """
     labels = tf.to_int64(labels)
-    return tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
+    loss=tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
+    tf.summary.scalar('loss',loss)
+    return loss
 
 
 def training(loss, learning_rate):
@@ -187,6 +189,9 @@ def start():
     init = tf.global_variables_initializer()#初始化tf.Variable
     sess = tf.Session()
     
+    merged = tf.summary.merge_all()
+    writer = tf.summary.FileWriter("logs/", sess.graph)
+    
     sess.run(init)
     stti=time.time()
     for step in range(max_step):
@@ -203,7 +208,7 @@ def start():
         
     print ("done!!! time:",(time.time()-stti))
     
-    
+    writer.close()
     
     
     
