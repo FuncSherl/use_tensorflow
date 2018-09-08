@@ -35,6 +35,9 @@ def inference(points):
                              name='biases')
         hidden1 = tf.nn.relu(tf.matmul(points, weights) + biases)
         
+        tf.summary.scalar('hid1_bias',tf.reduce_max(biases))
+        tf.summary.histogram('hid1_bias',biases)
+        
     with tf.name_scope('hidden2'):
         weights = tf.Variable(
             tf.truncated_normal([hidden1_units, hidden2_units],
@@ -42,6 +45,9 @@ def inference(points):
         biases = tf.Variable(tf.zeros([hidden2_units]),
                              name='biases')
         hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
+        
+        tf.summary.scalar('hid2_bias',tf.reduce_max(biases))
+        tf.summary.histogram('hid2_bias',biases)
         
     with tf.name_scope('softmax_linear'):
         weights = tf.Variable(
@@ -88,7 +94,7 @@ def training(loss, learning_rate):
         train_op: The Op for training.
     """
     # Add a scalar summary for the snapshot loss.
-    tf.summary.scalar('loss', loss)
+    #tf.summary.scalar('loss', loss)
     # Create the gradient descent optimizer with the given learning rate.
     optimizer = tf.train.GradientDescentOptimizer(learning_rate)
     # Create a variable to track the global step.
@@ -196,8 +202,8 @@ def start():
     stti=time.time()
     for step in range(max_step):
         dat,lab=get_batch_data()
-        
-        _, loss_value = sess.run([train_op, los], feed_dict={dat_place:dat, label_place:lab})
+        #print (dat)
+        _, loss_value, summary_resu = sess.run([train_op, los, merged], feed_dict={dat_place:dat, label_place:lab})
         
         if (step+1)%100==0:
             loss_list.append(loss_value)
@@ -205,7 +211,7 @@ def start():
             
         if (step+1)%draw_gap==0:
             evaluate(sess, logits, dat_place)
-        
+        writer.add_summary(summary_resu, step)
     print ("done!!! time:",(time.time()-stti))
     
     writer.close()
