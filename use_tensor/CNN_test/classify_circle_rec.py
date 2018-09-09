@@ -5,7 +5,9 @@ Created on 2018年9月9日
 @author: sherl
 '''
 import tensorflow as tf
-from use_tensor.draw_circle.test_draw_circle import batchsize
+import numpy as np
+import cv2
+
 
 ######-------------------------------------------------------------------------------------
 cnn1_k=32
@@ -123,12 +125,53 @@ def evaluate(logits, labels, topk=1):
 
     return cnt
 
-def gen_images(batchsize=batch_size):
-    pass
+def gen_images(batchsize=batch_size, imgsize=img_size, channel=1):
+    image=np.zeros([batchsize, imgsize, imgsize, channel], dtype=np.uint8)
+    label=np.zeros([batchsize], dtype=np.int32)
+    
+    for i in range(batchsize):
+        tep=np.random.randint(num_class)
+        
+        label[i]=tep
+        
+        if tep:           #为真时
+            h=np.random.randint(int(imgsize*1/5), int(imgsize*3/5))
+            w=np.random.randint(int(imgsize*1/5), int(imgsize*3/5))
+            
+            stx=np.random.randint(int(imgsize*1/5), int(imgsize*3/5))
+            sty=np.random.randint(int(imgsize*1/5), int(imgsize*3/5))
+            
+            
+            cv2.rectangle(image[i],(stx,sty),(stx+w,sty+h), np.random.randint(140,250),3)
+            
+            #cv2.imshow('test',image[i])
+            #cv2.waitKey()
+            pass
+        else:
+            '''
+            cv2.circle(img, (50,50), 10, (0,0,255),-1)
+
+            #img:图像，圆心坐标，圆半径，颜色，线宽度(-1：表示对封闭图像进行内部填满)
+            '''
+            r=np.random.randint(int(imgsize*1/5), int(imgsize*3/5))
+            
+            stx=np.random.randint(int(imgsize*1/5), int(imgsize*3/5))
+            sty=np.random.randint(int(imgsize*1/5), int(imgsize*3/5))
+            
+            cv2.circle(image[i], (stx,sty),r, (np.random.randint(140,250)) ,3)
+           
+        ''' 
+        print (tep)
+        cv2.imshow('test',image[i])
+        cv2.waitKey()
+        '''
+    return image,label
+    
     
         
         
         
 
 if __name__ == '__main__':
+    gen_images(imgsize=400)
     pass
