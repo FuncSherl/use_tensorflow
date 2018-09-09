@@ -5,6 +5,7 @@ Created on 2018年9月9日
 @author: sherl
 '''
 import tensorflow as tf
+from use_tensor.draw_circle.test_draw_circle import batchsize
 
 ######-------------------------------------------------------------------------------------
 cnn1_k=32
@@ -20,6 +21,8 @@ cnn2_stride=1
 
 pool2_size=3
 pool2_stride=2
+
+fcn1_n=1024
 
 num_class=2
 
@@ -70,10 +73,59 @@ def inference(images):
         pool2 = tf.nn.max_pool(conv2, ksize=[1, pool2_size, pool2_size, 1], strides=[1, pool2_stride, pool2_stride, 1], padding='SAME', name='pool2')
 
         
+    with tf.name_scope('fcn1') as scope:
+        reshape = tf.reshape(pool2, [images.get_shape().as_list()[0], -1])
+        dim = reshape.get_shape()[1].value
         
+        weights = tf.Variable( tf.truncated_normal( [dim, fcn1_n], stddev=5e-2)  ,    name='fcn1')
+        biases = tf.Variable(tf.zeros([fcn1_n]),  name='biases')
         
+        fcn1 = tf.nn.relu(tf.matmul(pool2, weights) + biases)
         
+    with tf.name_scope('softmax_linear'):
+        weights = tf.Variable( tf.truncated_normal([fcn1_n, num_class], stddev=5e-2) , name='weights')
+        biases = tf.Variable(tf.zeros([num_class]), name='biases')
+        logits = tf.matmul(fcn1, weights) + biases
         
+    return logits
+
+
+
+def loss(logits, labels):
+    """Calculates the loss from the logits and the labels.
+
+      Args:
+        logits: Logits tensor, float - [batch_size, NUM_CLASSES].
+        labels: Labels tensor, int32 - [batch_size].
+
+      Returns:
+        loss: Loss tensor of type float.
+    """
+    labels = tf.to_int64(labels)
+    loss=tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
+    tf.summary.scalar('loss',loss)
+    return loss
+
+
+def training(loss, learning_rate):
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+    # Create a variable to track the global step.
+    global_step = tf.Variable(0, name='global_step', trainable=False)
+    # Use the optimizer to apply the gradients that minimize the loss
+    # (and also increment the global step counter) as a single training step.
+    train_op = optimizer.minimize(loss, global_step=global_step)
+    return train_op
+
+
+def evaluate(logits, labels, topk=1):
+    top_k_op = tf.nn.in_top_k(logits, labels, topk)
+    cnt=tf.reduce_sum(tf.cast(top_k_op,tf.int32))
+
+    return cnt
+
+def gen_images(batchsize=batch_size):
+    pass
+    
         
         
         
