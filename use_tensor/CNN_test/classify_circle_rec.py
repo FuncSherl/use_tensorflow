@@ -12,14 +12,14 @@ TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S/}".format(datetime.now())
 
 
 ######-------------------------------------------------------------------------------------
-cnn1_k=12
+cnn1_k=6
 cnn1_ksize=5
 cnn1_stride=1
 
 pool1_size=3
 pool1_stride=2
 
-cnn2_k=10
+cnn2_k=4
 cnn2_ksize=5
 cnn2_stride=1
 
@@ -61,7 +61,8 @@ def inference(images):
         pool1 = tf.nn.max_pool(conv1, ksize=[1, pool1_size, pool1_size, 1], strides=[1, pool1_stride, pool1_stride, 1], padding='SAME', name='pool1')
         # norm1
         #norm1 = tf.nn.lrn(pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm1')
-        tf.summary.image('first_pool_features',tf.expand_dims(pool1[0], 3), max_outputs=cnn1_k)
+        #tf.summary.image('first_pool_features',tf.expand_dims(pool1[0], 3), max_outputs=cnn1_k)
+        tf.summary.image('first_pool_features',tf.expand_dims(   tf.transpose(pool1[0], perm=[2,0,1]),   3), max_outputs=6)
         
         
     with tf.name_scope('cnn2') as scope:
@@ -80,7 +81,8 @@ def inference(images):
     with tf.name_scope('pool2') as scope:
          # pool1
         pool2 = tf.nn.max_pool(conv2, ksize=[1, pool2_size, pool2_size, 1], strides=[1, pool2_stride, pool2_stride, 1], padding='SAME', name='pool2')
-        tf.summary.image('second_pool_features',tf.expand_dims(pool2[0], 3), max_outputs=10)
+        #tf.summary.image('second_pool_features',tf.expand_dims(pool2[0], 3), max_outputs=10)
+        tf.summary.image('second_pool_features',tf.expand_dims(   tf.transpose(pool2[0], perm=[2,0,1]),   3), max_outputs=6)
         
     with tf.name_scope('fcn1') as scope:
         reshape = tf.reshape(pool2, [images.get_shape().as_list()[0], -1])
@@ -127,6 +129,8 @@ def training(losst, learning_rate):
     # Create a variable to track the global step.
     global_step = tf.Variable(0, name='global_step', trainable=False)
     lr_rate = tf.train.exponential_decay(learning_rate,  global_step=global_step, decay_steps=1000, decay_rate=0.99)
+    
+    tf.summary.scalar('learning rate', lr_rate)
     
     optimizer = tf.train.GradientDescentOptimizer(lr_rate)
     
