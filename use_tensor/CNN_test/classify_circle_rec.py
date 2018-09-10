@@ -12,14 +12,14 @@ TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S/}".format(datetime.now())
 
 
 ######-------------------------------------------------------------------------------------
-cnn1_k=6
-cnn1_ksize=5
-cnn1_stride=1
+cnn1_k=6  #有几个核
+cnn1_ksize=5  #每个核的大小
+cnn1_stride=1  #步长
 
-pool1_size=3
-pool1_stride=2
+pool1_size=3  #每个核的大小
+pool1_stride=2 #步长
 
-cnn2_k=4
+cnn2_k=6
 cnn2_ksize=5
 cnn2_stride=1
 
@@ -39,6 +39,11 @@ stdev_init=0.1
 #-----------------------------------------------------------------------------------panel
 
 def inference(images):
+    '''
+    input:[batch, w,h, channel]
+    
+    net structure:   cnn1->pool1->cnn2->pool2->fc1->fc2
+    '''
     tf.summary.image('initial_images', images,max_outputs=4)
     
     with tf.name_scope('cnn1') as scope:
@@ -51,7 +56,10 @@ def inference(images):
         pre_activation = tf.nn.bias_add(conv, biases)
         conv1 = tf.nn.relu(pre_activation, name=scope)
         
+        #这里kernel的最后一维为1，就作为灰度图输出，需要交换一些维度，将原本最后一维out_num当作batch
         tf.summary.image('first_cnn_kernels',tf.transpose(kernel, perm=[3,0,1,2]), max_outputs=6)
+        
+        #这里输出的特征图为[batch, outw, outh, out_channel],取其第一个batch，将最后的out_channel当作batch，添上一维（就是最后加了个1），当作灰度图输出
         tf.summary.image('first_cnn_features',tf.expand_dims(   tf.transpose(conv1[0], perm=[2,0,1]),   3), max_outputs=6)
         
         
@@ -62,6 +70,7 @@ def inference(images):
         # norm1
         #norm1 = tf.nn.lrn(pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm1')
         #tf.summary.image('first_pool_features',tf.expand_dims(pool1[0], 3), max_outputs=cnn1_k)
+        #输出同上
         tf.summary.image('first_pool_features',tf.expand_dims(   tf.transpose(pool1[0], perm=[2,0,1]),   3), max_outputs=6)
         
         
@@ -75,6 +84,7 @@ def inference(images):
         pre_activation = tf.nn.bias_add(conv, biases)
         conv2 = tf.nn.relu(pre_activation, name=scope)
         
+        #同上，这里kernel第2维不是1了就将cnn2_k个kernel中取出来一个，将其每一层当作一个灰度图输出
         tf.summary.image('second_cnn_kernels',   tf.expand_dims(tf.transpose(kernel, perm=[3,2,0,1])[0]    ,3)      ,    max_outputs=6)
         tf.summary.image('second_cnn_features',tf.expand_dims(   tf.transpose(conv2[0], perm=[2,0,1])   , 3), max_outputs=6)
     
@@ -157,6 +167,7 @@ def gen_images(batchsize=batch_size, imgsize=img_size, channel=1):
         label[i]=tep
         
         if tep:           #为真时
+            #随机生成宽高和左上角位置
             h=np.random.randint(int(imgsize*3/10), int(imgsize*3/5))
             w=np.random.randint(int(imgsize*3/10), int(imgsize*3/5))
             
@@ -174,7 +185,9 @@ def gen_images(batchsize=batch_size, imgsize=img_size, channel=1):
             cv2.circle(img, (50,50), 10, (0,0,255),-1)
 
             #img:图像，圆心坐标，圆半径，颜色，线宽度(-1：表示对封闭图像进行内部填满)
+            
             '''
+            #随机生成圆心和半径
             r=np.random.randint(int(imgsize*3/10), int(imgsize*3/5))
             
             stx=np.random.randint(int(imgsize*1/5), int(imgsize*3/5))
@@ -201,13 +214,14 @@ def start(lr=lr):
     train_op=training(los, lr)
     eval_op=evaluate(logits, label_place)
     
+    #合并上面每个summary，就不必一个一个运行了
     merged = tf.summary.merge_all()
     
     with tf.Session() as sess:
         init = tf.global_variables_initializer()#初始化tf.Variable
         sess.run(init)
         
-        
+        #tensorboard里面按文件夹分，这里利用时间分开
         writer = tf.summary.FileWriter("./logs/"+TIMESTAMP, sess.graph)
         
         sttime=time.time()
@@ -218,17 +232,18 @@ def start(lr=lr):
             stt=time.time()
             
             
-            dat,lab=gen_images()#generate new images
+            dat,lab=gen_images()#generate new images生成一批数据
             _, loss_value, summary_resu , tep= sess.run([train_op, los, merged, logits], feed_dict={dat_place:dat, label_place:lab})
             
+            #写入日志
             writer.add_summary(summary_resu, i)
             
-            if i%10==0:        
+            if i%10==0:        #显示一次
                 #print (tep)
                 print (i, 'time:',time.time()-stt)
                 print ('training-loss:',loss_value,'\n')
             
-            if (i+1)%100==0:
+            if (i+1)%100==0:#测试一次
                 truecnt=0
                 cnt_all=0
                 for j in range(200):
