@@ -8,7 +8,7 @@ import tensorflow as tf
 import numpy as np
 import cv2,time
 from datetime import datetime
-TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S/}".format(datetime.now())
+TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 # 设置GPU按需增长
 config = tf.ConfigProto()
@@ -233,7 +233,8 @@ def start(lr=lr):
         sess.run(init)
         
         #tensorboard里面按文件夹分，这里利用时间分开
-        writer = tf.summary.FileWriter("./logs/"+TIMESTAMP+('cnn1%d_cnn2%d_fcn1%d'%(cnn1_k,cnn2_k, fcn1_n)), sess.graph)
+        #print ("./logs/"+TIMESTAMP+('_cnn1%d_cnn2%d_fcn1%d'%(cnn1_k,cnn2_k, fcn1_n)))
+        writer = tf.summary.FileWriter("./logs/"+TIMESTAMP+('_cnn1-%d_cnn2-%d_fcn1-%d'%(cnn1_k,cnn2_k, fcn1_n)),   sess.graph)
         
         sttime=time.time()
         
