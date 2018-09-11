@@ -10,30 +10,36 @@ import cv2,time
 from datetime import datetime
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S/}".format(datetime.now())
 
+# 设置GPU按需增长
+#config = tf.ConfigProto()
+#config.gpu_options.allow_growth = True
 
 ######-------------------------------------------------------------------------------------
 cnn1_k=6  #有几个核
 cnn1_ksize=5  #每个核的大小
 cnn1_stride=1  #步长
 
-pool1_size=3  #每个核的大小
+pool1_size=2  #每个核的大小
 pool1_stride=2 #步长
 
 cnn2_k=6
 cnn2_ksize=5
 cnn2_stride=1
 
-pool2_size=3
+pool2_size=2
 pool2_stride=2
 
 fcn1_n=1024
 
 num_class=2
 
+
+#-----------------------------------------------------------------------------------net params
 img_size=32
 lr=1e-6
 
 batch_size=64
+maxiter=4000
 
 stdev_init=0.1
 #-----------------------------------------------------------------------------------panel
@@ -62,6 +68,8 @@ def inference(images):
         #这里输出的特征图为[batch, outw, outh, out_channel],取其第一个batch，将最后的out_channel当作batch，添上一维（就是最后加了个1），当作灰度图输出
         tf.summary.image('first_cnn_features',tf.expand_dims(   tf.transpose(conv1[0], perm=[2,0,1]),   3), max_outputs=6)
         
+        tf.summary.histogram('first_cnn_biases',biases)
+        tf.summary.histogram('first_cnn_kernels',kernel)
         
         
     with tf.name_scope('pool1') as scope:
@@ -87,9 +95,12 @@ def inference(images):
         #同上，这里kernel第2维不是1了就将cnn2_k个kernel中取出来一个，将其每一层当作一个灰度图输出
         tf.summary.image('second_cnn_kernels',   tf.expand_dims(tf.transpose(kernel, perm=[3,2,0,1])[0]    ,3)      ,    max_outputs=6)
         tf.summary.image('second_cnn_features',tf.expand_dims(   tf.transpose(conv2[0], perm=[2,0,1])   , 3), max_outputs=6)
+        
+        tf.summary.histogram('second_cnn_biases',biases)
+        tf.summary.histogram('second_cnn_kernels',kernel)
     
     with tf.name_scope('pool2') as scope:
-         # pool1
+        # pool1
         pool2 = tf.nn.max_pool(conv2, ksize=[1, pool2_size, pool2_size, 1], strides=[1, pool2_stride, pool2_stride, 1], padding='SAME', name='pool2')
         #tf.summary.image('second_pool_features',tf.expand_dims(pool2[0], 3), max_outputs=10)
         tf.summary.image('second_pool_features',tf.expand_dims(   tf.transpose(pool2[0], perm=[2,0,1]),   3), max_outputs=6)
@@ -226,7 +237,7 @@ def start(lr=lr):
         
         sttime=time.time()
         
-        for i in range(3000):
+        for i in range(maxiter):
             
             #print (dat)\
             stt=time.time()
