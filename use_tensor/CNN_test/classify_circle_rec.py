@@ -11,8 +11,8 @@ from datetime import datetime
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S/}".format(datetime.now())
 
 # 设置GPU按需增长
-#config = tf.ConfigProto()
-#config.gpu_options.allow_growth = True
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
 
 ######-------------------------------------------------------------------------------------
 cnn1_k=6  #有几个核
@@ -29,7 +29,7 @@ cnn2_stride=1
 pool2_size=2
 pool2_stride=2
 
-fcn1_n=1024
+fcn1_n=512
 
 num_class=2
 
@@ -233,7 +233,7 @@ def start(lr=lr):
         sess.run(init)
         
         #tensorboard里面按文件夹分，这里利用时间分开
-        writer = tf.summary.FileWriter("./logs/"+TIMESTAMP, sess.graph)
+        writer = tf.summary.FileWriter("./logs/"+TIMESTAMP+('cnn1%d_cnn2%d_fcn1%d'%(cnn1_k,cnn2_k, fcn1_n)), sess.graph)
         
         sttime=time.time()
         
