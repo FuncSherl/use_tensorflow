@@ -40,6 +40,7 @@ lr=1e-6
 
 batch_size=64
 maxiter=4000
+max_output=6
 
 stdev_init=0.1
 #-----------------------------------------------------------------------------------panel
@@ -63,10 +64,10 @@ def inference(images):
         conv1 = tf.nn.relu(pre_activation, name=scope.name)
         
         #这里kernel的最后一维为1，就作为灰度图输出，需要交换一些维度，将原本最后一维out_num当作batch
-        tf.summary.image('first_cnn_kernels',tf.transpose(kernel, perm=[3,0,1,2]), max_outputs=6)
+        tf.summary.image('first_cnn_kernels',tf.transpose(kernel, perm=[3,0,1,2]), max_outputs=max_output)
         
         #这里输出的特征图为[batch, outw, outh, out_channel],取其第一个batch，将最后的out_channel当作batch，添上一维（就是最后加了个1），当作灰度图输出
-        tf.summary.image('first_cnn_features',tf.expand_dims(   tf.transpose(conv1[0], perm=[2,0,1]),   3), max_outputs=6)
+        tf.summary.image('first_cnn_features',tf.expand_dims(   tf.transpose(conv1[0], perm=[2,0,1]),   3), max_outputs=max_output)
         
         tf.summary.histogram('first_cnn_biases',biases)
         tf.summary.histogram('first_cnn_kernels',kernel)
@@ -79,7 +80,7 @@ def inference(images):
         #norm1 = tf.nn.lrn(pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm1')
         #tf.summary.image('first_pool_features',tf.expand_dims(pool1[0], 3), max_outputs=cnn1_k)
         #输出同上
-        tf.summary.image('first_pool_features',tf.expand_dims(   tf.transpose(pool1[0], perm=[2,0,1]),   3), max_outputs=6)
+        tf.summary.image('first_pool_features',tf.expand_dims(   tf.transpose(pool1[0], perm=[2,0,1]),   3), max_outputs=max_output)
         
         
     with tf.variable_scope('cnn2') as scope:
@@ -93,8 +94,8 @@ def inference(images):
         conv2 = tf.nn.relu(pre_activation, name=scope.name)
         
         #同上，这里kernel第2维不是1了就将cnn2_k个kernel中取出来一个，将其每一层当作一个灰度图输出
-        tf.summary.image('second_cnn_kernels',   tf.expand_dims(tf.transpose(kernel, perm=[3,2,0,1])[0]    ,3)      ,    max_outputs=6)
-        tf.summary.image('second_cnn_features',tf.expand_dims(   tf.transpose(conv2[0], perm=[2,0,1])   , 3), max_outputs=6)
+        tf.summary.image('second_cnn_kernels',   tf.expand_dims(tf.transpose(kernel, perm=[3,2,0,1])[0]    ,3)      ,    max_outputs=max_output)
+        tf.summary.image('second_cnn_features',tf.expand_dims(   tf.transpose(conv2[0], perm=[2,0,1])   , 3), max_outputs=max_output)
         
         tf.summary.histogram('second_cnn_biases',biases)
         tf.summary.histogram('second_cnn_kernels',kernel)
@@ -103,7 +104,7 @@ def inference(images):
         # pool1
         pool2 = tf.nn.max_pool(conv2, ksize=[1, pool2_size, pool2_size, 1], strides=[1, pool2_stride, pool2_stride, 1], padding='SAME', name='pool2')
         #tf.summary.image('second_pool_features',tf.expand_dims(pool2[0], 3), max_outputs=10)
-        tf.summary.image('second_pool_features',tf.expand_dims(   tf.transpose(pool2[0], perm=[2,0,1]),   3), max_outputs=6)
+        tf.summary.image('second_pool_features',tf.expand_dims(   tf.transpose(pool2[0], perm=[2,0,1]),   3), max_outputs=max_output)
         
     with tf.variable_scope('fcn1') as scope:
         reshape = tf.reshape(pool2, [images.get_shape().as_list()[0], -1])
