@@ -29,7 +29,7 @@ cnn2_stride=1
 pool2_size=2
 pool2_stride=2
 
-fcn1_n=512
+fcn1_n=1024
 
 num_class=2
 
@@ -52,7 +52,7 @@ def inference(images):
     '''
     tf.summary.image('initial_images', images,max_outputs=4)
     
-    with tf.name_scope('cnn1') as scope:
+    with tf.variable_scope('cnn1') as scope:
         kernel = tf.Variable( tf.truncated_normal( [cnn1_ksize, cnn1_ksize, images.get_shape().as_list()[-1], cnn1_k], stddev=stdev_init)  ,    name='kernels')
         biases = tf.Variable(tf.zeros([cnn1_k]),  name='biases')      
         
@@ -60,7 +60,7 @@ def inference(images):
         conv = tf.nn.conv2d(images, kernel, [1, cnn1_stride, cnn1_stride, 1], padding='SAME')
         
         pre_activation = tf.nn.bias_add(conv, biases)
-        conv1 = tf.nn.relu(pre_activation, name=scope)
+        conv1 = tf.nn.relu(pre_activation, name=scope.name)
         
         #这里kernel的最后一维为1，就作为灰度图输出，需要交换一些维度，将原本最后一维out_num当作batch
         tf.summary.image('first_cnn_kernels',tf.transpose(kernel, perm=[3,0,1,2]), max_outputs=6)
@@ -72,7 +72,7 @@ def inference(images):
         tf.summary.histogram('first_cnn_kernels',kernel)
         
         
-    with tf.name_scope('pool1') as scope:
+    with tf.variable_scope('pool1') as scope:
         # pool1
         pool1 = tf.nn.max_pool(conv1, ksize=[1, pool1_size, pool1_size, 1], strides=[1, pool1_stride, pool1_stride, 1], padding='SAME', name='pool1')
         # norm1
@@ -82,7 +82,7 @@ def inference(images):
         tf.summary.image('first_pool_features',tf.expand_dims(   tf.transpose(pool1[0], perm=[2,0,1]),   3), max_outputs=6)
         
         
-    with tf.name_scope('cnn2') as scope:
+    with tf.variable_scope('cnn2') as scope:
         kernel = tf.Variable( tf.truncated_normal( [cnn2_ksize, cnn2_ksize, cnn1_k, cnn2_k], stddev=stdev_init)  ,    name='kernels')
         biases = tf.Variable(tf.zeros([cnn2_k]),  name='biases')      
         
@@ -90,7 +90,7 @@ def inference(images):
         conv = tf.nn.conv2d(pool1, kernel, [1, cnn2_stride, cnn2_stride, 1], padding='SAME')
         
         pre_activation = tf.nn.bias_add(conv, biases)
-        conv2 = tf.nn.relu(pre_activation, name=scope)
+        conv2 = tf.nn.relu(pre_activation, name=scope.name)
         
         #同上，这里kernel第2维不是1了就将cnn2_k个kernel中取出来一个，将其每一层当作一个灰度图输出
         tf.summary.image('second_cnn_kernels',   tf.expand_dims(tf.transpose(kernel, perm=[3,2,0,1])[0]    ,3)      ,    max_outputs=6)
@@ -99,13 +99,13 @@ def inference(images):
         tf.summary.histogram('second_cnn_biases',biases)
         tf.summary.histogram('second_cnn_kernels',kernel)
     
-    with tf.name_scope('pool2') as scope:
+    with tf.variable_scope('pool2') as scope:
         # pool1
         pool2 = tf.nn.max_pool(conv2, ksize=[1, pool2_size, pool2_size, 1], strides=[1, pool2_stride, pool2_stride, 1], padding='SAME', name='pool2')
         #tf.summary.image('second_pool_features',tf.expand_dims(pool2[0], 3), max_outputs=10)
         tf.summary.image('second_pool_features',tf.expand_dims(   tf.transpose(pool2[0], perm=[2,0,1]),   3), max_outputs=6)
         
-    with tf.name_scope('fcn1') as scope:
+    with tf.variable_scope('fcn1') as scope:
         reshape = tf.reshape(pool2, [images.get_shape().as_list()[0], -1])
         dim = reshape.get_shape()[1].value
         
@@ -116,7 +116,7 @@ def inference(images):
         
         #h_fc1_drop = tf.nn.dropout(h_fc1,0.5)
         
-    with tf.name_scope('softmax_linear'):
+    with tf.variable_scope('softmax_linear'):
         weights = tf.Variable( tf.truncated_normal([fcn1_n, num_class], stddev=stdev_init) , name='weights')
         biases = tf.Variable(tf.zeros([num_class]), name='biases')
         logits = tf.matmul(fcn1, weights) + biases
@@ -277,5 +277,8 @@ def start(lr=lr):
         
 
 if __name__ == '__main__':
+    
     start()
+    for i in tf.trainable_variables():
+        print (i)
     pass
