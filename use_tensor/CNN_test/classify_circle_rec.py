@@ -51,11 +51,15 @@ def inference(images):
     
     net structure:   cnn1->pool1->cnn2->pool2->fc1->fc2
     '''
-    tf.summary.image('initial_images', images,max_outputs=4)
+    tf.summary.image('initial_images', images,max_outputs=max_output)
     
     with tf.variable_scope('cnn1') as scope:
-        kernel = tf.Variable( tf.truncated_normal( [cnn1_ksize, cnn1_ksize, images.get_shape().as_list()[-1], cnn1_k], stddev=stdev_init)  ,    name='kernels')
-        biases = tf.Variable(tf.zeros([cnn1_k]),  name='biases')      
+        kernel = tf.get_variable(  'kernels',[cnn1_ksize, cnn1_ksize, images.get_shape().as_list()[-1], cnn1_k]  ,
+                                   initializer=tf.truncated_normal_initializer(stddev=stdev_init))
+        
+        biases = tf.get_variable('biases', [cnn1_k],  
+                                   initializer=tf.constant_initializer(0))      
+        
         
                         
         conv = tf.nn.conv2d(images, kernel, [1, cnn1_stride, cnn1_stride, 1], padding='SAME')
@@ -84,8 +88,11 @@ def inference(images):
         
         
     with tf.variable_scope('cnn2') as scope:
-        kernel = tf.Variable( tf.truncated_normal( [cnn2_ksize, cnn2_ksize, cnn1_k, cnn2_k], stddev=stdev_init)  ,    name='kernels')
-        biases = tf.Variable(tf.zeros([cnn2_k]),  name='biases')      
+        kernel = tf.get_variable( 'kernels', [cnn2_ksize, cnn2_ksize, cnn1_k, cnn2_k]  ,    
+                                  initializer=tf.truncated_normal_initializer(stddev=stdev_init))
+        
+        biases = tf.get_variable('biases',[cnn2_k], 
+                                  initializer=tf.constant_initializer(0))      
         
                         
         conv = tf.nn.conv2d(pool1, kernel, [1, cnn2_stride, cnn2_stride, 1], padding='SAME')
@@ -110,19 +117,30 @@ def inference(images):
         reshape = tf.reshape(pool2, [images.get_shape().as_list()[0], -1])
         dim = reshape.get_shape()[1].value
         
-        weights = tf.Variable( tf.truncated_normal( [dim, fcn1_n], stddev=stdev_init)  ,    name='fcn1')
-        biases = tf.Variable(tf.zeros([fcn1_n]),  name='biases')
+        weights = tf.get_variable('fcn1', [dim, fcn1_n],
+                                  initializer=tf.truncated_normal_initializer(stddev=stdev_init))
+        
+        biases = tf.get_variable('biases', [fcn1_n],
+                                 initializer=tf.constant_initializer(0))
         
         fcn1 = tf.nn.relu(tf.matmul(reshape, weights) + biases)
         
         #h_fc1_drop = tf.nn.dropout(h_fc1,0.5)
         
     with tf.variable_scope('softmax_linear'):
-        weights = tf.Variable( tf.truncated_normal([fcn1_n, num_class], stddev=stdev_init) , name='weights')
-        biases = tf.Variable(tf.zeros([num_class]), name='biases')
+        weights = tf.get_variable('weights',  [fcn1_n, num_class],
+                                  initializer=tf.truncated_normal_initializer(stddev=stdev_init))
+        
+        biases = tf.get_variable('biases', [num_class], initializer=tf.constant_initializer(0))
         logits = tf.matmul(fcn1, weights) + biases
         
     return logits
+
+
+def back_inference():
+    with tf.variable_scope('cnn1', reuse=True) as scope:
+        kernel = tf.get_variable(name='kernels')
+        biases = tf.get_variable(name='biases') 
 
 
 
@@ -280,6 +298,7 @@ def start(lr=lr):
 if __name__ == '__main__':
     
     start()
+    back_inference()
     for i in tf.trainable_variables():
         print (i)
     pass
