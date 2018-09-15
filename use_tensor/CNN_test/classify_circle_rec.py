@@ -137,11 +137,25 @@ def inference(images):
     return logits
 
 
-def back_inference():
+def back_inference(sess):
     with tf.variable_scope('cnn1', reuse=True) as scope:
-        kernel = tf.get_variable(name='kernels')
-        biases = tf.get_variable(name='biases') 
-
+        kernel1 = tf.get_variable(name='kernels')
+        biases1 = tf.get_variable(name='biases') 
+    
+    with tf.variable_scope('cnn2', reuse=True) as scope:
+        kernel2 = tf.get_variable(name='kernels')
+        biases2 = tf.get_variable(name='biases') 
+    
+    with tf.variable_scope('fcn1', reuse=True) as scope:
+        weight3 = tf.get_variable('fcn1')
+        biases3 = tf.get_variable('biases')
+        
+    with tf.variable_scope('softmax_linear', reuse=True):
+        weight4 = tf.get_variable('weights')
+        biase4 = tf.get_variable('biases')
+    
+        
+    print(sess.run(kernel1))
 
 
 def loss(logits, labels):
@@ -258,6 +272,7 @@ def start(lr=lr):
         sttime=time.time()
         
         for i in range(maxiter):
+            #back_inference(sess)
             
             #print (dat)\
             stt=time.time()
@@ -290,6 +305,7 @@ def start(lr=lr):
             
             
         print('training done! time used:',time.time()-sttime)
+        
     
         
         
@@ -298,7 +314,7 @@ def start(lr=lr):
 if __name__ == '__main__':
     
     start()
-    back_inference()
+    
     for i in tf.trainable_variables():
         print (i)
     pass
