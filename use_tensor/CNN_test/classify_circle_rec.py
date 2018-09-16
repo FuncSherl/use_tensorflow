@@ -266,7 +266,27 @@ def genimages_same(dat, lab):
         print(dat[i,x:x+cnn1_ksize,y:y+cnn1_ksize])
         '''
     return dat,lab
-    
+
+def test_backinference(sess, softmax_op, eval_op, dat_place, label_place):
+    dat,lab=gen_images()#generate new images
+    so_op,evals=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
+        
+    dat,lab=genimages_same(dat,lab)#generate new images生成一批数据 
+        
+    so_op2,evals2=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
+        
+    print('right cnt:',evals2,'/',lab.shape[0])
+    print('origin:',so_op[0],' lable:',lab[0])
+    for ind,i in enumerate(so_op2):
+        print (ind,' test a image:',i,' ',np.argmax(i)==lab[ind])
+        dist = np.linalg.norm(i - so_op[0])
+        if dist>0: 
+            x,y=index2xy(ind)
+            #print(type(x))
+            dat[0,y:y+cnn1_ksize, x:x+cnn1_ksize]=[255]
+            
+    cv2.imshow('test',dat[0])
+    cv2.waitKey()
     
 
 def start(lr=lr):
@@ -332,7 +352,10 @@ def start(lr=lr):
         
         
         #后面就试下反向
+        for i in range(100):
+            test_backinference(sess, softmax_op, eval_op, dat_place, label_place)
         
+        '''
         dat,lab=gen_images()#generate new images
         so_op,evals=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
         
@@ -352,7 +375,7 @@ def start(lr=lr):
             
         cv2.imshow('test',dat[0])
         cv2.waitKey()
-        
+        '''
         
         
 
