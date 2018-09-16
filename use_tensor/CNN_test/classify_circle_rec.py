@@ -238,8 +238,8 @@ def gen_images(batchsize=batch_size, imgsize=img_size, channel=1):
         '''
     return image,label
 
-def genimages_same():
-    dat,lab=gen_images()#generate new images
+def genimages_same(dat, lab):
+    #dat,lab=gen_images()#generate new images
     shp=dat.shape
     
     dat[0,:,:,:]=255#for test 
@@ -330,13 +330,19 @@ def start(lr=lr):
             kernel1 = tf.get_variable(name='kernels')
             biases1 = tf.get_variable(name='biases') 
         
-        dat,lab=genimages_same()#generate new images生成一批数据
+        dat,lab=gen_images()#generate new images
         so_op,evals=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
         
-        print('right cont:',evals,'/',lab.shape[0])
-        for ind,i in enumerate(so_op):
-            print ('test a image:',i,' ',np.argmax(i)==lab[ind])
+        dat,lab=genimages_same(dat,lab)#generate new images生成一批数据
         
+        so_op2,evals2=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
+        
+        print('right cont:',evals,'/',lab.shape[0])
+        print('origin:',so_op[0],' lable:',lab[0])
+        for ind,i in enumerate(so_op2):
+            print ('test a image:',i,' ',np.argmax(i)==lab[ind])
+        cv2.imshow('test',dat[0])
+        cv2.waitKey()
         
         
         
