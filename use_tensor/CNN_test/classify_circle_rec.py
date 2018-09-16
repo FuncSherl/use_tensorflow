@@ -340,7 +340,7 @@ def start(lr=lr):
         print('right cont:',evals,'/',lab.shape[0])
         print('origin:',so_op[0],' lable:',lab[0])
         for ind,i in enumerate(so_op2):
-            print ('test a image:',i,' ',np.argmax(i)==lab[ind])
+            print (ind,' test a image:',i,' ',np.argmax(i)==lab[ind])
         cv2.imshow('test',dat[0])
         cv2.waitKey()
         
