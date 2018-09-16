@@ -39,7 +39,7 @@ num_class=2
 img_size=32
 lr=1e-6
 
-batch_size=64
+batch_size=36
 maxiter=4000
 max_output=6
 
@@ -238,6 +238,30 @@ def gen_images(batchsize=batch_size, imgsize=img_size, channel=1):
         '''
     return image,label
 
+def genimages_same():
+    dat,lab=gen_images()#generate new images
+    shp=dat.shape
+    
+    dat[0,:,:,:]=255#for test 
+    
+    for i in range(1,shp[0]):
+        dat[i]=dat[0].copy()
+        lab[i]=lab[0]
+        
+        tel=int(img_size/cnn1_ksize)
+        x=((i-1)%tel)*cnn1_ksize
+        y=int((i-1)/tel)*cnn1_ksize
+        
+        dat[i,y:y+cnn1_ksize, x:x+cnn1_ksize]=[0]
+        
+        '''
+        cv2.imshow('test',dat[i])
+        cv2.waitKey()
+        print(dat[i,x:x+cnn1_ksize,y:y+cnn1_ksize])
+        '''
+    return dat,lab
+    
+    
 
 def start(lr=lr):
     dat_place = tf.placeholder(tf.float32, shape=(batch_size, img_size,img_size,1))
@@ -306,7 +330,7 @@ def start(lr=lr):
             kernel1 = tf.get_variable(name='kernels')
             biases1 = tf.get_variable(name='biases') 
         
-        dat,lab=gen_images()#generate new images生成一批数据
+        dat,lab=genimages_same()#generate new images生成一批数据
         so_op,evals=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
         
         print('right cont:',evals,'/',lab.shape[0])
@@ -318,9 +342,17 @@ def start(lr=lr):
         
 
 if __name__ == '__main__':
-    
+    #genimages_same()
+    ''''''
     start()
-    back_inference()
+    #back_inference()
     for i in tf.trainable_variables():
         print (i)
-    pass
+    
+        
+        
+        
+        
+        
+        
+    
