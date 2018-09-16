@@ -114,7 +114,7 @@ def inference(images):
         tf.summary.image('second_pool_features',tf.expand_dims(   tf.transpose(pool2[0], perm=[2,0,1]),   3), max_outputs=max_output)
         
     with tf.variable_scope('fcn1') as scope:
-        reshape = tf.reshape(pool2, [images.get_shape().as_list()[0], -1])
+        reshape = tf.reshape(pool2, [pool2.get_shape().as_list()[0], -1])
         dim = reshape.get_shape()[1].value
         
         weights = tf.get_variable('fcn1', [dim, fcn1_n],
@@ -163,6 +163,10 @@ def loss(logits, labels):
     tf.summary.scalar('loss',cross_entropy_mean)
     
     return cross_entropy_mean
+
+def softmax(logits):
+    return  tf.nn.softmax(logits=logits)
+    
 
 
 def training(losst, learning_rate):
@@ -243,6 +247,7 @@ def start(lr=lr):
     
     train_op=training(los, lr)
     eval_op=evaluate(logits, label_place)
+    softmax_op=softmax(logits)
     
     #合并上面每个summary，就不必一个一个运行了
     merged = tf.summary.merge_all()
@@ -290,7 +295,19 @@ def start(lr=lr):
             
             
         print('training done! time used:',time.time()-sttime)
-    
+        
+        #后面就试下反向
+        with tf.variable_scope('cnn1', reuse=True) as scope:
+            kernel1 = tf.get_variable(name='kernels')
+            biases1 = tf.get_variable(name='biases') 
+        
+        dat,lab=gen_images()#generate new images生成一批数据
+        so_op=sess.run([softmax_op], feed_dict={dat_place:dat, label_place:lab})
+        for ind,i in enumerate(so_op):
+            np.append(i,np.argmax(i)==lab[ind])
+            
+            print ('test a image:',i)
+        
         
         
         
