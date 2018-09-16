@@ -242,7 +242,7 @@ def genimages_same(dat, lab):
     #dat,lab=gen_images()#generate new images
     shp=dat.shape
     
-    dat[0,:,:,:]=255#for test 
+    #dat[0,:,:,:]=255#for test 
     
     for i in range(1,shp[0]):
         dat[i]=dat[0].copy()
