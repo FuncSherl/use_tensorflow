@@ -337,10 +337,12 @@ def start(lr=lr):
         
         so_op2,evals2=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
         
-        print('right cont:',evals,'/',lab.shape[0])
+        print('right cnt:',evals2,'/',lab.shape[0])
         print('origin:',so_op[0],' lable:',lab[0])
         for ind,i in enumerate(so_op2):
             print (ind,' test a image:',i,' ',np.argmax(i)==lab[ind])
+            
+            
         cv2.imshow('test',dat[0])
         cv2.waitKey()
         
