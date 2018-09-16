@@ -7,6 +7,7 @@ Created on 2018年9月9日
 import tensorflow as tf
 import numpy as np
 import cv2,time
+import os.path as op
 from datetime import datetime
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
@@ -251,6 +252,7 @@ def start(lr=lr):
     
     #合并上面每个summary，就不必一个一个运行了
     merged = tf.summary.merge_all()
+    logdir="./logs/"+TIMESTAMP+('_cnn1-%d_cnn2-%d_fcn1-%d'%(cnn1_k,cnn2_k, fcn1_n))
     
     with tf.Session() as sess:
         init = tf.global_variables_initializer()#初始化tf.Variable
@@ -258,7 +260,8 @@ def start(lr=lr):
         
         #tensorboard里面按文件夹分，这里利用时间分开
         #print ("./logs/"+TIMESTAMP+('_cnn1%d_cnn2%d_fcn1%d'%(cnn1_k,cnn2_k, fcn1_n)))
-        writer = tf.summary.FileWriter("./logs/"+TIMESTAMP+('_cnn1-%d_cnn2-%d_fcn1-%d'%(cnn1_k,cnn2_k, fcn1_n)),   sess.graph)
+        writer = tf.summary.FileWriter(logdir,   sess.graph)
+        all_saver = tf.train.Saver() 
         
         sttime=time.time()
         
@@ -293,8 +296,10 @@ def start(lr=lr):
                 
                 print ('!!!!!!!!evaluate:!!!!!!!!!!!!',float(truecnt)/cnt_all,'\n')
             
-            
+        all_saver.save(sess, op.join(logdir,'data.chkp'))
         print('training done! time used:',time.time()-sttime)
+        
+        
         
         #后面就试下反向
         with tf.variable_scope('cnn1', reuse=True) as scope:
@@ -302,11 +307,11 @@ def start(lr=lr):
             biases1 = tf.get_variable(name='biases') 
         
         dat,lab=gen_images()#generate new images生成一批数据
-        so_op=sess.run([softmax_op], feed_dict={dat_place:dat, label_place:lab})
+        so_op,evals=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
+        
+        print('right cont:',evals,'/',lab.shape[0])
         for ind,i in enumerate(so_op):
-            np.append(i,np.argmax(i)==lab[ind])
-            
-            print ('test a image:',i)
+            print ('test a image:',i,' ',np.argmax(i)==lab[ind])
         
         
         
