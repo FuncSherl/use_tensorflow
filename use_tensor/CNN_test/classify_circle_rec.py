@@ -40,7 +40,7 @@ img_size=32
 lr=1e-6
 
 batch_size=36
-maxiter=4000
+maxiter=3000
 max_output=6
 
 stdev_init=0.1
@@ -238,6 +238,14 @@ def gen_images(batchsize=batch_size, imgsize=img_size, channel=1):
         '''
     return image,label
 
+def index2xy(i=0):#x代表横向，y代表竖向
+    tel=int(img_size/cnn1_ksize)
+    x=int((i)%tel)*cnn1_ksize
+    y=int((i)/tel)*cnn1_ksize
+        
+    return x,y
+
+
 def genimages_same(dat, lab):
     #dat,lab=gen_images()#generate new images
     shp=dat.shape
@@ -248,9 +256,7 @@ def genimages_same(dat, lab):
         dat[i]=dat[0].copy()
         lab[i]=lab[0]
         
-        tel=int(img_size/cnn1_ksize)
-        x=((i-1)%tel)*cnn1_ksize
-        y=int((i-1)/tel)*cnn1_ksize
+        x,y=index2xy(i-1)
         
         dat[i,y:y+cnn1_ksize, x:x+cnn1_ksize]=[0]
         
@@ -326,14 +332,11 @@ def start(lr=lr):
         
         
         #后面就试下反向
-        with tf.variable_scope('cnn1', reuse=True) as scope:
-            kernel1 = tf.get_variable(name='kernels')
-            biases1 = tf.get_variable(name='biases') 
         
         dat,lab=gen_images()#generate new images
         so_op,evals=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
         
-        dat,lab=genimages_same(dat,lab)#generate new images生成一批数据
+        dat,lab=genimages_same(dat,lab)#generate new images生成一批数据 
         
         so_op2,evals2=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
         
@@ -341,7 +344,11 @@ def start(lr=lr):
         print('origin:',so_op[0],' lable:',lab[0])
         for ind,i in enumerate(so_op2):
             print (ind,' test a image:',i,' ',np.argmax(i)==lab[ind])
-            
+            dist = np.linalg.norm(i - so_op[0])
+            if dist>0: 
+                x,y=index2xy(ind)
+                #print(type(x))
+                dat[0,y:y+cnn1_ksize, x:x+cnn1_ksize]=[255]
             
         cv2.imshow('test',dat[0])
         cv2.waitKey()
