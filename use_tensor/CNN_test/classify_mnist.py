@@ -10,6 +10,7 @@ import numpy as np
 import cv2,time
 import os.path as op
 from datetime import datetime
+
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 # 设置GPU按需增长
@@ -33,14 +34,14 @@ pool2_stride=2
 
 fcn1_n=1024
 
-num_class=2
+num_class=10
 
 
 #-----------------------------------------------------------------------------------net params
-img_size=32
-lr=1e-6
+img_size=28
+lr=0.01
 
-batch_size=36
+batch_size=25
 maxiter=3000
 max_output=6
 
@@ -193,10 +194,15 @@ def evaluate(logits, labels, topk=1):
     tf.summary.scalar('accuracy rate:', (cnt)/labels.shape[0])
     return cnt
 
-def gen_mnistimg(batchsize=batch_size):
+def gen_mnistimg(batchsize=batch_size,train=True):
     mnist = input_data.read_data_sets("mnist_data/")#, one_hot=True
-    batch_xs, batch_ys = mnist.train.next_batch(batchsize)
+    if train:
+        batch_xs, batch_ys = mnist.train.next_batch(batchsize)
+    else:
+        batch_xs, batch_ys = mnist.test.next_batch(batchsize)
+    
     batch_xs=batch_xs.reshape([batchsize,28,28,1])
+    
     #print (mnist.test.images.shape)
     #print ( mnist.validation.images.shape)
     '''
@@ -209,7 +215,7 @@ def gen_mnistimg(batchsize=batch_size):
         
     
 
-def gen_images(batchsize=batch_size, imgsize=img_size, channel=1):
+def gen_rec_circle_images(batchsize=batch_size, imgsize=img_size, channel=1):
     image=np.zeros([batchsize, imgsize, imgsize, channel], dtype=np.float32)
     label=np.zeros([batchsize], dtype=np.int32)
     
@@ -285,7 +291,7 @@ def genimages_same(dat, lab):
     return dat,lab
 
 def test_backinference(sess, softmax_op, eval_op, dat_place, label_place):
-    dat,lab=gen_images()#generate new images
+    dat,lab=gen_mnistimg(train=False)#generate new images
     so_op,evals=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
         
     dat,lab=genimages_same(dat,lab)#generate new images生成一批数据 
@@ -319,7 +325,7 @@ def start(lr=lr):
     
     #合并上面每个summary，就不必一个一个运行了
     merged = tf.summary.merge_all()
-    logdir="./logs/"+TIMESTAMP+('_cnn1-%d_cnn2-%d_fcn1-%d'%(cnn1_k,cnn2_k, fcn1_n))
+    logdir="./logs/mnist_"+TIMESTAMP+('_cnn1-%d_cnn2-%d_fcn1-%d'%(cnn1_k,cnn2_k, fcn1_n))
     
     with tf.Session() as sess:
         init = tf.global_variables_initializer()#初始化tf.Variable
@@ -338,7 +344,7 @@ def start(lr=lr):
             stt=time.time()
             
             
-            dat,lab=gen_images()#generate new images生成一批数据
+            dat,lab=gen_mnistimg()#generate new images生成一批数据
             _, loss_value, summary_resu , tep= sess.run([train_op, los, merged, logits], feed_dict={dat_place:dat, label_place:lab})
             
             #写入日志
@@ -353,7 +359,7 @@ def start(lr=lr):
                 truecnt=0
                 cnt_all=0
                 for j in range(200):
-                    dat,lab=gen_images()#generate new images
+                    dat,lab=gen_mnistimg(train=False)#generate new images
                     
                     eval_resu,loss_value=sess.run([eval_op, los], feed_dict={dat_place:dat, label_place:lab})
                     truecnt+=eval_resu
@@ -399,8 +405,8 @@ def start(lr=lr):
 if __name__ == '__main__':
     #genimages_same()
     ''''''
-    gen_mnistimg()
-    #start()
+    #gen_mnistimg()
+    start()
     #back_inference()
     for i in tf.trainable_variables():
         print (i)
