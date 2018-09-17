@@ -193,6 +193,22 @@ def evaluate(logits, labels, topk=1):
     tf.summary.scalar('accuracy rate:', (cnt)/labels.shape[0])
     return cnt
 
+def gen_mnistimg(batchsize=batch_size):
+    mnist = input_data.read_data_sets("mnist_data/")#, one_hot=True
+    batch_xs, batch_ys = mnist.train.next_batch(batchsize)
+    batch_xs=batch_xs.reshape([batchsize,28,28,1])
+    #print (mnist.test.images.shape)
+    #print ( mnist.validation.images.shape)
+    '''
+    for ind,i in enumerate(batch_xs):
+        print (batch_ys[ind])
+        cv2.imshow('test',i)
+        cv2.waitKey()
+    '''
+    return batch_xs,batch_ys
+        
+    
+
 def gen_images(batchsize=batch_size, imgsize=img_size, channel=1):
     image=np.zeros([batchsize, imgsize, imgsize, channel], dtype=np.float32)
     label=np.zeros([batchsize], dtype=np.int32)
@@ -383,7 +399,8 @@ def start(lr=lr):
 if __name__ == '__main__':
     #genimages_same()
     ''''''
-    start()
+    gen_mnistimg()
+    #start()
     #back_inference()
     for i in tf.trainable_variables():
         print (i)
