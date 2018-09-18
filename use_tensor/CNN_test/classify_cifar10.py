@@ -195,35 +195,26 @@ def evaluate(logits, labels, topk=1):
     tf.summary.scalar('accuracy rate:', (cnt)/labels.shape[0])
     return cnt
 
-mnist = input_data.read_data_sets("mnist_data/")#, one_hot=True
-def gen_mnistimg(batchsize=batch_size,train=True):
-    
-    if train:
-        batch_xs, batch_ys = mnist.train.next_batch(batchsize)
-    else:
-        batch_xs, batch_ys = mnist.test.next_batch(batchsize)
-    
-    batch_xs=batch_xs.reshape([batchsize,28,28,1])
-    
-    #print (mnist.test.images.shape)
-    #print ( mnist.validation.images.shape)
-    '''
-    for ind,i in enumerate(batch_xs):
-        print (batch_ys[ind])
-        cv2.imshow('test',i)
-        cv2.waitKey()
-    '''
-    return batch_xs,batch_ys
+# mnist = input_data.read_data_sets("mnist_data/")#, one_hot=True
+# def gen_mnistimg(batchsize=batch_size,train=True):
+#      
+#     if train:
+#         batch_xs, batch_ys = mnist.train.next_batch(batchsize)
+#     else:
+#         batch_xs, batch_ys = mnist.test.next_batch(batchsize)
+#      
+#     batch_xs=batch_xs.reshape([batchsize,28,28,1])
+#      
+#     #print (mnist.test.images.shape)
+#     #print ( mnist.validation.images.shape)
+#     '''
+#     for ind,i in enumerate(batch_xs):
+#         print (batch_ys[ind])
+#         cv2.imshow('test',i)
+#         cv2.waitKey()
+#     '''
+#     return batch_xs,batch_ys
 
-
-cifar10_dir=r'./cifar10_data/cifar-10-batches-bin'
-def gen_cifar10(batchsize=batch_size, train=True):
-    if train:
-        return cifar10_input.distorted_inputs(data_dir=cifar10_dir, batch_size=batchsize)
-    #cifar10_input类中带的distorted_inputs()函数可以产生训练需要的数据，包括特征和label，返回封装好的tensor，每次执行都会生成一个batch_size大小的数据。
-    #测试集
-    return  cifar10_input.inputs(eval_data = True, data_dir=cifar10_dir, batch_size=batchsize)
-        
     
 
 def gen_rec_circle_images(batchsize=batch_size, imgsize=img_size, channel=1):
@@ -279,8 +270,7 @@ def index2xy(i=0):#x代表横向，y代表竖向
         
     return x,y
 
-def gen_img(batchsize=batch_size, train=True):
-    return gen_cifar10(batchsize, train)
+
 
 def genimages_same(dat, lab):
     #dat,lab=gen_images()#generate new images
@@ -304,7 +294,7 @@ def genimages_same(dat, lab):
     return dat,lab
 
 def test_backinference(sess, softmax_op, eval_op, dat_place, label_place):
-    dat,lab=gen_img(train=False)#generate new images
+    dat,lab=sess.run([images_test, labels_test])#gen_img(train=False)#generate new images
     so_op,evals=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
         
     dat,lab=genimages_same(dat,lab)#generate new images生成一批数据 
@@ -319,15 +309,28 @@ def test_backinference(sess, softmax_op, eval_op, dat_place, label_place):
         if dist>0: 
             x,y=index2xy(ind)
             #print(type(x))
-            dat[0,y:y+cnn1_ksize, x:x+cnn1_ksize]=[255]
-            
+            dat[0,y:y+cnn1_ksize, x:x+cnn1_ksize]=[255,0,0]
+    
+    cv2.resize(dat[0],[img_size*10,img_size*10])   
     cv2.imshow('test',dat[0])
     cv2.waitKey()
     
+    
+cifar10_dir=r'./cifar10_data/cifar-10-batches-bin'
+'''
+下面这两个是图操作，利用pipline实现了的数据读取
+'''
+#训练集
+images_train, labels_train = cifar10_input.distorted_inputs(data_dir=cifar10_dir, batch_size=batch_size)
+#cifar10_input类中带的distorted_inputs()函数可以产生训练需要的数据，包括特征和label，返回封装好的tensor，每次执行都会生成一个batch_size大小的数据。
+#测试集
+images_test, labels_test = cifar10_input.inputs(eval_data = True, data_dir=cifar10_dir, batch_size=batch_size)
+
 
 def start(lr=lr):
     dat_place = tf.placeholder(tf.float32, shape=(batch_size, img_size,img_size,3))
     label_place= tf.placeholder(tf.int32, shape=(batch_size))
+    
     
     logits=inference(dat_place)
     los=loss(logits, label_place)
@@ -357,7 +360,7 @@ def start(lr=lr):
             stt=time.time()
             
             
-            dat,lab=gen_img()#generate new images生成一批数据
+            dat,lab= sess.run([images_train, labels_train])#gen_img()#generate new images生成一批数据
             _, loss_value, summary_resu , tep= sess.run([train_op, los, merged, logits], feed_dict={dat_place:dat, label_place:lab})
             
             #写入日志
@@ -372,7 +375,7 @@ def start(lr=lr):
                 truecnt=0
                 cnt_all=0
                 for j in range(200):
-                    dat,lab=gen_img(train=False)#generate new images
+                    dat,lab=sess.run([images_test, labels_test])#gen_img(train=False)#generate new images
                     
                     eval_resu,loss_value=sess.run([eval_op, los], feed_dict={dat_place:dat, label_place:lab})
                     truecnt+=eval_resu
