@@ -277,6 +277,8 @@ def genimages_same(dat, lab):
     shp=dat.shape
     
     #dat[0,:,:,:]=255#for test 
+    #这里求图片均值
+    means=np.mean(dat[0], (0,1))
     
     for i in range(1,shp[0]):
         dat[i]=dat[0].copy()
@@ -284,7 +286,7 @@ def genimages_same(dat, lab):
         
         x,y=index2xy(i-1)
         
-        dat[i,y:y+cnn1_ksize, x:x+cnn1_ksize,:]=0
+        dat[i,y:y+cnn1_ksize, x:x+cnn1_ksize]=means
         
         '''
         cv2.imshow('test',dat[i])
@@ -304,8 +306,8 @@ def test_backinference(sess, softmax_op, eval_op, dat_place, label_place):
     print('right cnt:',evals2,'/',lab.shape[0])
     print('origin:',so_op[0],' lable:',lab[0])
     for ind,i in enumerate(so_op2):
-        print (ind,' test a image:',i,' ',np.argmax(i)==lab[ind])
         dist = np.linalg.norm(i - so_op[0])
+        print (ind,'  test a image:',i,'  distance:',dist,'   ',np.argmax(i)==lab[ind])
         if dist>0: 
             x,y=index2xy(ind)
             #print(type(x))
@@ -404,8 +406,8 @@ def start(lr=lr):
                     #print ('evaluate-loss:',loss_value,'\n')
                 
                 print ('!!!!!!!!evaluate:!!!!!!!!!!!!',float(truecnt)/cnt_all,'\n')
-            
-        all_saver.save(sess, op.join(logdir,'data.chkp'))
+                all_saver.save(sess, op.join(logdir,'data.chkp'))
+                
         print('training done! time used:',time.time()-sttime)
         
         
