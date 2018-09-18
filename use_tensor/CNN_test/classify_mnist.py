@@ -194,8 +194,10 @@ def evaluate(logits, labels, topk=1):
     tf.summary.scalar('accuracy rate:', (cnt)/labels.shape[0])
     return cnt
 
+
+mnist = input_data.read_data_sets("mnist_data/")#, one_hot=True
 def gen_mnistimg(batchsize=batch_size,train=True):
-    mnist = input_data.read_data_sets("mnist_data/")#, one_hot=True
+
     if train:
         batch_xs, batch_ys = mnist.train.next_batch(batchsize)
     else:
