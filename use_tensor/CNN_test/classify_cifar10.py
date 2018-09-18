@@ -43,7 +43,7 @@ img_size=cifar10_input.IMAGE_SIZE
 lr=0.01
 
 batch_size=36
-maxiter=3000
+maxiter=30000
 max_output=6
 
 stdev_init=0.1
