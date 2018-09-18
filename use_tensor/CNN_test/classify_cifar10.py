@@ -311,7 +311,7 @@ def test_backinference(sess, softmax_op, eval_op, dat_place, label_place):
             #print(type(x))
             dat[0,y:y+cnn1_ksize, x:x+cnn1_ksize]=[255,0,0]
     
-    cv2.resize(dat[0],[img_size*10,img_size*10])   
+    cv2.resize(dat[0],[img_size*10,img_size*10], interpolation=cv2.INTER_CUBIC)   
     cv2.imshow('test',dat[0])
     cv2.waitKey()
     
@@ -346,6 +346,10 @@ def start(lr=lr):
     with tf.Session() as sess:
         init = tf.global_variables_initializer()#初始化tf.Variable
         sess.run(init)
+        
+        #启动线程开始填充数据
+        coord = tf.train.Coordinator()#this helps manage the threads,but without it ,it still works
+        threads = tf.train.start_queue_runners(coord=coord)#
         
         #tensorboard里面按文件夹分，这里利用时间分开
         #print ("./logs/"+TIMESTAMP+('_cnn1%d_cnn2%d_fcn1%d'%(cnn1_k,cnn2_k, fcn1_n)))
