@@ -40,10 +40,10 @@ num_class=10
 
 #-----------------------------------------------------------------------------------net params
 img_size=cifar10_input.IMAGE_SIZE
-lr=0.1
+lr=0.2
 
 batch_size=36
-maxiter=15000
+maxiter=30000
 max_output=6
 
 stdev_init=0.1
@@ -303,7 +303,7 @@ def test_backinference(sess, softmax_op, eval_op, dat_place, label_place):
         
     so_op2,evals2=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
         
-    print('right cnt:',evals2,'/',lab.shape[0])
+    print('right cnt:',evals,'->',evals2,'/',lab.shape[0])
     print('origin:',so_op[0],' lable:',lab[0])
     for ind,i in enumerate(so_op2):
         dist = np.linalg.norm(i - so_op[0])
