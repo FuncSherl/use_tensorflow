@@ -40,10 +40,10 @@ num_class=10
 
 #-----------------------------------------------------------------------------------net params
 img_size=cifar10_input.IMAGE_SIZE
-lr=0.2
+lr=0.1
 
 batch_size=36
-maxiter=2000
+maxiter=15000
 max_output=6
 
 stdev_init=0.1
@@ -328,6 +328,7 @@ images_test, labels_test = cifar10_input.inputs(eval_data = True, data_dir=cifar
 
 
 def start(lr=lr):
+    #这里是用placeholder方法的inference，用于后面xiu'gai
     dat_place = tf.placeholder(tf.float32, shape=(batch_size, img_size,img_size,3))
     label_place= tf.placeholder(tf.int32, shape=(batch_size))
     
@@ -338,6 +339,21 @@ def start(lr=lr):
     train_op=training(los, lr)
     eval_op=evaluate(logits, label_place)
     softmax_op=softmax(logits)
+    
+    
+    
+    
+    
+    #---------------------!!!!!!!!!!!!!!!!!!!!
+    '''
+    logits_train=inference(images_train)
+    los_train=loss(logits_train, labels_train)
+    
+    train_op=training(los_train, lr)
+    #eval_op=evaluate(logits, label_place)
+    softmax_op=softmax(logits_train)
+    '''
+    #-----------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     
     #合并上面每个summary，就不必一个一个运行了
     merged = tf.summary.merge_all()
@@ -375,7 +391,7 @@ def start(lr=lr):
                 print (i, 'time:',time.time()-stt)
                 print ('training-loss:',loss_value,'\n')
             
-            if (i+1)%100==0:#测试一次
+            if (i+1)%300==0:#测试一次
                 truecnt=0
                 cnt_all=0
                 for j in range(int(cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL/batch_size)):
