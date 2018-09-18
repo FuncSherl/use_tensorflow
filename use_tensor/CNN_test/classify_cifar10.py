@@ -311,7 +311,7 @@ def test_backinference(sess, softmax_op, eval_op, dat_place, label_place):
             #print(type(x))
             dat[0,y:y+cnn1_ksize, x:x+cnn1_ksize]=[255,0,0]
     
-    cv2.resize(dat[0],[img_size*10,img_size*10], interpolation=cv2.INTER_CUBIC)   
+    cv2.resize(dat[0],(img_size*10,img_size*10), interpolation=cv2.INTER_CUBIC)   
     cv2.imshow('test',dat[0])
     cv2.waitKey()
     
