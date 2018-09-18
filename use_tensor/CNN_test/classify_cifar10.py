@@ -40,7 +40,7 @@ num_class=10
 
 #-----------------------------------------------------------------------------------net params
 img_size=cifar10_input.IMAGE_SIZE
-lr=0.01
+lr=0.05
 
 batch_size=36
 maxiter=30000
@@ -378,7 +378,7 @@ def start(lr=lr):
             if (i+1)%100==0:#测试一次
                 truecnt=0
                 cnt_all=0
-                for j in range(200):
+                for j in range(int(cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL/batch_size)):
                     dat,lab=sess.run([images_test, labels_test])#gen_img(train=False)#generate new images
                     
                     eval_resu,loss_value=sess.run([eval_op, los], feed_dict={dat_place:dat, label_place:lab})
