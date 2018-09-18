@@ -195,8 +195,9 @@ def evaluate(logits, labels, topk=1):
     tf.summary.scalar('accuracy rate:', (cnt)/labels.shape[0])
     return cnt
 
+mnist = input_data.read_data_sets("mnist_data/")#, one_hot=True
 def gen_mnistimg(batchsize=batch_size,train=True):
-    mnist = input_data.read_data_sets("mnist_data/")#, one_hot=True
+    
     if train:
         batch_xs, batch_ys = mnist.train.next_batch(batchsize)
     else:
@@ -337,7 +338,7 @@ def start(lr=lr):
     
     #合并上面每个summary，就不必一个一个运行了
     merged = tf.summary.merge_all()
-    logdir="./logs/mnist_"+TIMESTAMP+('_cnn1-%d_cnn2-%d_fcn1-%d'%(cnn1_k,cnn2_k, fcn1_n))
+    logdir="./logs/cifar10_"+TIMESTAMP+('_cnn1-%d_cnn2-%d_fcn1-%d'%(cnn1_k,cnn2_k, fcn1_n))
     
     with tf.Session() as sess:
         init = tf.global_variables_initializer()#初始化tf.Variable
