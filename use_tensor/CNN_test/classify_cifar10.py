@@ -10,6 +10,7 @@ import numpy as np
 import cv2,time
 import os.path as op
 from datetime import datetime
+import cifar10_input,cifar10
 
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
@@ -19,7 +20,7 @@ config.gpu_options.allow_growth = True
 
 ######-------------------------------------------------------------------------------------
 cnn1_k=6  #有几个核
-cnn1_ksize=5  #每个核的大小
+cnn1_ksize=4  #每个核的大小
 cnn1_stride=1  #步长
 
 pool1_size=2  #每个核的大小
@@ -38,10 +39,10 @@ num_class=10
 
 
 #-----------------------------------------------------------------------------------net params
-img_size=28
+img_size=cifar10_input.IMAGE_SIZE
 lr=0.01
 
-batch_size=25
+batch_size=36
 maxiter=3000
 max_output=6
 
@@ -212,6 +213,15 @@ def gen_mnistimg(batchsize=batch_size,train=True):
         cv2.waitKey()
     '''
     return batch_xs,batch_ys
+
+
+cifar10_dir=r'./cifar10_data/cifar-10-batches-bin'
+def gen_cifar10(batchsize=batch_size, train=True):
+    if train:
+        return cifar10_input.distorted_inputs(data_dir=cifar10_dir, batch_size=batchsize)
+    #cifar10_input类中带的distorted_inputs()函数可以产生训练需要的数据，包括特征和label，返回封装好的tensor，每次执行都会生成一个batch_size大小的数据。
+    #测试集
+    return  cifar10_input.inputs(eval_data = True, data_dir=cifar10_dir, batch_size=batchsize)
         
     
 
@@ -269,7 +279,7 @@ def index2xy(i=0):#x代表横向，y代表竖向
     return x,y
 
 def gen_img(batchsize=batch_size, train=True):
-    return gen_mnistimg(batchsize, train)
+    return gen_cifar10(batchsize, train)
 
 def genimages_same(dat, lab):
     #dat,lab=gen_images()#generate new images
@@ -315,7 +325,7 @@ def test_backinference(sess, softmax_op, eval_op, dat_place, label_place):
     
 
 def start(lr=lr):
-    dat_place = tf.placeholder(tf.float32, shape=(batch_size, img_size,img_size,1))
+    dat_place = tf.placeholder(tf.float32, shape=(batch_size, img_size,img_size,3))
     label_place= tf.placeholder(tf.int32, shape=(batch_size))
     
     logits=inference(dat_place)
