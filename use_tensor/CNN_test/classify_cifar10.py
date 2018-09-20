@@ -504,9 +504,9 @@ if __name__ == '__main__':
     #genimages_same()
     ''''''
     #gen_mnistimg()
-    #start()
+    start()
     #back_inference()
-    load_model(r'logs/cifar10_2018-09-19_16-51-16_cnn1-6_cnn2-6_fcn1-1024')
+    #load_model(r'logs/cifar10_2018-09-19_16-51-16_cnn1-6_cnn2-6_fcn1-1024')
     for i in tf.trainable_variables():
         print (i)
     
