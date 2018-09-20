@@ -286,7 +286,7 @@ def genimages_same(dat, lab):
         
         x,y=index2xy(i-1)
         
-        dat[i,y:y+cnn1_ksize, x:x+cnn1_ksize]=means
+        dat[i,y:y+cnn1_ksize, x:x+cnn1_ksize]=[0]*shp[-1]#means #
         
         '''
         cv2.imshow('test',dat[i])
@@ -305,17 +305,43 @@ def test_backinference(sess, softmax_op, eval_op, dat_place, label_place):
         
     print('right cnt:',evals,'->',evals2,'/',lab.shape[0])
     print('origin:',so_op[0],' lable:',lab[0])
-    for ind,i in enumerate(so_op2):
-        dist = np.linalg.norm(i - so_op[0])
-        print (ind,'  test a image:',i,'  distance:',dist,'   ',np.argmax(i)==lab[ind])
-        if dist>0: 
-            x,y=index2xy(ind)
-            #print(type(x))
-            dat[0,y:y+cnn1_ksize, x:x+cnn1_ksize]=[255,0,0]
     
-    cv2.resize(dat[0],(img_size*10,img_size*10), interpolation=cv2.INTER_CUBIC)   
-    cv2.imshow('test',dat[0])
+    kep_diff=[]
+    for ind,i in enumerate(so_op2):
+        #这里应该判断
+        tep_dis=i-so_op[0]
+        dist = np.linalg.norm(tep_dis)
+        
+        kep_diff.append(tep_dis[lab[0]])
+        
+        print (ind,'  test a image:',tep_dis,'  distance:',dist,'   ',np.argmax(i)==lab[ind])
+    
+    print ('the label kep_diff:',kep_diff)
+    
+    mean_thre=sum(kep_diff)/len(kep_diff)
+    
+    ano_dat=dat[0].copy()
+    
+    for ind ,i in enumerate(kep_diff): 
+        x,y=index2xy(ind)
+        #print(type(x))
+        if i > mean_thre:
+            dat[0,y:y+cnn1_ksize, x:x+cnn1_ksize]=[255,0,0]
+        else:
+            ano_dat[y:y+cnn1_ksize, x:x+cnn1_ksize]=[255,0,0]
+    
+    tepimg=cv2.resize(dat[0],(img_size*10,img_size*10), interpolation=cv2.INTER_CUBIC)
+    
+    #因为cv里面读入图片默认是bgr，显示时bgr才能正常显示，这里是rgb的图片，要转成bgr才能显示正常
+    cv2.imshow('test_>mean', cv2.cvtColor(tepimg, cv2.COLOR_RGB2BGR))
     cv2.waitKey()
+    #----------------------------------------------------
+    tepimg=cv2.resize(ano_dat,(img_size*10,img_size*10), interpolation=cv2.INTER_CUBIC)
+    
+    #因为cv里面读入图片默认是bgr，显示时bgr才能正常显示，这里是rgb的图片，要转成bgr才能显示正常
+    cv2.imshow('test_<mean', cv2.cvtColor(tepimg, cv2.COLOR_RGB2BGR))
+    cv2.waitKey()
+    
     
     
 cifar10_dir=r'./cifar10_data/cifar-10-batches-bin'
@@ -328,6 +354,36 @@ images_train, labels_train = cifar10_input.distorted_inputs(data_dir=cifar10_dir
 #测试集
 images_test, labels_test = cifar10_input.inputs(eval_data = True, data_dir=cifar10_dir, batch_size=batch_size)
 
+
+
+def load_model(dir):
+    '''
+    graph = tf.get_default_graph()  
+       prob_op = graph.get_operation_by_name('prob') # 这个只是获取了operation， 至于有什么用还不知道  
+  prediction = graph.get_tensor_by_name('prob:0') # 获取之前prob那个操作的输出，即prediction
+    '''
+    #fc2 = tf.stop_gradient(fc2)
+    with tf.Session() as sess:
+        saver = tf.train.import_meta_graph(op.join(dir,'model_keep-29999.meta'))
+        saver.restore(sess, tf.train.latest_checkpoint(dir))
+        
+        init = tf.global_variables_initializer()#初始化tf.Variable
+        sess.run(init)
+        
+        #启动线程开始填充数据
+        coord = tf.train.Coordinator()#this helps manage the threads,but without it ,it still works
+        threads = tf.train.start_queue_runners(coord=coord)#
+        
+        dat_place = tf.placeholder(tf.float32, shape=(batch_size, img_size,img_size,3))
+        label_place= tf.placeholder(tf.int32, shape=(batch_size))
+    
+        
+        logits=inference(dat_place)
+        
+        eval_op=evaluate(logits, label_place)
+        softmax_op=softmax(logits)
+        for i in range(100):
+            test_backinference(sess, softmax_op, eval_op, dat_place, label_place)
 
 def start(lr=lr):
     #这里是用placeholder方法的inference，用于后面xiu'gai
@@ -372,7 +428,11 @@ def start(lr=lr):
         #tensorboard里面按文件夹分，这里利用时间分开
         #print ("./logs/"+TIMESTAMP+('_cnn1%d_cnn2%d_fcn1%d'%(cnn1_k,cnn2_k, fcn1_n)))
         writer = tf.summary.FileWriter(logdir,   sess.graph)
-        all_saver = tf.train.Saver() 
+        
+        '''
+        a如果您只想保留4个最新型号，并希望在培训期间每2小时保存一个型号，则可以使用max_to_keep和keep_checkpoint_every_n_hours
+        '''
+        all_saver = tf.train.Saver(max_to_keep=2) 
         
         sttime=time.time()
         
@@ -406,7 +466,7 @@ def start(lr=lr):
                     #print ('evaluate-loss:',loss_value,'\n')
                 
                 print ('!!!!!!!!evaluate:!!!!!!!!!!!!',float(truecnt)/cnt_all,'\n')
-                all_saver.save(sess, op.join(logdir,'data.chkp'))
+                all_saver.save(sess, op.join(logdir,'model_keep'),global_step=i)
                 
         print('training done! time used:',time.time()-sttime)
         
@@ -444,8 +504,9 @@ if __name__ == '__main__':
     #genimages_same()
     ''''''
     #gen_mnistimg()
-    start()
+    #start()
     #back_inference()
+    load_model(r'logs/cifar10_2018-09-19_16-51-16_cnn1-6_cnn2-6_fcn1-1024')
     for i in tf.trainable_variables():
         print (i)
     
