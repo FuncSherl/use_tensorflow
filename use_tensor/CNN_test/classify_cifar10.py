@@ -356,32 +356,23 @@ images_test, labels_test = cifar10_input.inputs(eval_data = True, data_dir=cifar
 
 
 
-def load_model(dir):
+def load_model(dirs):
     '''
     graph = tf.get_default_graph()  
        prob_op = graph.get_operation_by_name('prob') # 这个只是获取了operation， 至于有什么用还不知道  
   prediction = graph.get_tensor_by_name('prob:0') # 获取之前prob那个操作的输出，即prediction
     '''
     #fc2 = tf.stop_gradient(fc2)
+    graph = tf.get_default_graph() 
     with tf.Session() as sess:
-        saver = tf.train.import_meta_graph(op.join(dir,'model_keep-29999.meta'))
-        saver.restore(sess, tf.train.latest_checkpoint(dir))
-        
-        init = tf.global_variables_initializer()#初始化tf.Variable  
-        sess.run(init)
+        saver = tf.train.import_meta_graph(op.join(dirs,'model_keep-29999.meta'))
+        saver.restore(sess, tf.train.latest_checkpoint(dirs))
         
         #启动线程开始填充数据
         coord = tf.train.Coordinator()#this helps manage the threads,but without it ,it still works
         threads = tf.train.start_queue_runners(coord=coord)#
         
-        dat_place = tf.placeholder(tf.float32, shape=(batch_size, img_size,img_size,3))
-        label_place= tf.placeholder(tf.int32, shape=(batch_size))
-    
         
-        logits=inference(dat_place)
-        
-        eval_op=evaluate(logits, label_place)
-        softmax_op=softmax(logits)
         for i in range(100):
             test_backinference(sess, softmax_op, eval_op, dat_place, label_place)
 
@@ -506,7 +497,7 @@ if __name__ == '__main__':
     #gen_mnistimg()
     start()
     #back_inference()
-    #load_model(r'logs/cifar10_2018-09-19_16-51-16_cnn1-6_cnn2-6_fcn1-1024')
+    #load_model(r'logs/cifar10_2018-09-20_21-09-35_cnn1-6_cnn2-6_fcn1-1024')
     for i in tf.trainable_variables():
         print (i)
     
