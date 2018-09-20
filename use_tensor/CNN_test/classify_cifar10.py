@@ -298,6 +298,8 @@ def genimages_same(dat, lab):
 def test_backinference(sess, softmax_op, eval_op, dat_place, label_place):
     dat,lab=sess.run([images_test, labels_test])#gen_img(train=False)#generate new images
     so_op,evals=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
+    
+    if lab[0]!=np.argmax(so_op[0]): return
         
     dat,lab=genimages_same(dat,lab)#generate new images生成一批数据 
         
@@ -305,6 +307,8 @@ def test_backinference(sess, softmax_op, eval_op, dat_place, label_place):
         
     print('right cnt:',evals,'->',evals2,'/',lab.shape[0])
     print('origin:',so_op[0],' lable:',lab[0])
+    
+    if evals<evals2: return
     
     kep_diff=[]
     for ind,i in enumerate(so_op2):
@@ -321,6 +325,9 @@ def test_backinference(sess, softmax_op, eval_op, dat_place, label_place):
     mean_thre=sum(kep_diff)/len(kep_diff)
     
     ano_dat=dat[0].copy()
+    
+    cv2.imshow('origin', cv2.cvtColor(cv2.resize(dat[0],(img_size*10,img_size*10), interpolation=cv2.INTER_CUBIC), cv2.COLOR_RGB2BGR))
+    cv2.waitKey()
     
     for ind ,i in enumerate(kep_diff): 
         x,y=index2xy(ind)
