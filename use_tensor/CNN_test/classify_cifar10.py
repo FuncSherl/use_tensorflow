@@ -367,7 +367,7 @@ def load_model(dir):
         saver = tf.train.import_meta_graph(op.join(dir,'model_keep-29999.meta'))
         saver.restore(sess, tf.train.latest_checkpoint(dir))
         
-        init = tf.global_variables_initializer()#初始化tf.Variable
+        init = tf.global_variables_initializer()#初始化tf.Variable  
         sess.run(init)
         
         #启动线程开始填充数据
