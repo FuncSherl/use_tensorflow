@@ -379,7 +379,7 @@ def load_model(dirs):
         coord = tf.train.Coordinator()#this helps manage the threads,but without it ,it still works
         threads = tf.train.start_queue_runners(coord=coord)#
         
-        softmax_op=graph.get_tensor_by_name('Softmax:0') 
+        softmax_op=graph.get_tensor_by_name('softmax:0') 
         eval_op=graph.get_tensor_by_name('Sum:0') 
         dat_place=graph.get_tensor_by_name('Placeholder:0') 
         label_place=graph.get_tensor_by_name('Placeholder_1:0') 
@@ -400,7 +400,7 @@ def start(lr=lr):
     train_op=training(los, lr)
     eval_op=evaluate(logits, label_place)
     softmax_op=softmax(logits)
-    #print (label_place)
+    print (softmax_op)
     
     
     
@@ -509,7 +509,7 @@ if __name__ == '__main__':
     #gen_mnistimg()
     #start()
     #back_inference()
-    load_model(r'logs/cifar10_2018-09-20_21-09-35_cnn1-6_cnn2-6_fcn1-1024')
+    load_model(r'logs/cifar10_2018-09-21_19-32-29_cnn1-6_cnn2-6_fcn1-1024')
     for i in tf.trainable_variables():
         print (i)
     
