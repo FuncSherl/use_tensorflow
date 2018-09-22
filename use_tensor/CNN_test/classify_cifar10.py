@@ -19,14 +19,14 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 
 ######-------------------------------------------------------------------------------------
-cnn1_k=6  #有几个核
+cnn1_k=64  #有几个核
 cnn1_ksize=4  #每个核的大小
 cnn1_stride=1  #步长
 
 pool1_size=2  #每个核的大小
 pool1_stride=2 #步长
 
-cnn2_k=6
+cnn2_k=64
 cnn2_ksize=5
 cnn2_stride=1
 
@@ -40,7 +40,7 @@ num_class=10
 
 #-----------------------------------------------------------------------------------net params
 img_size=cifar10_input.IMAGE_SIZE
-lr=0.2
+lr=0.001
 
 batch_size=36
 maxiter=30000
