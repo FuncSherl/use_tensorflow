@@ -75,11 +75,14 @@ def get_label_file(dir_labels):
     
 
 if __name__ == '__main__':
-    rootdir='F:\DL_datasets\PascalVOC2012\VOC_2012_all\VOC2012_trainval'
-    testdir='F:\DL_datasets\PascalVOC2012\VOC_2012_all\VOC2012_test'
+    rootdir=r'F:\DL_datasets\PascalVOC2012\VOC_2012_all'
     
-    annotation_dir=op.join(rootdir, 'Annotations')
-    label_dir=op.join(rootdir, 'ImageSets\Main')
+    
+    traindir=op.join(rootdir, 'VOC2012_trainval')
+    testdir=op.join(rootdir, 'VOC2012_test')
+    
+    annotation_dir=op.join(traindir, 'Annotations')
+    label_dir=op.join(traindir, 'ImageSets\Main')
     get_label_file(label_dir)
     
     for i in os.listdir(annotation_dir):
