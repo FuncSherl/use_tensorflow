@@ -8,6 +8,13 @@ from xml.dom import minidom
 import cv2,os
 import os.path as op
 
+classes = [
+    "aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat",
+    "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person",
+    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
+]
+
+
 
 def show_objects(dir_xml):
     doc = minidom.parse(dir_xml)
@@ -39,8 +46,24 @@ def show_objects(dir_xml):
 
 if __name__ == '__main__':
     rootdir='F:\DL_datasets\PascalVOC2012\VOC_2012_all\VOC2012_trainval'
+    testdir='F:\DL_datasets\PascalVOC2012\VOC_2012_all\VOC2012_test'
+    
     annotation_dir=op.join(rootdir, 'Annotations')
     for i in os.listdir(annotation_dir):
         tep=op.join(annotation_dir, i)
         show_objects(tep)
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
     
