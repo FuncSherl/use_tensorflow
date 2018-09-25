@@ -11,10 +11,11 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 
+
 import tensorflow as tf
 
 #import tensorflow.data.Dataset as dataset
-
+tf.contrib.slim
 
 
 classes = [
@@ -216,8 +217,8 @@ if __name__ == '__main__':
     test_label_dir=op.join(testdir, 'ImageSets\Main')
     #get_label_file(label_dir)
     
-    gen_tfrecord(train_label_dir)
-    gen_tfrecord(train_label_dir,'val')
+    #gen_tfrecord(train_label_dir)
+    #gen_tfrecord(train_label_dir,'val')
     
     '''
     for i in os.listdir(annotation_dir):
