@@ -10,7 +10,7 @@ import os.path as op
 from PIL import Image
 
 import tensorflow as tf
-import tensorflow.data.Dataset as dataset
+#import tensorflow.data.Dataset as dataset
 
 
 
@@ -79,10 +79,17 @@ def get_label_file(dir_labels,classes=classes):
     '''
     return ret
 
-def gen_tfrecord(dir_labels,outname='voc_traindata',classes=classes):
+def gen_tfrecord(dir_labels,stage='train',classes=classes):
+    '''
+    stage in [train, val, test]
+    :由于voc中test没有标注，只好用train和val数据集训练和测试，但是train和val数量都是8000多，训练不够，就把val生成的tfrecord中拷2个到train中
+    '''
     ret=[]
     for label,i in enumerate(classes):
-        fname=i+'_trainval.txt'
+        
+        fname=i+'_'+stage+'.txt'
+        outname='voc_'+stage+'_data'
+
         tep=op.join(dir_labels, fname)
         with open(tep, 'r') as f:
             lin=f.readlines()
@@ -90,6 +97,11 @@ def gen_tfrecord(dir_labels,outname='voc_traindata',classes=classes):
                 t=j.strip().split()
                 if int(t[-1])==1:
                     ret.append([t[0].strip(), label])
+    
+    if len(ret)<1:
+        print ("error:no data in these classes")
+        return
+    
     random.shuffle(ret)
     
     datadir=op.join(dir_labels, '../../JPEGImages')
@@ -97,7 +109,7 @@ def gen_tfrecord(dir_labels,outname='voc_traindata',classes=classes):
     if not op.exists(tfrecorddir):
         os.makedirs(tfrecorddir)
     
-    imgs_perfile=1000
+    imgs_perfile=2000
     
     
     for ind,i in enumerate(ret):        
@@ -105,8 +117,6 @@ def gen_tfrecord(dir_labels,outname='voc_traindata',classes=classes):
         label=i[-1]
         img=Image.open(tep)
         size = img.size
-        
-        print (size)
         
         if ind%imgs_perfile==0:
             ftrecordfilename = (outname+".tfrecords_%.3d" % int(ind/imgs_perfile))
@@ -122,6 +132,8 @@ def gen_tfrecord(dir_labels,outname='voc_traindata',classes=classes):
             'height':tf.train.Feature(int64_list=tf.train.Int64List(value=[size[1]]))
         })) 
         writer.write(example.SerializeToString())  #序列化为字符串
+        print (ind,'/',len(ret),'  size:',size,'  to dir:',ftrecordfilename)
+        
     writer.close()
 
 '''
@@ -144,7 +156,24 @@ message Feature{
 };
 
 '''
-        
+    
+def read_tfrecord(tfdir):
+    tep=os.listdir(tfdir)
+    tep=list(map(lambda x:op.join(tfdir, x), tep))
+    print (tep)
+    dataset = tf.data.TFRecordDataset(tep)
+    
+    iterator = dataset.make_one_shot_iterator()
+    
+    one_element = iterator.get_next()
+    
+    
+    feats = tf.parse_single_example(one_element, features={'data':tf.FixedLenFeature([], tf.string), 
+                                                           'label':tf.FixedLenFeature([10],tf.int64), 
+                                                           'shape':tf.FixedLenFeature([x], tf.int64)})
+    image = tf.decode_raw(feats['data'], tf.float32)
+    label = feats['label']
+    shape = tf.cast(feats['shape'], tf.int32)
 
     
 
@@ -155,11 +184,15 @@ if __name__ == '__main__':
     traindir=op.join(rootdir, 'VOC2012_trainval')
     testdir=op.join(rootdir, 'VOC2012_test')
     
-    annotation_dir=op.join(traindir, 'Annotations')
-    label_dir=op.join(traindir, 'ImageSets\Main')
+    train_annotation_dir=op.join(traindir, 'Annotations')
+    train_label_dir=op.join(traindir, 'ImageSets\Main')
+    
+    test_annotation_dir=op.join(testdir, 'Annotations')
+    test_label_dir=op.join(testdir, 'ImageSets\Main')
     #get_label_file(label_dir)
     
-    gen_tfrecord(label_dir)
+    gen_tfrecord(train_label_dir)
+    gen_tfrecord(train_label_dir,'val')
     
     '''
     for i in os.listdir(annotation_dir):
