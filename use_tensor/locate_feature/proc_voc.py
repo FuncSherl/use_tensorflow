@@ -159,8 +159,11 @@ message Feature{
 };
 
 '''
-def preprocess_img(img):
-    return img
+def preprocess_img(image,outlen=256):
+    image = tf.image.resize_image_with_crop_or_pad(image, 260, 260)
+    image = tf.random_crop(image, [outlen, outlen, 3])
+    image = tf.image.random_flip_left_right(image)
+    return image
     
     
 def read_tfrecord(tfdir,batchsize=32):
@@ -185,16 +188,15 @@ def read_tfrecord(tfdir,batchsize=32):
         
         return image,label
     
-    dataset.map(parse,num_parallel_calls=batchsize)
+    dataset=dataset.map(parse,num_parallel_calls=4)#注意把值回赋给dataset
     
-    dataset.batch(batchsize).shuffle(batchsize*30)
+    dataset=dataset.batch(batchsize).shuffle(batchsize*30)
     #print("dataset.output_shapes",dataset.output_shapes)
     
     iterator = dataset.make_one_shot_iterator()
-    return iterator.get_next()
 
     image_batch, label_batch = iterator.get_next()
-    print (image_batch)
+
     return image_batch, label_batch
     
     
@@ -223,16 +225,14 @@ if __name__ == '__main__':
         show_objects(tep)
     '''
     with tf.Session() as sess:
-        tmp=read_tfrecord('./voc_val_data')#
-        
-        
-        print (sess.run([tmp]))
-        '''
-            for ind,image in enumerate(images):
-                print (labels[ind])
-                plt.imshow(image)
-                plt.show()
-            '''
+        ims,las=read_tfrecord('./voc_val_data')#
+        images,labels=sess.run([ims,las])
+        print (images.shape)
+        for ind,image in enumerate(images):
+            print (classes[labels[ind]])
+            plt.imshow(image)
+            plt.show()
+            
 
         
         
