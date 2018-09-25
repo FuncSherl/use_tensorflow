@@ -8,6 +8,8 @@ from xml.dom import minidom
 import cv2,os,random
 import os.path as op
 from PIL import Image
+import matplotlib.pyplot as plt
+
 
 import tensorflow as tf
 #import tensorflow.data.Dataset as dataset
@@ -82,7 +84,7 @@ def get_label_file(dir_labels,classes=classes):
 def gen_tfrecord(dir_labels,stage='train',classes=classes):
     '''
     stage in [train, val, test]
-    :由于voc中test没有标注，只好用train和val数据集训练和测试，但是train和val数量都是8000多，训练不够，就把val生成的tfrecord中拷2个到train中
+    :由于voc中test没有标注，只好用train和val数据集训练和测试，但是train和val数量都是8000多，训练不够，就把val生成的tfrecord中拷2个（4000数据）到train中
     '''
     ret=[]
     for label,i in enumerate(classes):
@@ -162,6 +164,7 @@ def read_tfrecord(tfdir):
     tep=list(map(lambda x:op.join(tfdir, x), tep))
     print (tep)
     dataset = tf.data.TFRecordDataset(tep)
+    dataset.batch(32).shuffle(1000).repeat()
     
     iterator = dataset.make_one_shot_iterator()
     
@@ -169,12 +172,21 @@ def read_tfrecord(tfdir):
     
     
     feats = tf.parse_single_example(one_element, features={'data':tf.FixedLenFeature([], tf.string), 
-                                                           'label':tf.FixedLenFeature([10],tf.int64), 
-                                                           'shape':tf.FixedLenFeature([x], tf.int64)})
-    image = tf.decode_raw(feats['data'], tf.float32)
-    label = feats['label']
-    shape = tf.cast(feats['shape'], tf.int32)
+                                                           'label':tf.FixedLenFeature([],tf.int64), 
+                                                           'width':tf.FixedLenFeature([], tf.int64),
+                                                           'height':tf.FixedLenFeature([], tf.int64)})
+    image = tf.decode_raw(feats['data'], tf.uint8)
+    label = tf.cast(feats['label'],tf.int32)
+    width = tf.cast(feats['width'], tf.int32)
+    height= tf.cast(feats['height'], tf.int32)
+    
+    image = tf.reshape(image, [height,width,3])
 
+    
+    
+    return image, label
+    
+    
     
 
 if __name__ == '__main__':
@@ -191,15 +203,22 @@ if __name__ == '__main__':
     test_label_dir=op.join(testdir, 'ImageSets\Main')
     #get_label_file(label_dir)
     
-    gen_tfrecord(train_label_dir)
-    gen_tfrecord(train_label_dir,'val')
+    #gen_tfrecord(train_label_dir)
+    #gen_tfrecord(train_label_dir,'val')
     
     '''
     for i in os.listdir(annotation_dir):
         tep=op.join(annotation_dir, i)
         show_objects(tep)
     '''
-        
+    with tf.Session() as sess:
+        img,lab=read_tfrecord('./voc_val_data')
+        while True:
+            image, label=sess.run([img,lab])
+            print (classes[label])
+            plt.imshow(image)
+            plt.show()
+
         
         
         
