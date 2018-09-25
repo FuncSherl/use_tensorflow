@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 
 import tensorflow as tf
+
 #import tensorflow.data.Dataset as dataset
 
 
@@ -158,33 +159,43 @@ message Feature{
 };
 
 '''
+def preprocess_img(img):
+    return img
     
-def read_tfrecord(tfdir):
+    
+def read_tfrecord(tfdir,batchsize=32):
     tep=os.listdir(tfdir)
     tep=list(map(lambda x:op.join(tfdir, x), tep))
     print (tep)
-    dataset = tf.data.TFRecordDataset(tep)
-    dataset.batch(32).shuffle(1000).repeat()
+    dataset = tf.data.TFRecordDataset(tep).repeat()
+   
     
-    iterator = dataset.make_one_shot_iterator()
-    
-    one_element = iterator.get_next()
-    
-    
-    feats = tf.parse_single_example(one_element, features={'data':tf.FixedLenFeature([], tf.string), 
+    def parse(one_element):
+        feats = tf.parse_single_example(one_element, features={'data':tf.FixedLenFeature([], tf.string), 
                                                            'label':tf.FixedLenFeature([],tf.int64), 
                                                            'width':tf.FixedLenFeature([], tf.int64),
                                                            'height':tf.FixedLenFeature([], tf.int64)})
-    image = tf.decode_raw(feats['data'], tf.uint8)
-    label = tf.cast(feats['label'],tf.int32)
-    width = tf.cast(feats['width'], tf.int32)
-    height= tf.cast(feats['height'], tf.int32)
+        image = tf.decode_raw(feats['data'], tf.uint8)
+        label = tf.cast(feats['label'],tf.int32)
+        width = tf.cast(feats['width'], tf.int32)
+        height= tf.cast(feats['height'], tf.int32)
+        
+        image=tf.reshape(image,[height,width,3])
+        image=preprocess_img(image)
+        
+        return image,label
     
-    image = tf.reshape(image, [height,width,3])
+    dataset.map(parse,num_parallel_calls=batchsize)
+    
+    dataset.batch(batchsize).shuffle(batchsize*30)
+    #print("dataset.output_shapes",dataset.output_shapes)
+    
+    iterator = dataset.make_one_shot_iterator()
+    return iterator.get_next()
 
-    
-    
-    return image, label
+    image_batch, label_batch = iterator.get_next()
+    print (image_batch)
+    return image_batch, label_batch
     
     
     
@@ -212,12 +223,16 @@ if __name__ == '__main__':
         show_objects(tep)
     '''
     with tf.Session() as sess:
-        img,lab=read_tfrecord('./voc_val_data')
-        while True:
-            image, label=sess.run([img,lab])
-            print (classes[label])
-            plt.imshow(image)
-            plt.show()
+        tmp=read_tfrecord('./voc_val_data')#
+        
+        
+        print (sess.run([tmp]))
+        '''
+            for ind,image in enumerate(images):
+                print (labels[ind])
+                plt.imshow(image)
+                plt.show()
+            '''
 
         
         
