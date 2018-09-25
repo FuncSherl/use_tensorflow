@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 
 #import tensorflow.data.Dataset as dataset
-tf.contrib.slim
+print(tf.contrib.slim)
 
 
 classes = [
