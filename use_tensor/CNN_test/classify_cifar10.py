@@ -509,7 +509,7 @@ if __name__ == '__main__':
     #gen_mnistimg()
     #start()
     #back_inference()
-    load_model(r'logs/cifar10_2018-09-21_19-32-29_cnn1-6_cnn2-6_fcn1-1024')
+    load_model(r'logs/cifar10_2018-09-21_21-00-50_cnn1-64_cnn2-64_fcn1-1024')
     for i in tf.trainable_variables():
         print (i)
     

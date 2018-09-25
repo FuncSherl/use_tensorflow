@@ -5,8 +5,9 @@ Created on 2018��9��24��
 @author: sherl
 '''
 from xml.dom import minidom
-import cv2,os
+import cv2,os,random
 import os.path as op
+from PIL import Image
 
 import tensorflow as tf
 import tensorflow.data.Dataset as dataset
@@ -49,7 +50,7 @@ def show_objects(dir_xml):
     cv2.waitKey()
     
     
-def get_label_file(dir_labels):
+def get_label_file(dir_labels,classes=classes):
     '''
     input:dir to these label files
     out:a map with key->class name, val->a list of file names in this class,for example:
@@ -69,6 +70,7 @@ def get_label_file(dir_labels):
                 t=j.strip().split()
                 if int(t[-1])==1:
                     ret[i].append(t[0].strip())
+    
     '''
     cnt=0
     for i in ret:               
@@ -76,23 +78,94 @@ def get_label_file(dir_labels):
     print (cnt)
     '''
     return ret
+
+def gen_tfrecord(dir_labels,outname='voc_traindata',classes=classes):
+    ret=[]
+    for label,i in enumerate(classes):
+        fname=i+'_trainval.txt'
+        tep=op.join(dir_labels, fname)
+        with open(tep, 'r') as f:
+            lin=f.readlines()
+            for j in lin:
+                t=j.strip().split()
+                if int(t[-1])==1:
+                    ret.append([t[0].strip(), label])
+    random.shuffle(ret)
+    
+    datadir=op.join(dir_labels, '../../JPEGImages')
+    tfrecorddir='./'+outname
+    if not op.exists(tfrecorddir):
+        os.makedirs(tfrecorddir)
+    
+    imgs_perfile=1000
+    
+    
+    for ind,i in enumerate(ret):        
+        tep=op.join(datadir, i[0]+'.jpg')
+        label=i[-1]
+        img=Image.open(tep)
+        size = img.size
         
+        print (size)
+        
+        if ind%imgs_perfile==0:
+            ftrecordfilename = (outname+".tfrecords_%.3d" % int(ind/imgs_perfile))
+            writer= tf.python_io.TFRecordWriter(op.join(tfrecorddir,ftrecordfilename))
+
+        img_raw=img.tobytes()#将图片转化为二进制格式
+        
+        example = tf.train.Example(
+            features=tf.train.Features(feature={
+            'label': tf.train.Feature(int64_list=tf.train.Int64List(value=[label])),
+            'data': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_raw])),
+            'width':tf.train.Feature(int64_list=tf.train.Int64List(value=[size[0]])),
+            'height':tf.train.Feature(int64_list=tf.train.Int64List(value=[size[1]]))
+        })) 
+        writer.write(example.SerializeToString())  #序列化为字符串
+    writer.close()
+
+'''
+TFRecord文件中的数据是通过tf.train.Example Protocol Buffer的格式存储的，下面是tf.train.Example的定义
+
+message Example {
+ Features features = 1;
+};
+
+message Features{
+ map<string,Feature> featrue = 1;
+};
+
+message Feature{
+    oneof kind{
+        BytesList bytes_list = 1;
+        FloatList float_list = 2;
+        Int64List int64_list = 3;
+    }
+};
+
+'''
+        
+
     
 
 if __name__ == '__main__':
     rootdir=r'F:\DL_datasets\PascalVOC2012\VOC_2012_all'
-    
+    rootdir=r'D:\data_DL\PascalVOC2012\VOC2012_all'
     
     traindir=op.join(rootdir, 'VOC2012_trainval')
     testdir=op.join(rootdir, 'VOC2012_test')
     
     annotation_dir=op.join(traindir, 'Annotations')
     label_dir=op.join(traindir, 'ImageSets\Main')
-    get_label_file(label_dir)
+    #get_label_file(label_dir)
     
+    gen_tfrecord(label_dir)
+    
+    '''
     for i in os.listdir(annotation_dir):
         tep=op.join(annotation_dir, i)
         show_objects(tep)
+    '''
         
         
         
