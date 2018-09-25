@@ -204,7 +204,7 @@ def read_tfrecord(tfdir,batchsize=32):
 
 if __name__ == '__main__':
     rootdir=r'F:\DL_datasets\PascalVOC2012\VOC_2012_all'
-    rootdir=r'D:\data_DL\PascalVOC2012\VOC2012_all'
+    #rootdir=r'D:\data_DL\PascalVOC2012\VOC2012_all'
     
     traindir=op.join(rootdir, 'VOC2012_trainval')
     testdir=op.join(rootdir, 'VOC2012_test')
@@ -216,8 +216,8 @@ if __name__ == '__main__':
     test_label_dir=op.join(testdir, 'ImageSets\Main')
     #get_label_file(label_dir)
     
-    #gen_tfrecord(train_label_dir)
-    #gen_tfrecord(train_label_dir,'val')
+    gen_tfrecord(train_label_dir)
+    gen_tfrecord(train_label_dir,'val')
     
     '''
     for i in os.listdir(annotation_dir):
