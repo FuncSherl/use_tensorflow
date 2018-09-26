@@ -226,7 +226,7 @@ if __name__ == '__main__':
         show_objects(tep)
     '''
     with tf.Session() as sess:
-        ims,las=read_tfrecord('./voc_val_data')#
+        ims,las=read_tfrecord('/media/sherl/本地磁盘1/workspaces/eclipse/use_tensorflow/use_tensor/locate_feature/voc_train_data')#'./voc_val_data'
         images,labels=sess.run([ims,las])
         print (images.shape)
         for ind,image in enumerate(images):
