@@ -10,6 +10,8 @@ import numpy as np
 import cv2,time
 import os.path as op
 from datetime import datetime
+import cifar10_input,cifar10
+
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 # 设置GPU按需增长
@@ -17,14 +19,14 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 
 ######-------------------------------------------------------------------------------------
-cnn1_k=6  #有几个核
-cnn1_ksize=5  #每个核的大小
+cnn1_k=64  #有几个核
+cnn1_ksize=4  #每个核的大小
 cnn1_stride=1  #步长
 
 pool1_size=2  #每个核的大小
 pool1_stride=2 #步长
 
-cnn2_k=6
+cnn2_k=64
 cnn2_ksize=5
 cnn2_stride=1
 
@@ -33,15 +35,15 @@ pool2_stride=2
 
 fcn1_n=1024
 
-num_class=2
+num_class=10
 
 
 #-----------------------------------------------------------------------------------net params
-img_size=32
-lr=1e-6
+img_size=cifar10_input.IMAGE_SIZE
+lr=0.001
 
 batch_size=36
-maxiter=3000
+maxiter=30000
 max_output=6
 
 stdev_init=0.1
@@ -139,25 +141,11 @@ def inference(images):
     return logits
 
 
-def back_inference(sess):
+def back_inference():
     with tf.variable_scope('cnn1', reuse=True) as scope:
-        kernel1 = tf.get_variable(name='kernels')
-        biases1 = tf.get_variable(name='biases') 
-    
-    with tf.variable_scope('cnn2', reuse=True) as scope:
-        kernel2 = tf.get_variable(name='kernels')
-        biases2 = tf.get_variable(name='biases') 
-    
-    with tf.variable_scope('fcn1', reuse=True) as scope:
-        weight3 = tf.get_variable('fcn1')
-        biases3 = tf.get_variable('biases')
-        
-    with tf.variable_scope('softmax_linear', reuse=True):
-        weight4 = tf.get_variable('weights')
-        biase4 = tf.get_variable('biases')
-    
-        
-    print(sess.run(kernel1))
+        kernel = tf.get_variable(name='kernels')
+        biases = tf.get_variable(name='biases') 
+
 
 
 def loss(logits, labels):
@@ -181,7 +169,7 @@ def loss(logits, labels):
     return cross_entropy_mean
 
 def softmax(logits):
-    return  tf.nn.softmax(logits=logits)
+    return  tf.nn.softmax(logits=logits, name='softmax')
     
 
 
@@ -207,7 +195,29 @@ def evaluate(logits, labels, topk=1):
     tf.summary.scalar('accuracy rate:', (cnt)/labels.shape[0])
     return cnt
 
-def gen_images(batchsize=batch_size, imgsize=img_size, channel=1):
+# mnist = input_data.read_data_sets("mnist_data/")#, one_hot=True
+# def gen_mnistimg(batchsize=batch_size,train=True):
+#      
+#     if train:
+#         batch_xs, batch_ys = mnist.train.next_batch(batchsize)
+#     else:
+#         batch_xs, batch_ys = mnist.test.next_batch(batchsize)
+#      
+#     batch_xs=batch_xs.reshape([batchsize,28,28,1])
+#      
+#     #print (mnist.test.images.shape)
+#     #print ( mnist.validation.images.shape)
+#     '''
+#     for ind,i in enumerate(batch_xs):
+#         print (batch_ys[ind])
+#         cv2.imshow('test',i)
+#         cv2.waitKey()
+#     '''
+#     return batch_xs,batch_ys
+
+    
+
+def gen_rec_circle_images(batchsize=batch_size, imgsize=img_size, channel=1):
     image=np.zeros([batchsize, imgsize, imgsize, channel], dtype=np.float32)
     label=np.zeros([batchsize], dtype=np.int32)
     
@@ -261,11 +271,14 @@ def index2xy(i=0):#x代表横向，y代表竖向
     return x,y
 
 
+
 def genimages_same(dat, lab):
     #dat,lab=gen_images()#generate new images
     shp=dat.shape
     
     #dat[0,:,:,:]=255#for test 
+    #这里求图片均值
+    means=np.mean(dat[0], (0,1))
     
     for i in range(1,shp[0]):
         dat[i]=dat[0].copy()
@@ -273,7 +286,7 @@ def genimages_same(dat, lab):
         
         x,y=index2xy(i-1)
         
-        dat[i,y:y+cnn1_ksize, x:x+cnn1_ksize]=[0]
+        dat[i,y:y+cnn1_ksize, x:x+cnn1_ksize]=[0]*shp[-1]#means #
         
         '''
         cv2.imshow('test',dat[i])
@@ -283,30 +296,103 @@ def genimages_same(dat, lab):
     return dat,lab
 
 def test_backinference(sess, softmax_op, eval_op, dat_place, label_place):
-    dat,lab=gen_images()#generate new images
+    dat,lab=sess.run([images_test, labels_test])#gen_img(train=False)#generate new images
     so_op,evals=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
+    
+    if lab[0]!=np.argmax(so_op[0]): return
         
     dat,lab=genimages_same(dat,lab)#generate new images生成一批数据 
         
     so_op2,evals2=sess.run([softmax_op,eval_op], feed_dict={dat_place:dat, label_place:lab})
         
-    print('right cnt:',evals2,'/',lab.shape[0])
+    print('right cnt:',evals,'->',evals2,'/',lab.shape[0])
     print('origin:',so_op[0],' lable:',lab[0])
+    
+    if evals<evals2: return
+    
+    kep_diff=[]
     for ind,i in enumerate(so_op2):
-        print (ind,' test a image:',i,' ',np.argmax(i)==lab[ind])
-        dist = np.linalg.norm(i - so_op[0])
-        if dist>0: 
-            x,y=index2xy(ind)
-            #print(type(x))
-            dat[0,y:y+cnn1_ksize, x:x+cnn1_ksize]=[255]
-            
-    cv2.imshow('test',dat[0])
+        #这里应该判断
+        tep_dis=i-so_op[0]
+        dist = np.linalg.norm(tep_dis)
+        
+        kep_diff.append(tep_dis[lab[0]])
+        
+        print (ind,'  test a image:',tep_dis,'  distance:',dist,'   ',np.argmax(i)==lab[ind])
+    
+    print ('the label kep_diff:',kep_diff)
+    
+    mean_thre=sum(kep_diff)/len(kep_diff)
+    
+    ano_dat=dat[0].copy()
+    
+    cv2.imshow('origin', cv2.cvtColor(cv2.resize(dat[0],(img_size*10,img_size*10), interpolation=cv2.INTER_CUBIC), cv2.COLOR_RGB2BGR))
     cv2.waitKey()
     
+    for ind ,i in enumerate(kep_diff): 
+        x,y=index2xy(ind)
+        #print(type(x))
+        if i > mean_thre:
+            dat[0,y:y+cnn1_ksize, x:x+cnn1_ksize]=[255,0,0]
+        else:
+            ano_dat[y:y+cnn1_ksize, x:x+cnn1_ksize]=[255,0,0]
+    
+    tepimg=cv2.resize(dat[0],(img_size*10,img_size*10), interpolation=cv2.INTER_CUBIC)
+    
+    #因为cv里面读入图片默认是bgr，显示时bgr才能正常显示，这里是rgb的图片，要转成bgr才能显示正常
+    cv2.imshow('test_>mean', cv2.cvtColor(tepimg, cv2.COLOR_RGB2BGR))
+    cv2.waitKey()
+    #----------------------------------------------------
+    tepimg=cv2.resize(ano_dat,(img_size*10,img_size*10), interpolation=cv2.INTER_CUBIC)
+    
+    #因为cv里面读入图片默认是bgr，显示时bgr才能正常显示，这里是rgb的图片，要转成bgr才能显示正常
+    cv2.imshow('test_<mean', cv2.cvtColor(tepimg, cv2.COLOR_RGB2BGR))
+    cv2.waitKey()
+    
+    
+    
+cifar10_dir=r'./cifar10_data/cifar-10-batches-bin'
+'''
+下面这两个是图操作，利用pipline实现了的数据读取
+'''
+#训练集
+images_train, labels_train = cifar10_input.distorted_inputs(data_dir=cifar10_dir, batch_size=batch_size)
+#cifar10_input类中带的distorted_inputs()函数可以产生训练需要的数据，包括特征和label，返回封装好的tensor，每次执行都会生成一个batch_size大小的数据。
+#测试集
+images_test, labels_test = cifar10_input.inputs(eval_data = True, data_dir=cifar10_dir, batch_size=batch_size)
+
+
+
+def load_model(dirs):
+    '''
+    graph = tf.get_default_graph()  
+       prob_op = graph.get_operation_by_name('prob') # 这个只是获取了operation， 至于有什么用还不知道  
+  prediction = graph.get_tensor_by_name('prob:0') # 获取之前prob那个操作的输出，即prediction
+    '''
+    #fc2 = tf.stop_gradient(fc2)
+    graph = tf.get_default_graph() 
+    with tf.Session() as sess:
+        saver = tf.train.import_meta_graph(op.join(dirs,'model_keep-29999.meta'))
+        saver.restore(sess, tf.train.latest_checkpoint(dirs))
+        
+        #启动线程开始填充数据
+        coord = tf.train.Coordinator()#this helps manage the threads,but without it ,it still works
+        threads = tf.train.start_queue_runners(coord=coord)#
+        
+        softmax_op=graph.get_tensor_by_name('softmax:0') 
+        eval_op=graph.get_tensor_by_name('Sum:0') 
+        dat_place=graph.get_tensor_by_name('Placeholder:0') 
+        label_place=graph.get_tensor_by_name('Placeholder_1:0') 
+        
+        
+        for i in range(100):
+            test_backinference(sess, softmax_op, eval_op, dat_place, label_place)
 
 def start(lr=lr):
-    dat_place = tf.placeholder(tf.float32, shape=(batch_size, img_size,img_size,1))
+    #这里是用placeholder方法的inference，用于后面xiu'gai
+    dat_place = tf.placeholder(tf.float32, shape=(batch_size, img_size,img_size,3))
     label_place= tf.placeholder(tf.int32, shape=(batch_size))
+    
     
     logits=inference(dat_place)
     los=loss(logits, label_place)
@@ -314,30 +400,52 @@ def start(lr=lr):
     train_op=training(los, lr)
     eval_op=evaluate(logits, label_place)
     softmax_op=softmax(logits)
+    print (softmax_op)
+    
+    
+    
+    
+    #---------------------!!!!!!!!!!!!!!!!!!!!
+    '''
+    logits_train=inference(images_train)
+    los_train=loss(logits_train, labels_train)
+    
+    train_op=training(los_train, lr)
+    #eval_op=evaluate(logits, label_place)
+    softmax_op=softmax(logits_train)
+    '''
+    #-----------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     
     #合并上面每个summary，就不必一个一个运行了
     merged = tf.summary.merge_all()
-    logdir="./logs/"+TIMESTAMP+('_cnn1-%d_cnn2-%d_fcn1-%d'%(cnn1_k,cnn2_k, fcn1_n))
+    logdir="./logs/cifar10_"+TIMESTAMP+('_cnn1-%d_cnn2-%d_fcn1-%d'%(cnn1_k,cnn2_k, fcn1_n))
     
     with tf.Session() as sess:
         init = tf.global_variables_initializer()#初始化tf.Variable
         sess.run(init)
         
+        #启动线程开始填充数据
+        coord = tf.train.Coordinator()#this helps manage the threads,but without it ,it still works
+        threads = tf.train.start_queue_runners(coord=coord)#
+        
         #tensorboard里面按文件夹分，这里利用时间分开
         #print ("./logs/"+TIMESTAMP+('_cnn1%d_cnn2%d_fcn1%d'%(cnn1_k,cnn2_k, fcn1_n)))
         writer = tf.summary.FileWriter(logdir,   sess.graph)
-        all_saver = tf.train.Saver() 
+        
+        '''
+        a如果您只想保留4个最新型号，并希望在培训期间每2小时保存一个型号，则可以使用max_to_keep和keep_checkpoint_every_n_hours
+        '''
+        all_saver = tf.train.Saver(max_to_keep=2) 
         
         sttime=time.time()
         
         for i in range(maxiter):
-            #back_inference(sess)
             
             #print (dat)\
             stt=time.time()
             
             
-            dat,lab=gen_images()#generate new images生成一批数据
+            dat,lab= sess.run([images_train, labels_train])#gen_img()#generate new images生成一批数据
             _, loss_value, summary_resu , tep= sess.run([train_op, los, merged, logits], feed_dict={dat_place:dat, label_place:lab})
             
             #写入日志
@@ -348,11 +456,11 @@ def start(lr=lr):
                 print (i, 'time:',time.time()-stt)
                 print ('training-loss:',loss_value,'\n')
             
-            if (i+1)%100==0:#测试一次
+            if (i+1)%300==0:#测试一次
                 truecnt=0
                 cnt_all=0
-                for j in range(200):
-                    dat,lab=gen_images()#generate new images
+                for j in range(int(cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL/batch_size)):
+                    dat,lab=sess.run([images_test, labels_test])#gen_img(train=False)#generate new images
                     
                     eval_resu,loss_value=sess.run([eval_op, los], feed_dict={dat_place:dat, label_place:lab})
                     truecnt+=eval_resu
@@ -361,14 +469,9 @@ def start(lr=lr):
                     #print ('evaluate-loss:',loss_value,'\n')
                 
                 print ('!!!!!!!!evaluate:!!!!!!!!!!!!',float(truecnt)/cnt_all,'\n')
-            
-        all_saver.save(sess, op.join(logdir,'data.chkp'))
+                all_saver.save(sess, op.join(logdir,'model_keep'),global_step=i)
+                
         print('training done! time used:',time.time()-sttime)
-<<<<<<< HEAD
-        
-    
-=======
->>>>>>> branch 'master' of https://github.com/functionxu123/use_tensorflow.git
         
         
         
@@ -403,12 +506,10 @@ def start(lr=lr):
 if __name__ == '__main__':
     #genimages_same()
     ''''''
-    start()
-<<<<<<< HEAD
-    
-=======
+    #gen_mnistimg()
+    #start()
     #back_inference()
->>>>>>> branch 'master' of https://github.com/functionxu123/use_tensorflow.git
+    load_model(r'logs/cifar10_2018-09-21_21-00-50_cnn1-64_cnn2-64_fcn1-1024')
     for i in tf.trainable_variables():
         print (i)
     
