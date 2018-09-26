@@ -364,12 +364,7 @@ def start(lr=lr):
             
         all_saver.save(sess, op.join(logdir,'data.chkp'))
         print('training done! time used:',time.time()-sttime)
-<<<<<<< HEAD
-        
-    
-=======
->>>>>>> branch 'master' of https://github.com/functionxu123/use_tensorflow.git
-        
+
         
         
         #后面就试下反向
@@ -404,11 +399,6 @@ if __name__ == '__main__':
     #genimages_same()
     ''''''
     start()
-<<<<<<< HEAD
-    
-=======
-    #back_inference()
->>>>>>> branch 'master' of https://github.com/functionxu123/use_tensorflow.git
     for i in tf.trainable_variables():
         print (i)
     
