@@ -395,11 +395,13 @@ def start(lr=lr):
     
     
     logits=inference(dat_place)
-    los=loss(logits, label_place)
+    softmax_op=softmax(logits)
+    
+    los=loss(softmax_op, label_place)
     
     train_op=training(los, lr)
     eval_op=evaluate(logits, label_place)
-    softmax_op=softmax(logits)
+    
     print (softmax_op)
     
     
@@ -507,9 +509,9 @@ if __name__ == '__main__':
     #genimages_same()
     ''''''
     #gen_mnistimg()
-    #start()
+    start()
     #back_inference()
-    load_model(r'logs/cifar10_2018-09-21_21-00-50_cnn1-64_cnn2-64_fcn1-1024')
+    #load_model(r'logs/cifar10_2018-09-21_21-00-50_cnn1-64_cnn2-64_fcn1-1024')
     for i in tf.trainable_variables():
         print (i)
     

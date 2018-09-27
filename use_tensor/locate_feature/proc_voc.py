@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 
 #import tensorflow.data.Dataset as dataset
-print(tf.contrib.slim)
+#print(tf.contrib.slim)
 
 
 classes = [
@@ -160,14 +160,14 @@ message Feature{
 };
 
 '''
-def preprocess_img(image,outlen=256):
-    image = tf.image.resize_image_with_crop_or_pad(image, 260, 260)
+def preprocess_img(image,outlen=224):
+    image = tf.image.resize_image_with_crop_or_pad(image, 230, 230)
     image = tf.random_crop(image, [outlen, outlen, 3])
     image = tf.image.random_flip_left_right(image)
     return image
     
     
-def read_tfrecord(tfdir,batchsize=32):
+def read_tfrecord_batch(tfdir,batchsize=32):
     tep=os.listdir(tfdir)
     tep=list(map(lambda x:op.join(tfdir, x), tep))
     print (tep)
@@ -226,7 +226,7 @@ if __name__ == '__main__':
         show_objects(tep)
     '''
     with tf.Session() as sess:
-        ims,las=read_tfrecord('./voc_val_data')##'/media/sherl/本地磁盘1/workspaces/eclipse/use_tensorflow/use_tensor/locate_feature/voc_train_data'
+        ims,las=read_tfrecord_batch('./voc_val_data')##'/media/sherl/本地磁盘1/workspaces/eclipse/use_tensorflow/use_tensor/locate_feature/voc_train_data'
         images,labels=sess.run([ims,las])
         print (images.shape)
         for ind,image in enumerate(images):
