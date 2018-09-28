@@ -472,7 +472,9 @@ def start(lr=lr):
                 
                 print ('!!!!!!!!evaluate:!!!!!!!!!!!!',float(truecnt)/cnt_all,'\n')
                 all_saver.save(sess, op.join(logdir,'model_keep'),global_step=i)
-                
+        
+        coord.request_stop()
+        coord.join(threads)
         print('training done! time used:',time.time()-sttime)
         
         

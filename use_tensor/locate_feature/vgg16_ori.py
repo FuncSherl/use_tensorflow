@@ -1,8 +1,9 @@
 import tensorflow as tf
 import numpy as np
 from scipy.misc import imread, imresize
+from . import proc_voc
 
-out_class=1000
+out_class=20
 
 
 class vgg16:
@@ -252,7 +253,7 @@ class vgg16:
             fc3b = tf.Variable(tf.constant(1.0, shape=[out_class], dtype=tf.float32),
                                  trainable=True, name='biases')
             self.fc3l = tf.nn.bias_add(tf.matmul(self.fc2, fc3w), fc3b)
-            #self.parameters += [fc3w, fc3b]    #这里准备finutune，所以就不把参数放到待初始化的list里面，否则初始化时，输出类别数目对不上会报错
+            #self.parameters += [fc3w, fc3b]    #here we want to finetune,so shouldn't init the weight with model
             
             
 

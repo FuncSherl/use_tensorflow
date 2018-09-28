@@ -86,7 +86,7 @@ def get_label_file(dir_labels,classes=classes):
 def gen_tfrecord(dir_labels,stage='train',classes=classes):
     '''
     stage in [train, val, test]
-    :由于voc中test没有标注，只好用train和val数据集训练和测试，但是train和val数量都是8000多，训练不够，就把val生成的tfrecord中拷2个（4000数据）到train中
+    :由于voc中test没有标注，只好用train和val数据集fenbie训练和测试，但是train和val数量都是8000多，训练不够，就把val生成的tfrecord中拷2个（4000数据）到train中
     '''
     ret=[]
     for label,i in enumerate(classes):
