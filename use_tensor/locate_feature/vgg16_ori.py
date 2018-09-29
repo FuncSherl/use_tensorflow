@@ -4,6 +4,10 @@ from scipy.misc import imread, imresize
 from . import proc_voc
 
 out_class=20
+batchsize=32
+
+train_imgs,train_labs=proc_voc.read_tfrecord_batch('./voc_train_data',batchsize)
+test_imgs, test_labs=proc_voc.read_tfrecord_batch('./voc_val_data',batchsize)
 
 
 class vgg16:
