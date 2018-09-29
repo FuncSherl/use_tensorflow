@@ -3,8 +3,14 @@ import numpy as np
 from scipy.misc import imread, imresize
 from . import proc_voc
 
+train_size=12000
+eval_size=5000
+
+
 out_class=20
 batchsize=32
+
+base_lr=0.1
 
 train_imgs,train_labs=proc_voc.read_tfrecord_batch('./voc_train_data',batchsize)
 test_imgs, test_labs=proc_voc.read_tfrecord_batch('./voc_val_data',batchsize)
@@ -26,7 +32,7 @@ class vgg16:
         return cross_entropy_mean
     
     
-    def train_once(self,baselr,labels):
+    def train_once(self,labels,baselr=base_lr):
         global_step = tf.Variable(0, name='global_step', trainable=False)
         lr_rate = tf.train.exponential_decay(baselr,  global_step=global_step, decay_steps=1000, decay_rate=0.99)
         
@@ -37,6 +43,16 @@ class vgg16:
         train_op = optimizer.minimize(self.getloss(labels), global_step=global_step)
         return train_op
     
+    def eval_once(self,sess, batch_num=int(eval_size/batchsize),topk=1):
+        cnt_true=tf.Variable([0.0],dtype=tf.float32)
+        for i in range(batch_num):
+            imgst,labst=sess.run([test_imgs, test_labs])
+            prob = sess.run(self.probs, feed_dict={self.imgs: imgst})[0]
+            top_k_op = tf.nn.in_top_k(prob, labst, topk)
+            cnt_true+=tf.reduce_sum(tf.cast(top_k_op,tf.int32))
+            
+        return cnt_true/tf.constant([batch_num*batchsize])
+
 
     def convlayers(self):
         self.parameters = []
@@ -224,6 +240,7 @@ class vgg16:
                                padding='SAME',
                                name='pool4')
 
+
     def fc_layers(self):
         # fc1
         with tf.name_scope('fc1') as scope:
@@ -272,11 +289,15 @@ class vgg16:
 
 
 
+
 if __name__ == '__main__':
     sess = tf.Session()
     imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
     vgg = vgg16(imgs, r'F:\tensorflow_models\tensorflow_vgg16\vgg16_weights.npz', sess)
+    
+    
 
+    '''
     img1 = imread('laska.png', mode='RGB')
     img1 = imresize(img1, (224, 224))
 
@@ -284,6 +305,7 @@ if __name__ == '__main__':
     preds = (np.argsort(prob)[::-1])[0:5]
     for p in preds:
         print (prob[p])
+    '''
         
     '''
     
