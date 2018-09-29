@@ -10,7 +10,8 @@ import numpy as np
 import cv2,time
 import os.path as op
 from datetime import datetime
-import cifar10_input,cifar10
+from . import cifar10_input
+from . import  cifar10
 
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
@@ -40,7 +41,7 @@ num_class=10
 
 #-----------------------------------------------------------------------------------net params
 img_size=cifar10_input.IMAGE_SIZE
-lr=0.01
+lr=0.08
 
 batch_size=36
 maxiter=50000
@@ -473,8 +474,6 @@ def start(lr=lr):
                 print ('!!!!!!!!evaluate:!!!!!!!!!!!!',float(truecnt)/cnt_all,'\n')
                 all_saver.save(sess, op.join(logdir,'model_keep'),global_step=i)
         
-        coord.request_stop()
-        coord.join(threads)
         print('training done! time used:',time.time()-sttime)
         
         
@@ -482,6 +481,9 @@ def start(lr=lr):
         #后面就试下反向
         for i in range(100):
             test_backinference(sess, softmax_op, eval_op, dat_place, label_place)
+            
+        coord.request_stop()
+        coord.join(threads)
         
         '''
         dat,lab=gen_images()#generate new images
