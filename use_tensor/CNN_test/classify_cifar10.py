@@ -40,10 +40,10 @@ num_class=10
 
 #-----------------------------------------------------------------------------------net params
 img_size=cifar10_input.IMAGE_SIZE
-lr=0.001
+lr=0.01
 
 batch_size=36
-maxiter=30000
+maxiter=50000
 max_output=6
 
 stdev_init=0.1
