@@ -41,7 +41,7 @@ num_class=10
 
 #-----------------------------------------------------------------------------------net params
 img_size=cifar10_input.IMAGE_SIZE
-lr=0.08
+lr=0.001
 
 batch_size=36
 maxiter=50000
