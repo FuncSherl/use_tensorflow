@@ -17,8 +17,9 @@ test_imgs, test_labs=proc_voc.read_tfrecord_batch('./voc_val_data',batchsize)
 
 
 class vgg16:
-    def __init__(self, imgs, weights=None, sess=None):
-        self.imgs = imgs
+    def __init__(self,  weights=None, sess=None):
+        self.imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
+        self.labs = tf.placeholder(tf.int32, [None])
         self.convlayers()
         self.fc_layers()
         self.probs = tf.nn.softmax(self.fc3l)
@@ -26,8 +27,8 @@ class vgg16:
         if weights is not None and sess is not None:
             self.load_weights(weights, sess)
             
-    def getloss(self,labels):
-        losst=tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=self.fc3l )#这里应该传入softmax之前的tensor
+    def getloss(self):
+        losst=tf.losses.sparse_softmax_cross_entropy(labels=self.labs, logits=self.fc3l )#这里应该传入softmax之前的tensor
         cross_entropy_mean = tf.reduce_mean(losst)
         return cross_entropy_mean
     
@@ -42,21 +43,36 @@ class vgg16:
     
         # Use the optimizer to apply the gradients that minimize the loss
         # (and also increment the global step counter) as a single training step.
-        lost=self.getloss(labels)
+        lost=self.getloss()
         train_op = optimizer.minimize(lost, global_step=global_step)
         
-        sess.run([train_op], feed_dict={self.imgs: imgst})
+        sess.run([train_op], feed_dict={self.imgs: imgst,self.labs: labels})
         return train_op
     
-    def eval_once(self,sess, batch_num=int(eval_size/batchsize),topk=1):
-        cnt_true=tf.Variable([0.0],dtype=tf.float32)
+    def eval_batch(self,topk=1):
+        top_k_op = tf.nn.in_top_k(self.fc3l, self.labs, topk)
+        cnt=tf.reduce_sum(tf.cast(top_k_op,tf.int32))
+        
+        #tf.summary.scalar('accuracy rate:', (cnt)/labels.shape[0])
+        return cnt
+    
+    def eval_once(self,sess, eval_size=eval_size,topk=1):
+        cnt_true=0.0
+        
+        batch_num=int(eval_size/batchsize)+1
         for i in range(batch_num):
+            #get test datas
             imgst,labst=sess.run([test_imgs, test_labs])
-            prob = sess.run(self.probs, feed_dict={self.imgs: imgst})[0]
-            top_k_op = tf.nn.in_top_k(prob, labst, topk)
-            cnt_true+=tf.reduce_sum(tf.cast(top_k_op,tf.int32))
             
-        return cnt_true/tf.constant([batch_num*batchsize])
+            eval_b=self.eval_batch(topk)
+            
+            #how many true in every batch
+            batch_true = sess.run(eval_b, feed_dict={self.imgs: imgst, self.labs: labst})[0]
+            
+            #top_k_op = tf.nn.in_top_k(self.probs, labst, topk)
+            cnt_true+=batch_true   # tf.reduce_sum(tf.cast(top_k_op,tf.int32))
+            
+        return cnt_true/(batch_num*batchsize)
 
 
     def convlayers(self):
@@ -297,8 +313,8 @@ class vgg16:
 
 if __name__ == '__main__':
     sess = tf.Session()
-    imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
-    vgg = vgg16(imgs, r'F:\tensorflow_models\tensorflow_vgg16\vgg16_weights.npz', sess)
+    #imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
+    vgg = vgg16( r'F:\tensorflow_models\tensorflow_vgg16\vgg16_weights.npz', sess)
     
     
 
