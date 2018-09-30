@@ -10,8 +10,8 @@ import numpy as np
 import cv2,time
 import os.path as op
 from datetime import datetime
-from . import cifar10_input
-from . import  cifar10
+import cifar10_input
+import  cifar10
 
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
@@ -398,7 +398,7 @@ def start(lr=lr):
     logits=inference(dat_place)
     softmax_op=softmax(logits)
     
-    los=loss(softmax_op, label_place)
+    los=loss(logits, label_place)#这里还是要传入logits，因为loss里面有个softmax，不用传入sofrmax_op
     
     train_op=training(los, lr)
     eval_op=evaluate(logits, label_place)
