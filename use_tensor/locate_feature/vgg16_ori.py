@@ -27,20 +27,25 @@ class vgg16:
             self.load_weights(weights, sess)
             
     def getloss(self,labels):
-        losst=tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=self.probs )
+        losst=tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=self.fc3l )#这里应该传入softmax之前的tensor
         cross_entropy_mean = tf.reduce_mean(losst)
         return cross_entropy_mean
     
     
-    def train_once(self,labels,baselr=base_lr):
+    def train_once(self, sess, baselr=base_lr,decay_steps=1000, decay_rate=0.99):
+        imgst,labels=sess.run([train_imgs,train_labs])
+        
         global_step = tf.Variable(0, name='global_step', trainable=False)
-        lr_rate = tf.train.exponential_decay(baselr,  global_step=global_step, decay_steps=1000, decay_rate=0.99)
+        lr_rate = tf.train.exponential_decay(baselr,  global_step=global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         
         optimizer = tf.train.GradientDescentOptimizer(lr_rate)
     
         # Use the optimizer to apply the gradients that minimize the loss
         # (and also increment the global step counter) as a single training step.
-        train_op = optimizer.minimize(self.getloss(labels), global_step=global_step)
+        lost=self.getloss(labels)
+        train_op = optimizer.minimize(lost, global_step=global_step)
+        
+        sess.run([train_op], feed_dict={self.imgs: imgst})
         return train_op
     
     def eval_once(self,sess, batch_num=int(eval_size/batchsize),topk=1):
