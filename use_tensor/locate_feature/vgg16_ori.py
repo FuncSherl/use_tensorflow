@@ -386,7 +386,7 @@ if __name__ == '__main__':
                 print ('saved at:',pat)
             
             stt=time.time()
-            print ('\n start at:',stt)
+            print ('\nstart train_once...')
             lost,sum_log=vgg.train_once(sess) #这里每次训练都run一个summary出来
             
             #写入日志
