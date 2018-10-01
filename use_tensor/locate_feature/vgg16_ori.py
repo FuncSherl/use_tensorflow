@@ -1,17 +1,29 @@
 import tensorflow as tf
 import numpy as np
 from scipy.misc import imread, imresize
+from datetime import datetime
+import time,cv2
+import os.path as op
 import proc_voc
 
-train_size=12000
-eval_size=5000
+
+#--------------------------------------------------------------------------------------
+train_size=12000 #训练集规模
+eval_size=5000 #测试集规模
 
 
-out_class=20
+out_class=20 #输出类别数目，这里用voc有20类
 batchsize=32
 
-base_lr=0.1
+base_lr=0.1 #基础学习率
+maxstep=30000 #训练多少次
 
+
+
+#--------------------------------------------------------------------------------------
+TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
+
+#利用pipline方式读入数据,由于用同一个网络跑train和test，就先sess.run获取到数据再利用placeholder将数据传入网络
 train_imgs,train_labs=proc_voc.read_tfrecord_batch('./voc_train_data',batchsize)
 test_imgs, test_labs=proc_voc.read_tfrecord_batch('./voc_val_data',batchsize)
 
@@ -24,13 +36,13 @@ class vgg16:
         self.fc_layers()
         self.probs = tf.nn.softmax(self.fc3l)
         
-        
+        init = tf.global_variables_initializer()#初始化tf.Variable
+        sess.run(init)
         
         if weights is not None and sess is not None:
             self.load_weights(weights, sess)
-        else:
-            init = tf.global_variables_initializer()#初始化tf.Variable
-            sess.run(init)
+        
+            
             
     def getloss(self):
         losst=tf.losses.sparse_softmax_cross_entropy(labels=self.labs, logits=self.fc3l )#这里应该传入softmax之前的tensor
@@ -38,7 +50,7 @@ class vgg16:
         return cross_entropy_mean
     
     
-    def train_once(self, sess, baselr=base_lr,decay_steps=1000, decay_rate=0.99):
+    def train_once(self, sess, merged_summary=None, baselr=base_lr,decay_steps=1000, decay_rate=0.99):
         imgst,labels=sess.run([train_imgs,train_labs])
         
         global_step = tf.Variable(0, name='global_step', trainable=False)
@@ -51,8 +63,12 @@ class vgg16:
         lost=self.getloss()
         train_op = optimizer.minimize(lost, global_step=global_step)
         
-        sess.run([train_op], feed_dict={self.imgs: imgst,self.labs: labels})
-        return train_op
+        if merged_summary is not None:
+            los,_, sum_ret=sess.run([lost, train_op, merged_summary], feed_dict={self.imgs: imgst,self.labs: labels})
+            return los,sum_ret
+        else:
+            los,_=sess.run([lost, train_op], feed_dict={self.imgs: imgst,self.labs: labels})
+            return los
     
     def eval_batch(self,topk=1):
         top_k_op = tf.nn.in_top_k(self.fc3l, self.labs, topk)
@@ -315,7 +331,8 @@ class vgg16:
                 sess.run(self.parameters[i].assign(weights[k]))
                 print ('load weight of ',self.parameters[i],'\n')
             else:
-                sess.run(self.parameters[i].initializer)
+                pass
+                #sess.run(self.parameters[i].initializer)
 
 
 
@@ -323,14 +340,41 @@ class vgg16:
 
 
 if __name__ == '__main__':
+    logdir="./logs/VOC_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
+    
+
+    
     with tf.Session() as sess:        
         #imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
         vgg = vgg16( r'F:\tensorflow_models\tensorflow_vgg16\vgg16_weights.npz', sess)
         
-        print (vgg.eval_once(sess))
+        all_saver = tf.train.Saver(max_to_keep=2) 
+        merged = tf.summary.merge_all()
+        
+        logwriter = tf.summary.FileWriter(logdir,   sess.graph)
         
         
-    
+        begin_t=time.time()
+        for i in range(maxstep):            
+            if (i==0 or (i+1)%300==0):
+                acc=vgg.eval_once(sess)
+                print ('eval the test datas:',acc)
+                
+                print ('saving models...')
+                all_saver.save(sess, op.join(logdir,'model_keep'),global_step=i)
+            
+            stt=time.time()
+            lost,sum_log=vgg.train_once(sess, merged) #这里每次训练都run一个summary出来
+            
+            #写入日志
+            logwriter.add_summary(sum_log, i)
+            
+            print ('train once-->loss:',lost,'  time:',(time.time()-stt))
+        
+        print ('Training done!!!-->time used:',(time.time()-begin_t))
+        
+        
+        
         '''
         img1 = imread('laska.png', mode='RGB')
         img1 = imresize(img1, (224, 224))
