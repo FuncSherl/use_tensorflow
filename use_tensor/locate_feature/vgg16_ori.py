@@ -33,13 +33,17 @@ class vgg16:
         self.imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
         self.labs = tf.placeholder(tf.int32, [None])
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
-        self.loss=self.getloss()
-        self.trainop=self.training_op()
-        self.eval_batch_op=self.eval_batch(topk=1)
         
-        
+        #先构建网络结构
         self.convlayers()
         self.fc_layers()
+        
+        #再构建train等操作
+        self.loss=self.getloss()
+        self.trainop=self.training_op(baselr=base_lr,decay_steps=1000, decay_rate=0.99)
+        self.eval_batch_op=self.eval_batch(topk=1)
+        
+
         self.probs = tf.nn.softmax(self.fc3l)
         
         self.merged = tf.summary.merge_all()
@@ -72,6 +76,7 @@ class vgg16:
         lost=self.loss
         train_op = optimizer.minimize(lost, global_step=self.global_step)
         return train_op
+    
     
     def train_once(self, sess):
         imgst,labels=sess.run([train_imgs,train_labs])
