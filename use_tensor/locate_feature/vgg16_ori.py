@@ -379,14 +379,14 @@ if __name__ == '__main__':
         for i in range(maxstep):            
             if ((i+1)%300==0):
                 acc=vgg.eval_once(sess)
-                print ('eval the test datas:',acc)
+                print ('training at %d eval the test datas:'%i,acc)
                 
                 print ('saving models...')
                 pat=all_saver.save(sess, op.join(logdir,'model_keep'),global_step=i)
                 print ('saved at:',pat)
             
             stt=time.time()
-            print ('\nstart train_once...')
+            print ('\n%d/%d  start train_once...'%(i,maxstep))
             lost,sum_log=vgg.train_once(sess) #这里每次训练都run一个summary出来
             
             #写入日志
