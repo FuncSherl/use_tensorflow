@@ -7,7 +7,7 @@ import os.path as op
 import proc_voc
 
 
-#--------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------panel
 train_size=12000 #训练集规模
 eval_size=5000 #测试集规模
 
@@ -20,7 +20,7 @@ maxstep=30000 #训练多少次
 
 
 
-#--------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 #利用pipline方式读入数据,由于用同一个网络跑train和test，就先sess.run获取到数据再利用placeholder将数据传入网络
@@ -30,8 +30,8 @@ test_imgs, test_labs=proc_voc.read_tfrecord_batch('./voc_val_data',batchsize)
 
 class vgg16:
     def __init__(self,  weights=None, sess=None):
-        self.imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
-        self.labs = tf.placeholder(tf.int32, [None])
+        self.imgs = tf.placeholder(tf.float32, [batchsize, 224, 224, 3])
+        self.labs = tf.placeholder(tf.int32, [batchsize])
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
         
         #先构建网络结构
@@ -73,23 +73,23 @@ class vgg16:
     
         # Use the optimizer to apply the gradients that minimize the loss
         # (and also increment the global step counter) as a single training step.
-        lost=self.loss
-        train_op = optimizer.minimize(lost, global_step=self.global_step)
+        train_op = optimizer.minimize(self.loss, global_step=self.global_step)
         return train_op
     
     
     def train_once(self, sess):
         imgst,labels=sess.run([train_imgs,train_labs])
         
-        los,_, sum_ret=sess.run([lost, self.train_op, self.merged], feed_dict={self.imgs: imgst,self.labs: labels})
+        los,_, sum_ret=sess.run([self.loss, self.train_op, self.merged], feed_dict={self.imgs: imgst,self.labs: labels})
         return los,sum_ret
 
     
-    def eval_batch(self,topk=1):
+    def eval_batch(self,topk=1):#测试一个batch的operation
         top_k_op = tf.nn.in_top_k(self.fc3l, self.labs, topk)
         cnt=tf.reduce_sum(tf.cast(top_k_op,tf.int32))
         
         #tf.summary.scalar('accuracy rate:', (cnt)/labels.shape[0])
+        tf.summary.scalar('accuracy rate:', cnt/self.labs.shape[0])
         return cnt
     
     def eval_once(self,sess, eval_size=eval_size):
@@ -111,7 +111,7 @@ class vgg16:
             cnt_true+=batch_true   # tf.reduce_sum(tf.cast(top_k_op,tf.int32))
         
         rate_true=cnt_true/(batch_num*batchsize)
-        tf.summary.scalar('accuracy rate:', tf.constant(rate_true))
+        
         return rate_true
 
 
