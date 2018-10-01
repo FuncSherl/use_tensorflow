@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from scipy.misc import imread, imresize
-from . import proc_voc
+import proc_voc
 
 train_size=12000
 eval_size=5000
@@ -67,7 +67,7 @@ class vgg16:
             eval_b=self.eval_batch(topk)
             
             #how many true in every batch
-            batch_true = sess.run(eval_b, feed_dict={self.imgs: imgst, self.labs: labst})[0]
+            batch_true = sess.run([eval_b], feed_dict={self.imgs: imgst, self.labs: labst})[0]
             
             #top_k_op = tf.nn.in_top_k(self.probs, labst, topk)
             cnt_true+=batch_true   # tf.reduce_sum(tf.cast(top_k_op,tf.int32))
@@ -304,7 +304,11 @@ class vgg16:
         keys = sorted(weights.keys())
         for i, k in enumerate(keys):
             print (i, k, np.shape(weights[k]))
-            sess.run(self.parameters[i].assign(weights[k]))
+            if i<len(self.parameters):
+                sess.run(self.parameters[i].assign(weights[k]))
+                print ('load weight of ',self.parameters[i],'\n')
+            else:
+                pass
 
 
 
@@ -312,29 +316,34 @@ class vgg16:
 
 
 if __name__ == '__main__':
-    sess = tf.Session()
-    #imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
-    vgg = vgg16( r'F:\tensorflow_models\tensorflow_vgg16\vgg16_weights.npz', sess)
-    
-    
-
-    '''
-    img1 = imread('laska.png', mode='RGB')
-    img1 = imresize(img1, (224, 224))
-
-    prob = sess.run(vgg.probs, feed_dict={vgg.imgs: [img1]})[0]
-    preds = (np.argsort(prob)[::-1])[0:5]
-    for p in preds:
-        print (prob[p])
-    '''
+    with tf.Session() as sess:        
+        #imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
+        vgg = vgg16( r'F:\tensorflow_models\tensorflow_vgg16\vgg16_weights.npz', sess)
         
-    '''
-    
-    vgg = vgg16.Vgg16()
-    vgg.build(image)
-    feature_map = vgg.pool5
-    mask = yournetwork(feature_map)
-    '''
+        init = tf.global_variables_initializer()#初始化tf.Variable
+        sess.run(init)
         
+        print (vgg.eval_once(sess))
+        
+        
+    
+        '''
+        img1 = imread('laska.png', mode='RGB')
+        img1 = imresize(img1, (224, 224))
+    
+        prob = sess.run(vgg.probs, feed_dict={vgg.imgs: [img1]})[0]
+        preds = (np.argsort(prob)[::-1])[0:5]
+        for p in preds:
+            print (prob[p])
+        '''
+            
+        '''
+        
+        vgg = vgg16.Vgg16()
+        vgg.build(image)
+        feature_map = vgg.pool5
+        mask = yournetwork(feature_map)
+        '''
+            
         
         
