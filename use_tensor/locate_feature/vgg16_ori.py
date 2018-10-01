@@ -364,11 +364,13 @@ if __name__ == '__main__':
         all_saver = tf.train.Saver(max_to_keep=2) 
                 
         
-        
+        #再开始前先测试一次，看下准确率，也将summary加入tf中，免得后面tf.summary.merge_all()没将这个eval_once里面的summary算进去
+        acc=vgg.eval_once(sess)
+        print ('eval the test datas:',acc)
         
         begin_t=time.time()
         for i in range(maxstep):            
-            if (i==1 or (i+1)%300==0):
+            if ((i+1)%300==0):
                 acc=vgg.eval_once(sess)
                 print ('eval the test datas:',acc)
                 
