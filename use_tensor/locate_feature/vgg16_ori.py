@@ -55,7 +55,7 @@ class vgg16:
         return cross_entropy_mean
     
     
-    def train_once(self, sess, merged_summary=None, baselr=base_lr,decay_steps=1000, decay_rate=0.99):
+    def train_once(self, sess, baselr=base_lr,decay_steps=1000, decay_rate=0.99):
         imgst,labels=sess.run([train_imgs,train_labs])
         
         
@@ -70,12 +70,13 @@ class vgg16:
         lost=self.getloss()
         train_op = optimizer.minimize(lost, global_step=self.global_step)
         
-        if merged_summary:
-            los,_, sum_ret=sess.run([lost, train_op, merged_summary], feed_dict={self.imgs: imgst,self.labs: labels})
-            return los,sum_ret
-        else:
-            los,_=sess.run([lost, train_op], feed_dict={self.imgs: imgst,self.labs: labels})
-            return los
+        merged = tf.summary.merge_all()
+        
+        #print ('merged:',merged)
+        
+        los,_, sum_ret=sess.run([lost, train_op, merged], feed_dict={self.imgs: imgst,self.labs: labels})
+        return los,sum_ret
+
     
     def eval_batch(self,topk=1):
         top_k_op = tf.nn.in_top_k(self.fc3l, self.labs, topk)
@@ -354,14 +355,15 @@ if __name__ == '__main__':
     
 
     
-    with tf.Session() as sess:        
+    with tf.Session() as sess:
+        logwriter = tf.summary.FileWriter(logdir,   sess.graph)        
+        
         #imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
         vgg = vgg16( r'F:\tensorflow_models\tensorflow_vgg16\vgg16_weights.npz', sess)
         
         all_saver = tf.train.Saver(max_to_keep=2) 
-        merged = tf.summary.merge_all()
+                
         
-        logwriter = tf.summary.FileWriter(logdir,   sess.graph)
         
         
         begin_t=time.time()
@@ -376,7 +378,7 @@ if __name__ == '__main__':
             
             stt=time.time()
             print ('\n start at:',stt)
-            lost,sum_log=vgg.train_once(sess, merged) #这里每次训练都run一个summary出来
+            lost,sum_log=vgg.train_once(sess) #这里每次训练都run一个summary出来
             
             #写入日志
             logwriter.add_summary(sum_log, i)
