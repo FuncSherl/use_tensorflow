@@ -49,6 +49,9 @@ class vgg16:
     def getloss(self):
         losst=tf.losses.sparse_softmax_cross_entropy(labels=self.labs, logits=self.fc3l )#这里应该传入softmax之前的tensor
         cross_entropy_mean = tf.reduce_mean(losst)
+        
+        tf.summary.scalar('loss',cross_entropy_mean)
+        
         return cross_entropy_mean
     
     
@@ -58,6 +61,8 @@ class vgg16:
         
         lr_rate = tf.train.exponential_decay(baselr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         
+        tf.summary.scalar('learning rate', lr_rate)
+        
         optimizer = tf.train.GradientDescentOptimizer(lr_rate)
     
         # Use the optimizer to apply the gradients that minimize the loss
@@ -65,7 +70,7 @@ class vgg16:
         lost=self.getloss()
         train_op = optimizer.minimize(lost, global_step=self.global_step)
         
-        if merged_summary is not None:
+        if merged_summary:
             los,_, sum_ret=sess.run([lost, train_op, merged_summary], feed_dict={self.imgs: imgst,self.labs: labels})
             return los,sum_ret
         else:
@@ -96,8 +101,10 @@ class vgg16:
             
             #top_k_op = tf.nn.in_top_k(self.probs, labst, topk)
             cnt_true+=batch_true   # tf.reduce_sum(tf.cast(top_k_op,tf.int32))
-            
-        return cnt_true/(batch_num*batchsize)
+        
+        rate_true=cnt_true/(batch_num*batchsize)
+        tf.summary.scalar('accuracy rate:', tf.constant(rate_true))
+        return rate_true
 
 
     def convlayers(self):
