@@ -13,7 +13,7 @@ eval_size=5000 #测试集规模
 
 
 out_class=20 #输出类别数目，这里用voc有20类
-batchsize=32
+batchsize=48
 
 base_lr=0.001 #基础学习率
 maxstep=30000 #训练多少次
@@ -40,7 +40,7 @@ class vgg16:
         
         #再构建train等操作
         self.loss=self.getloss()
-        self.trainop=self.training_op(baselr=base_lr,decay_steps=1000, decay_rate=0.99)
+        self.train_op=self.training_op(baselr=base_lr,decay_steps=1000, decay_rate=0.99)
         self.eval_batch_op=self.eval_batch(topk=1)
         
 
