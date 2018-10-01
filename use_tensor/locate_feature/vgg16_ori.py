@@ -24,8 +24,13 @@ class vgg16:
         self.fc_layers()
         self.probs = tf.nn.softmax(self.fc3l)
         
+        
+        
         if weights is not None and sess is not None:
             self.load_weights(weights, sess)
+        else:
+            init = tf.global_variables_initializer()#初始化tf.Variable
+            sess.run(init)
             
     def getloss(self):
         losst=tf.losses.sparse_softmax_cross_entropy(labels=self.labs, logits=self.fc3l )#这里应该传入softmax之前的tensor
@@ -68,6 +73,8 @@ class vgg16:
             
             #how many true in every batch
             batch_true = sess.run([eval_b], feed_dict={self.imgs: imgst, self.labs: labst})[0]
+            
+            print (i,'/',batch_num,'  eval one batch:',batch_true,'/',batchsize,'-->',float(batch_true)/batchsize)
             
             #top_k_op = tf.nn.in_top_k(self.probs, labst, topk)
             cnt_true+=batch_true   # tf.reduce_sum(tf.cast(top_k_op,tf.int32))
@@ -308,7 +315,7 @@ class vgg16:
                 sess.run(self.parameters[i].assign(weights[k]))
                 print ('load weight of ',self.parameters[i],'\n')
             else:
-                pass
+                sess.run(self.parameters[i].initializer)
 
 
 
@@ -319,9 +326,6 @@ if __name__ == '__main__':
     with tf.Session() as sess:        
         #imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
         vgg = vgg16( r'F:\tensorflow_models\tensorflow_vgg16\vgg16_weights.npz', sess)
-        
-        init = tf.global_variables_initializer()#初始化tf.Variable
-        sess.run(init)
         
         print (vgg.eval_once(sess))
         
