@@ -32,6 +32,8 @@ class vgg16:
     def __init__(self,  weights=None, sess=None):
         self.imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
         self.labs = tf.placeholder(tf.int32, [None])
+        self.global_step = tf.Variable(0, name='global_step', trainable=False)
+        
         self.convlayers()
         self.fc_layers()
         self.probs = tf.nn.softmax(self.fc3l)
@@ -53,15 +55,15 @@ class vgg16:
     def train_once(self, sess, merged_summary=None, baselr=base_lr,decay_steps=1000, decay_rate=0.99):
         imgst,labels=sess.run([train_imgs,train_labs])
         
-        global_step = tf.Variable(0, name='global_step', trainable=False)
-        lr_rate = tf.train.exponential_decay(baselr,  global_step=global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+        
+        lr_rate = tf.train.exponential_decay(baselr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         
         optimizer = tf.train.GradientDescentOptimizer(lr_rate)
     
         # Use the optimizer to apply the gradients that minimize the loss
         # (and also increment the global step counter) as a single training step.
         lost=self.getloss()
-        train_op = optimizer.minimize(lost, global_step=global_step)
+        train_op = optimizer.minimize(lost, global_step=self.global_step)
         
         if merged_summary is not None:
             los,_, sum_ret=sess.run([lost, train_op, merged_summary], feed_dict={self.imgs: imgst,self.labs: labels})
@@ -331,6 +333,7 @@ class vgg16:
                 sess.run(self.parameters[i].assign(weights[k]))
                 print ('load weight of ',self.parameters[i],'\n')
             else:
+                print ('skip:',k)
                 pass
                 #sess.run(self.parameters[i].initializer)
 
@@ -356,20 +359,23 @@ if __name__ == '__main__':
         
         begin_t=time.time()
         for i in range(maxstep):            
-            if (i==0 or (i+1)%300==0):
+            if (i==1 or (i+1)%300==0):
                 acc=vgg.eval_once(sess)
                 print ('eval the test datas:',acc)
                 
                 print ('saving models...')
-                all_saver.save(sess, op.join(logdir,'model_keep'),global_step=i)
+                pat=all_saver.save(sess, op.join(logdir,'model_keep'),global_step=i)
+                print ('saved at:',pat)
             
             stt=time.time()
+            print ('\n start at:',stt)
             lost,sum_log=vgg.train_once(sess, merged) #这里每次训练都run一个summary出来
             
             #写入日志
             logwriter.add_summary(sum_log, i)
+            print ('write summary done!')
             
-            print ('train once-->loss:',lost,'  time:',(time.time()-stt))
+            print ('train once-->loss:',lost,'  time:',time.time()-stt)
         
         print ('Training done!!!-->time used:',(time.time()-begin_t))
         
