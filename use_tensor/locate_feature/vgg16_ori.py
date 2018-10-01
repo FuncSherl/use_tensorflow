@@ -15,7 +15,7 @@ eval_size=5000 #测试集规模
 out_class=20 #输出类别数目，这里用voc有20类
 batchsize=32
 
-base_lr=0.1 #基础学习率
+base_lr=0.001 #基础学习率
 maxstep=30000 #训练多少次
 
 
@@ -33,10 +33,16 @@ class vgg16:
         self.imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
         self.labs = tf.placeholder(tf.int32, [None])
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
+        self.loss=self.getloss()
+        self.trainop=self.training_op()
+        self.eval_batch_op=self.eval_batch(topk=1)
+        
         
         self.convlayers()
         self.fc_layers()
         self.probs = tf.nn.softmax(self.fc3l)
+        
+        self.merged = tf.summary.merge_all()
         
         init = tf.global_variables_initializer()#初始化tf.Variable
         sess.run(init)
@@ -54,11 +60,7 @@ class vgg16:
         
         return cross_entropy_mean
     
-    
-    def train_once(self, sess, baselr=base_lr,decay_steps=1000, decay_rate=0.99):
-        imgst,labels=sess.run([train_imgs,train_labs])
-        
-        
+    def training_op(self,baselr=base_lr,decay_steps=1000, decay_rate=0.99):
         lr_rate = tf.train.exponential_decay(baselr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         
         tf.summary.scalar('learning rate', lr_rate)
@@ -67,14 +69,14 @@ class vgg16:
     
         # Use the optimizer to apply the gradients that minimize the loss
         # (and also increment the global step counter) as a single training step.
-        lost=self.getloss()
+        lost=self.loss
         train_op = optimizer.minimize(lost, global_step=self.global_step)
+        return train_op
+    
+    def train_once(self, sess):
+        imgst,labels=sess.run([train_imgs,train_labs])
         
-        merged = tf.summary.merge_all()
-        
-        #print ('merged:',merged)
-        
-        los,_, sum_ret=sess.run([lost, train_op, merged], feed_dict={self.imgs: imgst,self.labs: labels})
+        los,_, sum_ret=sess.run([lost, self.train_op, self.merged], feed_dict={self.imgs: imgst,self.labs: labels})
         return los,sum_ret
 
     
@@ -85,7 +87,7 @@ class vgg16:
         #tf.summary.scalar('accuracy rate:', (cnt)/labels.shape[0])
         return cnt
     
-    def eval_once(self,sess, eval_size=eval_size,topk=1):
+    def eval_once(self,sess, eval_size=eval_size):
         cnt_true=0.0
         
         batch_num=int(eval_size/batchsize)+1
@@ -93,7 +95,7 @@ class vgg16:
             #get test datas
             imgst,labst=sess.run([test_imgs, test_labs])
             
-            eval_b=self.eval_batch(topk)
+            eval_b=self.eval_batch_op
             
             #how many true in every batch
             batch_true = sess.run([eval_b], feed_dict={self.imgs: imgst, self.labs: labst})[0]
