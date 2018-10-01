@@ -13,7 +13,7 @@ eval_size=5000 #测试集规模
 
 
 out_class=20 #输出类别数目，这里用voc有20类
-batchsize=48
+batchsize=30
 
 base_lr=0.001 #基础学习率
 maxstep=30000 #训练多少次
@@ -391,7 +391,7 @@ if __name__ == '__main__':
             
             #写入日志
             logwriter.add_summary(sum_log, i)
-            print ('write summary done!')
+            #print ('write summary done!')
             
             print ('train once-->loss:',lost,'  time:',time.time()-stt)
         
