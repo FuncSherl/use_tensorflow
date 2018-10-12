@@ -18,7 +18,10 @@ batchsize=30
 base_lr=0.001 #基础学习率
 maxstep=30000 #训练多少次
 
+decay_steps=1000
+decay_rate=0.9
 
+dropout_rate=0.5
 
 #---------------------------------------------------------------------------------------
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
@@ -32,6 +35,9 @@ class vgg16:
     def __init__(self,  weights=None, sess=None):
         self.imgs = tf.placeholder(tf.float32, [batchsize, 224, 224, 3])
         self.labs = tf.placeholder(tf.int32, [batchsize])
+        self.training=tf.placeholder(tf.bool)
+        self.dropout=dropout_rate
+        
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
         
         #先构建网络结构
@@ -39,8 +45,8 @@ class vgg16:
         self.fc_layers()
         
         #再构建train等操作
-        self.loss=self.getloss()
-        self.train_op=self.training_op(baselr=base_lr,decay_steps=1000, decay_rate=0.99)
+        self.loss=self.getloss()#loss operation
+        self.train_op=self.training_op(baselr=base_lr,decay_steps=decay_steps, decay_rate=decay_rate)
         self.eval_batch_op=self.eval_batch(topk=1)
         
 
@@ -80,7 +86,8 @@ class vgg16:
     def train_once(self, sess):
         imgst,labels=sess.run([train_imgs,train_labs])
         
-        los,_, sum_ret=sess.run([self.loss, self.train_op, self.merged], feed_dict={self.imgs: imgst,self.labs: labels})
+        #训练时启用dropout
+        los,_, sum_ret=sess.run([self.loss, self.train_op, self.merged], feed_dict={self.imgs: imgst,self.labs: labels, self.training:True})
         return los,sum_ret
 
     
@@ -103,7 +110,8 @@ class vgg16:
             eval_b=self.eval_batch_op
             
             #how many true in every batch
-            batch_true = sess.run([eval_b], feed_dict={self.imgs: imgst, self.labs: labst})[0]
+            #这里是测试，应设置training为false
+            batch_true = sess.run([eval_b], feed_dict={self.imgs: imgst, self.labs: labst, self.training:False})[0]
             
             print (i,'/',batch_num,'  eval one batch:',batch_true,'/',batchsize,'-->',float(batch_true)/batchsize)
             
@@ -315,7 +323,10 @@ class vgg16:
             fc1l = tf.nn.bias_add(tf.matmul(pool5_flat, fc1w), fc1b)
             self.fc1 = tf.nn.relu(fc1l)
             self.parameters += [fc1w, fc1b]
-
+        
+        #dropout1
+        self.fc1=tf.cond(self.training, lambda: tf.nn.dropout(self.fc1, self.dropout), lambda: self.fc1)
+        
         # fc2
         with tf.name_scope('fc2') as scope:
             fc2w = tf.Variable(tf.truncated_normal([4096, 4096],
@@ -326,6 +337,9 @@ class vgg16:
             fc2l = tf.nn.bias_add(tf.matmul(self.fc1, fc2w), fc2b)
             self.fc2 = tf.nn.relu(fc2l)
             self.parameters += [fc2w, fc2b]
+            
+        #dropout2
+        self.fc2=tf.cond(self.training, lambda: tf.nn.dropout(self.fc2, self.dropout), lambda: self.fc2)
 
         # fc3
         with tf.name_scope('fc3') as scope:
