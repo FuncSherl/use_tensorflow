@@ -52,6 +52,9 @@ class vgg16:
 
         self.probs = tf.nn.softmax(self.fc3l)
         
+        for i in self.__dict__:
+            print(i,self.__dict__[i])
+        
         self.merged = tf.summary.merge_all()
         
         init = tf.global_variables_initializer()#初始化tf.Variable
@@ -141,6 +144,7 @@ class vgg16:
             out = tf.nn.bias_add(conv, biases)
             self.conv1_1 = tf.nn.relu(out, name=scope)
             self.parameters += [kernel, biases]
+            
 
         # conv1_2
         with tf.name_scope('conv1_2') as scope:
