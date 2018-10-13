@@ -12,6 +12,8 @@ from datetime import datetime
 import time,cv2
 import os.path as op
 
+import matplotlib.pyplot as plt
+
 #当前路径下的文件
 from  use_tensor.locate_feature.vgg16_ori import *
 
@@ -38,8 +40,13 @@ class test_model:
         
             
     
-    def testoneimg(self,stride=(1,1), kernel_rate=0.5):
-        #stride(h,w)
+    def getoneimg_probs(self,stride=(1,1), kernel_rate=0.5):
+        '''
+        stride(h,w)
+        kernel_rate:遮挡部分占图像大小的比例
+        
+        :将一个黑框以卷积的形式滑动，分别输出对应被遮挡一部分图片的prob，每个位置都有一个prob，形成一个小点的图片，每个点代表该点为黑框中心时的prob
+        '''
         imgst,labst=self.sess.run([test_imgs, test_labs])
         
         batchsize=imgst.shape[0]
@@ -47,10 +54,10 @@ class test_model:
         kep_img=imgst[0].copy()
         
         shape=kep_img.shape
-        kernel_h=int(kernel_rate*shape[0])
+        kernel_h=int(kernel_rate*shape[0])#根据rate计算kernel大小，也即遮挡部分的大小
         kernel_w=int(kernel_rate*shape[1])
         
-        cnt_h=int((shape[0]-kernel_h)/stride[0]+1)
+        cnt_h=int((shape[0]-kernel_h)/stride[0]+1)#计算卷积后的大小
         cnt_w=int((shape[1]-kernel_w)/stride[1]+1)
         
         ret_prob=[]
@@ -84,14 +91,42 @@ class test_model:
         
         minedprob=minedprob.reshape([cnt_h,cnt_w,minedprob.shape[-1]])
         
-        return minedprob,oriprob,labst[0]
+        #原图、prob的卷积后大小的图，每个点是20长度的prob、原图的prob、gt标签
+        return kep_img,minedprob,oriprob,labst[0]
     
+    def proc_probs(self):
+        img,minedprob,oriprob,gt=self.getoneimg_probs()
+        shape=minedprob.shape
+        heatmap=np.zeros([shape[0],shape[1]])
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                heatmap[i][j]=oriprob[gt]-minedprob[i][j][gt]
+                
+        heatmap=self.normalize(heatmap)
+        
+        print (heatmap)
+        
+        plt.figure()
+        plt.subplot(121)
+        plt.imshow(img)
+        
+        plt.subplot(122)
+        plt.imshow(heatmap)
+        plt.show()
+        
+    def normalize(self,img):
+        min=np.min(img)
+        max=np.max(img)
+        
+        tep=(img-min)/float(max-min)
+        
+        return tep
     
 
 if __name__ == '__main__':
     with tf.Session() as sess:
         tep=test_model(sess)
-        tep.testoneimg()
+        tep.proc_probs()
         
     
     
