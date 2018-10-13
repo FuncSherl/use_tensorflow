@@ -105,13 +105,17 @@ class test_model:
         heatmap=self.normalize(heatmap)
         
         print (heatmap)
+        print ('original probs:',oriprob)
+        print ('groundtruth:',proc_voc.classes[gt],'->',gt,'-->',oriprob[gt],':',oriprob.argmax()==gt)
+        
+        
         
         plt.figure()
         plt.subplot(121)
         plt.imshow(img)
         
         plt.subplot(122)
-        plt.imshow(heatmap)
+        plt.imshow(heatmap,cmap=plt.get_cmap("gray"))
         plt.show()
         
     def normalize(self,img):
@@ -126,7 +130,8 @@ class test_model:
 if __name__ == '__main__':
     with tf.Session() as sess:
         tep=test_model(sess)
-        tep.proc_probs()
+        while 1:
+            tep.proc_probs()
         
     
     
