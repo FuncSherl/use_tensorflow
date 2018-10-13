@@ -21,6 +21,12 @@ from  use_tensor.locate_feature.vgg16_ori import *
 
 modelpath='./logs/VOC_2018-10-12_15-51-44_base_lr-0.001000_batchsize-30_maxstep-30000'
 
+if __name__ == '__main__':
+    #plt.ion()
+    fig=plt.figure()
+    #oriimg = fig.add_subplot(121)
+    #heaimg = fig.add_subplot(122)
+
 class test_model:
     def __init__(self, sess, modelpath=modelpath):
         self.sess=sess
@@ -62,7 +68,7 @@ class test_model:
         
         ret_prob=[]
         
-        print ('label[0]:',labst[0])
+        #print ('label[0]:',labst[0])
         
         for i in range(cnt_h):
             for j in range(cnt_w):                
@@ -94,29 +100,50 @@ class test_model:
         #原图、prob的卷积后大小的图，每个点是20长度的prob、原图的prob、gt标签
         return kep_img,minedprob,oriprob,labst[0]
     
+    def getprob_dis(self,minedprob, oriprob, gt):
+        '''
+        important:算法实现处
+        get the distance between origin prob and that after mined some area
+        '''
+        return oriprob[gt]-minedprob[gt]
+    
+    
+    
     def proc_probs(self):
         img,minedprob,oriprob,gt=self.getoneimg_probs()
         shape=minedprob.shape
         heatmap=np.zeros([shape[0],shape[1]])
         for i in range(shape[0]):
             for j in range(shape[1]):
-                heatmap[i][j]=oriprob[gt]-minedprob[i][j][gt]
+                heatmap[i][j]=self.getprob_dis(minedprob[i][j], oriprob, gt)
                 
         heatmap=self.normalize(heatmap)
         
-        print (heatmap)
+        #print (heatmap)
         print ('original probs:',oriprob)
-        print ('groundtruth:',proc_voc.classes[gt],'->',gt,'-->',oriprob[gt],':',oriprob.argmax()==gt)
+        print ('groundtruth:',proc_voc.classes[gt],'->',gt,'->',oriprob[gt],':',oriprob.argmax()==gt)
+        
+        if not oriprob.argmax()==gt: 
+            print ('this img is not inferenced right, skiping imshow....\n')
+            return
+        
+        teptime="{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
+        nam=teptime+'_'+str(oriprob[gt])+'_'+str(oriprob.argmax()==gt)
         
         
-        
-        plt.figure()
         plt.subplot(121)
         plt.imshow(img)
+        #oriimg.cla()
+        #oriimg.imshow(img)
         
         plt.subplot(122)
         plt.imshow(heatmap,cmap=plt.get_cmap("gray"))
-        plt.show()
+        #heaimg.cla()
+        #heaimg.imshow(heatmap,cmap=plt.get_cmap("gray"))
+        #plt.show()
+        #plt.suptitle()
+        #plt.pause(3)
+        plt.savefig(op.join('heating_maps/',nam+'.png'))
         
     def normalize(self,img):
         min=np.min(img)
@@ -132,6 +159,7 @@ if __name__ == '__main__':
         tep=test_model(sess)
         while 1:
             tep.proc_probs()
+    plt.ioff()
         
     
     
