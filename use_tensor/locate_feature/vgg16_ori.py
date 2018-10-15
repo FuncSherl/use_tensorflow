@@ -4,7 +4,7 @@ from scipy.misc import imread, imresize
 from datetime import datetime
 import time,cv2
 import os.path as op
-import proc_voc
+import use_tensor.locate_feature.proc_voc as proc_voc
 
 
 #----------------------------------------------------------------------------------panel
