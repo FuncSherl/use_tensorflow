@@ -46,7 +46,7 @@ class test_model:
         
             
     
-    def getoneimg_probs(self,stride=(1,1), kernel_rate=0.5):
+    def getoneimg_probs(self,stride=(1,1), kernel_rate=0.2):
         '''
         stride(h,w)
         kernel_rate:遮挡部分占图像大小的比例
@@ -123,10 +123,11 @@ class test_model:
         print ('original probs:',oriprob)
         print ('groundtruth:',proc_voc.classes[gt],'->',gt,'->',oriprob[gt],':',oriprob.argmax()==gt)
         
+        '''
         if not oriprob.argmax()==gt: 
             print ('this img is not inferenced right, skiping imshow....\n')
             return
-        
+        '''
         teptime="{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
         nam=teptime+'_'+str(oriprob[gt])+'_'+str(oriprob.argmax()==gt)
         
@@ -143,7 +144,7 @@ class test_model:
         #plt.show()
         #plt.suptitle()
         #plt.pause(3)
-        plt.savefig(op.join('heating_maps/',nam+'.png'))
+        plt.savefig(op.join('heating_maps_rate2/',nam+'.png'))
         
     def normalize(self,img):
         min=np.min(img)
@@ -159,7 +160,7 @@ if __name__ == '__main__':
         tep=test_model(sess)
         while 1:
             tep.proc_probs()
-    plt.ioff()
+    #plt.ioff()
         
     
     
