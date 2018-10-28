@@ -46,7 +46,7 @@ class test_model:
         
             
     
-    def getoneimg_probs(self,stride=(1,1), kernel_rate=0.2):
+    def getoneimg_probs(self,stride=(1,1), kernel_rate=0.5):
         '''
         stride(h,w)
         kernel_rate:遮挡部分占图像大小的比例
@@ -110,7 +110,7 @@ class test_model:
     
     
     def proc_probs(self):
-        img,minedprob,oriprob,gt=self.getoneimg_probs()
+        img,minedprob,oriprob,gt=self.getoneimg_probs(kernel_rate=0.2)
         shape=minedprob.shape
         heatmap=np.zeros([shape[0],shape[1]])
         for i in range(shape[0]):
@@ -129,7 +129,7 @@ class test_model:
             return
         '''
         teptime="{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
-        nam=teptime+'_'+str(oriprob[gt])+'_'+str(oriprob.argmax()==gt)
+        nam=teptime+'_'+proc_voc.classes[gt]+"_"+str(oriprob[gt])+'_'+str(oriprob.argmax()==gt)
         
         
         plt.subplot(121)

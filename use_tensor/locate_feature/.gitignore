@@ -4,3 +4,4 @@
 /logs/
 /vgg16_weights.npz
 /heating_maps/
+/heating_maps_rate2/
