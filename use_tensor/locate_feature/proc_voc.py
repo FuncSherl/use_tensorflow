@@ -165,6 +165,8 @@ def preprocess_img(image,outlen=224):
     image = tf.image.resize_image_with_crop_or_pad(image, 230, 230)
     image = tf.random_crop(image, [outlen, outlen, 3])
     image = tf.image.random_flip_left_right(image)
+    
+    #image=tf.image.resize_images(image, )
     return image
     
     
