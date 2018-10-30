@@ -4,7 +4,7 @@ Created on 2018年10月13日
 
 @author:China
 '''
-import tensorflow as tf
+
 import tensorflow as tf
 import numpy as np
 from scipy.misc import imread, imresize

@@ -53,7 +53,7 @@ class vgg16:
         self.probs = tf.nn.softmax(self.fc3l)
         
         for i in self.__dict__:
-            print(i,self.__dict__[i])
+            print('dict in vgg16:',i,self.__dict__[i])
         
         self.merged = tf.summary.merge_all()
         
@@ -77,12 +77,16 @@ class vgg16:
         lr_rate = tf.train.exponential_decay(baselr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         
         tf.summary.scalar('learning rate', lr_rate)
-        
-        optimizer = tf.train.GradientDescentOptimizer(lr_rate)
     
         # Use the optimizer to apply the gradients that minimize the loss
         # (and also increment the global step counter) as a single training step.
-        train_op = optimizer.minimize(self.loss, global_step=self.global_step)
+        print ('GradientDescentOptimizer1 to minimize %d vars..'%(len(self.parameters)))
+        train_op1 = tf.train.GradientDescentOptimizer(lr_rate).minimize(self.loss, global_step=self.global_step,var_list=self.parameters)
+        
+        print ('GradientDescentOptimizer2 to minimize %d vars..'%(len(self.parameters_last)))
+        train_op2 = tf.train.GradientDescentOptimizer(lr_rate*10).minimize(self.loss, var_list=self.parameters_last)#这里不应有globalstep，否则会再加1？
+        train_op = tf.group(train_op1, train_op2)
+
         return train_op
     
     
@@ -128,6 +132,7 @@ class vgg16:
 
     def convlayers(self):
         self.parameters = []
+        self.parameters_last=[]
 
         # zero-mean input
         with tf.name_scope('preprocess') as scope:
@@ -353,7 +358,7 @@ class vgg16:
             fc3b = tf.Variable(tf.constant(1.0, shape=[out_class], dtype=tf.float32),
                                  trainable=True, name='biases')
             self.fc3l = tf.nn.bias_add(tf.matmul(self.fc2, fc3w), fc3b)
-            #self.parameters += [fc3w, fc3b]    #here we want to finetune,so shouldn't init the weight with model
+            self.parameters_last += [fc3w, fc3b]    #here we want to finetune,so shouldn't init the weight with model
             
             
 
