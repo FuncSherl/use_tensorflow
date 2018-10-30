@@ -3,6 +3,8 @@
 Created on 2018年10月13日
 
 @author:China
+
+利用擦除法来测试图像关键区域
 '''
 
 import tensorflow as tf

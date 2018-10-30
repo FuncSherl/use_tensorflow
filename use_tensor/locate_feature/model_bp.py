@@ -39,6 +39,8 @@ class bp_model:
         saver = tf.train.import_meta_graph(op.join(modelpath,'model_keep-29999.meta'))
         saver.restore(self.sess, tf.train.latest_checkpoint(modelpath))
         print ('restore weights done!')
+        
+    
 
 
 if __name__ == '__main__':
