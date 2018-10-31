@@ -57,7 +57,7 @@ class vgg16:
         
         self.merged = tf.summary.merge_all()
         
-        init = tf.global_variables_initializer()#初始化tf.Variable
+        init = tf.global_variables_initializer()#初始化tf.Variable,虽然后面会有初始化权重过程，但是最后一层是要根据任务来的，其参数需要随机初始化
         sess.run(init)
         
         if weights is not None and sess is not None:

@@ -162,11 +162,13 @@ message Feature{
 '''
 def preprocess_img(image,outlen=224):
     #这里将图片变成224大小的，但是如果用crop可能导致切出来的图片里没有目标物体
-    image = tf.image.resize_image_with_crop_or_pad(image, 230, 230)
+    
+    image=tf.image.resize_images(image, [230,230])
+    #image = tf.image.resize_image_with_crop_or_pad(image, 230, 230)
     image = tf.random_crop(image, [outlen, outlen, 3])
     image = tf.image.random_flip_left_right(image)
     
-    #image=tf.image.resize_images(image, )
+    
     return image
     
     
