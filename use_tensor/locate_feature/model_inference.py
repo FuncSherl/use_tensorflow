@@ -11,7 +11,7 @@ import tensorflow as tf
 import numpy as np
 from scipy.misc import imread, imresize
 from datetime import datetime
-import time,cv2
+import time,cv2,os
 import os.path as op
 
 import matplotlib.pyplot as plt
@@ -21,7 +21,7 @@ from  use_tensor.locate_feature.vgg16_ori import *
 
 
 
-modelpath='./logs/VOC_2018-10-12_15-51-44_base_lr-0.001000_batchsize-30_maxstep-30000'
+modelpath='./logs/VOC_2018-10-30_10-01-02_base_lr-0.001000_batchsize-30_maxstep-30000'
 
 if __name__ == '__main__':
     #plt.ion()
@@ -34,6 +34,7 @@ class test_model:
         self.sess=sess
         self.graph = tf.get_default_graph() 
         self.load_model(modelpath)   
+        self.kernel_rate=0.5
         
         self.prob=self.graph.get_tensor_by_name('Softmax:0') 
         self.dat_place=self.graph.get_tensor_by_name('Placeholder:0') 
@@ -55,6 +56,8 @@ class test_model:
         
         :将一个黑框以卷积的形式滑动，分别输出对应被遮挡一部分图片的prob，每个位置都有一个prob，形成一个小点的图片，每个点代表该点为黑框中心时的prob
         '''
+        self.kernel_rate=kernel_rate
+        
         imgst,labst=self.sess.run([test_imgs, test_labs])
         
         batchsize=imgst.shape[0]
@@ -62,8 +65,8 @@ class test_model:
         kep_img=imgst[0].copy()
         
         shape=kep_img.shape
-        kernel_h=int(kernel_rate*shape[0])#根据rate计算kernel大小，也即遮挡部分的大小
-        kernel_w=int(kernel_rate*shape[1])
+        kernel_h=int(self.kernel_rate*shape[0])#根据rate计算kernel大小，也即遮挡部分的大小
+        kernel_w=int(self.kernel_rate*shape[1])
         
         cnt_h=int((shape[0]-kernel_h)/stride[0]+1)#计算卷积后的大小
         cnt_w=int((shape[1]-kernel_w)/stride[1]+1)
@@ -146,7 +149,13 @@ class test_model:
         #plt.show()
         #plt.suptitle()
         #plt.pause(3)
-        plt.savefig(op.join('heating_maps_rate2/',nam+'.png'))
+        dirname=TIMESTAMP+'-heating_maps-rate_'+str(self.kernel_rate)
+        if not op.exists(dirname):
+            print ('making dir:',dirname)
+            os.mkdir(dirname)
+        
+        
+        plt.savefig(op.join(dirname,nam+'.png'))
         
     def normalize(self,img):
         min=np.min(img)

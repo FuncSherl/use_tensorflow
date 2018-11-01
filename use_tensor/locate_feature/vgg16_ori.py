@@ -13,7 +13,7 @@ eval_size=5000 #测试集规模
 
 
 out_class=20 #输出类别数目，这里用voc有20类
-batchsize=24
+batchsize=30
 
 base_lr=0.001 #基础学习率
 maxstep=30000 #训练多少次
