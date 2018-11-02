@@ -6,6 +6,7 @@ Created on 2018��9��24��
 '''
 from xml.dom import minidom
 import cv2,os,random
+from datetime import datetime
 import os.path as op
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -16,7 +17,7 @@ import tensorflow as tf
 
 #import tensorflow.data.Dataset as dataset
 #print(tf.contrib.slim)
-
+TIMESTAMP_DAY = "{0:%Y-%m-%d}".format(datetime.now())
 
 classes = [
     "aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat",
@@ -35,7 +36,7 @@ def get_bboxs(dir_xml):
     doc = minidom.parse(dir_xml)
     root = doc.documentElement
     
-    filename=root.getElementsByTagName('filename')[0].childNodes[0].data
+    filename=root.getElementsByTagName('filename')[0].childNodes[0].data.strip()
     
     print (filename)
     
@@ -45,11 +46,16 @@ def get_bboxs(dir_xml):
     for i in objects:
         name=i.getElementsByTagName('name')[0].childNodes[0].data
         bndbox=i.getElementsByTagName('bndbox')[0]
-        xmin=int(bndbox.getElementsByTagName('xmin')[0].childNodes[0].data)
-        ymin=int(bndbox.getElementsByTagName('ymin')[0].childNodes[0].data)
-        xmax=int(bndbox.getElementsByTagName('xmax')[0].childNodes[0].data)
-        ymax=int(bndbox.getElementsByTagName('ymax')[0].childNodes[0].data)
-        indx=classes.find(str(name).strip())
+        xmin=int(float(bndbox.getElementsByTagName('xmin')[0].childNodes[0].data))
+        ymin=int(float(bndbox.getElementsByTagName('ymin')[0].childNodes[0].data))
+        xmax=int(float(bndbox.getElementsByTagName('xmax')[0].childNodes[0].data))
+        ymax=int(float(bndbox.getElementsByTagName('ymax')[0].childNodes[0].data))
+        
+        if name in classes:
+            indx=classes.index(str(name).strip())
+        else:
+            print ('error finding class name:',name,' skiping this bbox!!')
+            continue
         ret.append([indx, xmin, ymin, xmax, ymax])
     return filename, ret
 
@@ -75,6 +81,34 @@ def show_objects(path_xml):
     
         cv2.imshow('test', img)
         cv2.waitKey()
+        
+def get_bbox_labeltoimg(path_xml):
+    '''
+    input:dirctory to xml like D:\data_DL\PascalVOC2012\VOC2012_all\VOC2012_trainval\Annotations
+    process the bboxs of imgs and find the biggest to be the label of the img
+    ret:[[filename,label],[filename,label]]
+    '''
+    ret=[]
+    jpg_dir=op.join(op.split(path_xml)[0],'../JPEGImages/')
+    dirlis=os.listdir(path_xml)
+    for ind,i in enumerate(dirlis):
+        tep=op.join(path_xml, i)
+        filname,bboxs=get_bboxs(tep)
+        
+        full_jpgpath=op.join(jpg_dir, filname)
+        
+        max_k=0
+        label_k=bboxs[0][0]
+        #[label, xmin, ymin, xmax, ymax]
+        for j in bboxs:
+            seq=abs((j[3]-j[1])*(j[4]-j[2]))#算面积最大的
+            if seq>max_k:
+                max_k=seq
+                label_k=j[0]
+        
+        ret.append([full_jpgpath, label_k])
+        print (ind,'/',len(dirlis),'  label to be:',label_k,'->',classes[label_k])
+    return ret
     
     
 def get_label_file(dir_labels,classes=classes):
@@ -136,13 +170,20 @@ def gen_tfrecord(dir_labels,stage='train',classes=classes):
     datadir=op.join(dir_labels, '../../JPEGImages')
     write_to_rfrec(outname, ret, datadir)
     
-def gen_tfrecord_bbox(dir_xml,stage='train'):
-    labels=[]
+def gen_tfrecord_bbox(dir_xml,dir_name='VOC_train_data'):
+    '''
+    input:dirctory to xml like D:\data_DL\PascalVOC2012\VOC2012_all\VOC2012_trainval\Annotations
+    '''
+    dir_name=dir_name+'-'+TIMESTAMP_DAY
+    f_l=get_bbox_labeltoimg(dir_xml)
+    f_l=random.shuffle(f_l)
+    write_to_rfrec(dir_name, f_l)
+    
     
 
 
 
-def write_to_rfrec(outdirname, name_label_list, datadir):
+def write_to_rfrec(outdirname, name_label_list):
     '''
     outdirname:输出tfrecord文件的文件夹名字
     name_label_lsit:输入的文件名和label，格式[[name,label],[name,label]],name不要后缀jpg
@@ -154,11 +195,13 @@ def write_to_rfrec(outdirname, name_label_list, datadir):
     if not op.exists(tfrecorddir):
         os.makedirs(tfrecorddir)
     
-    imgs_perfile=2000
+    imgs_perfile=1000
+    cnt_a=0
     
-    
-    for ind,i in enumerate(ret):        
-        tep=op.join(datadir, i[0]+'.jpg')
+    for ind,i in enumerate(ret):
+        tep=i[0]
+        if len(op.splitext(i[0])[-1])<=0:        
+            tep= i[0]+'.jpg'
         label=i[-1]
         img=Image.open(tep)
         size = img.size
@@ -178,8 +221,11 @@ def write_to_rfrec(outdirname, name_label_list, datadir):
         })) 
         writer.write(example.SerializeToString())  #序列化为字符串
         print (ind,'/',len(ret),'  size:',size,'  to dir:',ftrecordfilename)
+        cnt_a+=1
         
     writer.close()
+    print ('for all: write to ',tfrecorddir,'->',cnt_a,' images done!!')
+    
 
 '''
 TFRecord文件中的数据是通过tf.train.Example Protocol Buffer的格式存储的，下面是tf.train.Example的定义
@@ -252,8 +298,8 @@ def read_tfrecord_batch(tfdir,batchsize=32):
     
 
 if __name__ == '__main__':
-    rootdir=r'F:\DL_datasets\PascalVOC2012\VOC_2012_all'
-    #rootdir=r'D:\data_DL\PascalVOC2012\VOC2012_all'
+    #rootdir=r'F:\DL_datasets\PascalVOC2012\VOC_2012_all'
+    rootdir=r'D:\data_DL\PascalVOC2012\VOC2012_all'
     
     traindir=op.join(rootdir, 'VOC2012_trainval')
     testdir=op.join(rootdir, 'VOC2012_test')
@@ -267,10 +313,12 @@ if __name__ == '__main__':
     
     #gen_tfrecord(train_label_dir)
     #gen_tfrecord(train_label_dir,'val')
+    gen_tfrecord_bbox(train_annotation_dir ,'VOC_train_data')
+    gen_tfrecord_bbox(test_annotation_dir,'VOC_test_data' )
     
     '''
 
-    '''
+    
     with tf.Session() as sess:
         ims,las=read_tfrecord_batch('./voc_val_data')##'/media/sherl/本地磁盘1/workspaces/eclipse/use_tensorflow/use_tensor/locate_feature/voc_train_data'
         images,labels=sess.run([ims,las])
@@ -279,7 +327,7 @@ if __name__ == '__main__':
             print (classes[labels[ind]])
             plt.imshow(image)
             plt.show()
-            
+    '''      
 
         
         
