@@ -180,6 +180,25 @@ def gen_tfrecord_bbox(dir_xml,dir_name='VOC_train_data'):
     #print (f_l[0:10])
     write_to_rfrec(dir_name, f_l)
     
+def show_classes(dir_xml):
+    '''
+    input:dirctory to xml like D:\data_DL\PascalVOC2012\VOC2012_all\VOC2012_trainval\Annotations
+    '''
+    kep={}
+    
+    f_l=get_bbox_labeltoimg(dir_xml)
+    
+    for i in f_l:
+        lab=classes[i[-1]]
+        if lab in kep.keys():
+            kep[lab]+=1
+        else: kep[lab]=1
+    
+    print(dir_xml,' CLASSES EACH CNT IS:')
+    for i in kep:
+        print (i,'->',kep[i])
+        
+    
     
 
 
@@ -320,22 +339,22 @@ if __name__ == '__main__':
     #gen_tfrecord(train_label_dir,'val')
     
     
-    gen_tfrecord_bbox(test_annotation_dir,'VOC_test_data' )
-    gen_tfrecord_bbox(train_annotation_dir ,'VOC_train_data')
+    #gen_tfrecord_bbox(test_annotation_dir,'VOC_test_data' )
+    #gen_tfrecord_bbox(train_annotation_dir ,'VOC_train_data')
+    show_classes(test_annotation_dir)
     
-    
-    ''' 
+    ''' '''
 
     
     with tf.Session() as sess:
-        ims,las=read_tfrecord_batch('./voc_train_data')##'/media/sherl/本地磁盘1/workspaces/eclipse/use_tensorflow/use_tensor/locate_feature/voc_train_data'
+        ims,las=read_tfrecord_batch('./VOC_test_data-2018-11-02')##'/media/sherl/本地磁盘1/workspaces/eclipse/use_tensorflow/use_tensor/locate_feature/voc_train_data'
         images,labels=sess.run([ims,las])
         print (images.shape)
         for ind,image in enumerate(images):
             print (classes[labels[ind]])
             plt.imshow(image)
             plt.show()
-      '''   
+         
 
         
         

@@ -27,8 +27,8 @@ dropout_rate=0.5
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 #利用pipline方式读入数据,由于用同一个网络跑train和test，就先sess.run获取到数据再利用placeholder将数据传入网络
-train_imgs,train_labs=proc_voc.read_tfrecord_batch('./voc_train_data',batchsize)
-test_imgs, test_labs=proc_voc.read_tfrecord_batch('./voc_val_data',batchsize)
+train_imgs,train_labs=proc_voc.read_tfrecord_batch('./VOC_train_data-2018-11-02',batchsize)
+test_imgs, test_labs=proc_voc.read_tfrecord_batch('./VOC_test_data-2018-11-02',batchsize)
 
 
 class vgg16:
