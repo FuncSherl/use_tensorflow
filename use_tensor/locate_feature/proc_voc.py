@@ -177,6 +177,7 @@ def gen_tfrecord_bbox(dir_xml,dir_name='VOC_train_data'):
     dir_name=dir_name+'-'+TIMESTAMP_DAY
     f_l=get_bbox_labeltoimg(dir_xml)
     random.shuffle(f_l)
+    #print (f_l[0:10])
     write_to_rfrec(dir_name, f_l)
     
     
@@ -203,8 +204,12 @@ def write_to_rfrec(outdirname, name_label_list):
         if len(op.splitext(i[0])[-1])<=0:        
             tep= i[0]+'.jpg'
         label=i[-1]
+        
         img=Image.open(tep)
         size = img.size
+        
+        print ('\nopening ',tep,' label:',label, 'size:',size)
+        img.show()
         
         if ind%imgs_perfile==0:
             ftrecordfilename = (outdirname+".tfrecords_%.3d" % int(ind/imgs_perfile))
@@ -313,21 +318,24 @@ if __name__ == '__main__':
     
     #gen_tfrecord(train_label_dir)
     #gen_tfrecord(train_label_dir,'val')
-    gen_tfrecord_bbox(train_annotation_dir ,'VOC_train_data')
-    gen_tfrecord_bbox(test_annotation_dir,'VOC_test_data' )
     
-    '''
+    
+    gen_tfrecord_bbox(test_annotation_dir,'VOC_test_data' )
+    gen_tfrecord_bbox(train_annotation_dir ,'VOC_train_data')
+    
+    
+    ''' 
 
     
     with tf.Session() as sess:
-        ims,las=read_tfrecord_batch('./voc_val_data')##'/media/sherl/本地磁盘1/workspaces/eclipse/use_tensorflow/use_tensor/locate_feature/voc_train_data'
+        ims,las=read_tfrecord_batch('./voc_train_data')##'/media/sherl/本地磁盘1/workspaces/eclipse/use_tensorflow/use_tensor/locate_feature/voc_train_data'
         images,labels=sess.run([ims,las])
         print (images.shape)
         for ind,image in enumerate(images):
             print (classes[labels[ind]])
             plt.imshow(image)
             plt.show()
-    '''      
+      '''   
 
         
         
