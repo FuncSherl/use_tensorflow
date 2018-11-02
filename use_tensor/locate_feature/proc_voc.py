@@ -25,17 +25,21 @@ classes = [
 ]
 
 
-
-def show_objects(dir_xml):
+def get_bboxs(dir_xml):
+    '''
+    input:dir to xml file eg:/home/a.xml
+    return :   [filename,  [[label, xmin, ymin, xmax, ymax],[label, xmin, ymin, xmax, ymax]....]  ]
+    ,label is the index the class of in the classes variable before,filename is like 'a.jpg'
+    '''
+    ret = []
     doc = minidom.parse(dir_xml)
     root = doc.documentElement
     
     filename=root.getElementsByTagName('filename')[0].childNodes[0].data
     
-    file_dir=op.join(op.split(dir_xml)[0],'../JPEGImages/'+filename)
     print (filename)
     
-    img=cv2.imread(file_dir)
+    
     
     objects=root.getElementsByTagName('object')
     for i in objects:
@@ -45,13 +49,32 @@ def show_objects(dir_xml):
         ymin=int(bndbox.getElementsByTagName('ymin')[0].childNodes[0].data)
         xmax=int(bndbox.getElementsByTagName('xmax')[0].childNodes[0].data)
         ymax=int(bndbox.getElementsByTagName('ymax')[0].childNodes[0].data)
-        
-        cv2.rectangle(img, (xmin, ymin), (xmax, ymax), [255,0,0], 3)
-        
-        cv2.putText(img, name, (xmin, ymin), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255))
+        indx=classes.find(str(name).strip())
+        ret.append([indx, xmin, ymin, xmax, ymax])
+    return filename, ret
+
+
+def show_objects(path_xml):
+    '''
+    input:dirctory to xml like D:\data_DL\PascalVOC2012\VOC2012_all\VOC2012_trainval\Annotations
+    '''
     
-    cv2.imshow('test', img)
-    cv2.waitKey()
+    jpg_dir=op.join(op.split(path_xml)[0],'../JPEGImages/')
+    
+    for i in os.listdir(path_xml):
+        tep=op.join(path_xml, i)
+        filname,bboxs=get_bboxs(tep)
+        
+        full_jpgpath=op.join(jpg_dir, filname)
+    
+        img=cv2.imread(full_jpgpath)
+        for j in bboxs:
+            cv2.rectangle(img, j[1:3], j[3:5], [255,0,0], 3)
+            
+            cv2.putText(img, classes[j[0]], j[1:3], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255))
+    
+        cv2.imshow('test', img)
+        cv2.waitKey()
     
     
 def get_label_file(dir_labels,classes=classes):
@@ -62,6 +85,8 @@ def get_label_file(dir_labels,classes=classes):
         bicycle ['2008_000036', '2008_000090']
         bird ['2008_000054', '2008_000095']
         boat ['2008_000007', '2008_000036']
+        
+    :这里不是label效果，只是说这些图片里有这个类的物体，找图片label还是应该找面积最大的那个boundingbox
     '''
     ret={}
     for label,i in enumerate(classes):
@@ -109,7 +134,23 @@ def gen_tfrecord(dir_labels,stage='train',classes=classes):
     random.shuffle(ret)
     
     datadir=op.join(dir_labels, '../../JPEGImages')
-    tfrecorddir='./'+outname
+    write_to_rfrec(outname, ret, datadir)
+    
+def gen_tfrecord_bbox(dir_xml,stage='train'):
+    labels=[]
+    
+
+
+
+def write_to_rfrec(outdirname, name_label_list, datadir):
+    '''
+    outdirname:输出tfrecord文件的文件夹名字
+    name_label_lsit:输入的文件名和label，格式[[name,label],[name,label]],name不要后缀jpg
+    datadir：图片目录
+    '''
+    ret=name_label_list
+    
+    tfrecorddir='./'+outdirname
     if not op.exists(tfrecorddir):
         os.makedirs(tfrecorddir)
     
@@ -123,7 +164,7 @@ def gen_tfrecord(dir_labels,stage='train',classes=classes):
         size = img.size
         
         if ind%imgs_perfile==0:
-            ftrecordfilename = (outname+".tfrecords_%.3d" % int(ind/imgs_perfile))
+            ftrecordfilename = (outdirname+".tfrecords_%.3d" % int(ind/imgs_perfile))
             writer= tf.python_io.TFRecordWriter(op.join(tfrecorddir,ftrecordfilename))
 
         img_raw=img.tobytes()#将图片转化为二进制格式
@@ -162,8 +203,10 @@ message Feature{
 '''
 def preprocess_img(image,outlen=224):
     #这里将图片变成224大小的，但是如果用crop可能导致切出来的图片里没有目标物体
-    
-    image=tf.image.resize_images(image, [230,230])
+    #print (image)
+    image=tf.image.resize_images(image, (230,230))
+    image=tf.cast(image, dtype=tf.uint8)
+    #print (image)
     #image = tf.image.resize_image_with_crop_or_pad(image, 230, 230)
     image = tf.random_crop(image, [outlen, outlen, 3])
     image = tf.image.random_flip_left_right(image)
@@ -226,9 +269,7 @@ if __name__ == '__main__':
     #gen_tfrecord(train_label_dir,'val')
     
     '''
-    for i in os.listdir(annotation_dir):
-        tep=op.join(annotation_dir, i)
-        show_objects(tep)
+
     '''
     with tf.Session() as sess:
         ims,las=read_tfrecord_batch('./voc_val_data')##'/media/sherl/本地磁盘1/workspaces/eclipse/use_tensorflow/use_tensor/locate_feature/voc_train_data'
