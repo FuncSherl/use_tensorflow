@@ -38,7 +38,7 @@ def get_bboxs(dir_xml):
     
     filename=root.getElementsByTagName('filename')[0].childNodes[0].data.strip()
     
-    print (filename)
+    #print (filename)
     
     
     
@@ -89,7 +89,7 @@ def get_bbox_labeltoimg(path_xml):
     ret:[[filename,label],[filename,label]]
     '''
     ret=[]
-    jpg_dir=op.join(op.split(path_xml)[0],'../JPEGImages/')
+    jpg_dir=op.join(path_xml,'../JPEGImages/')
     dirlis=os.listdir(path_xml)
     for ind,i in enumerate(dirlis):
         tep=op.join(path_xml, i)
@@ -107,7 +107,7 @@ def get_bbox_labeltoimg(path_xml):
                 label_k=j[0]
         
         ret.append([full_jpgpath, label_k])
-        print (ind,'/',len(dirlis),'  label to be:',label_k,'->',classes[label_k])
+        print ('\n',ind,'/',len(dirlis),' ',filname,'  label to be:',label_k,'->',classes[label_k])
     return ret
     
     
@@ -176,7 +176,7 @@ def gen_tfrecord_bbox(dir_xml,dir_name='VOC_train_data'):
     '''
     dir_name=dir_name+'-'+TIMESTAMP_DAY
     f_l=get_bbox_labeltoimg(dir_xml)
-    f_l=random.shuffle(f_l)
+    random.shuffle(f_l)
     write_to_rfrec(dir_name, f_l)
     
     
@@ -195,8 +195,8 @@ def write_to_rfrec(outdirname, name_label_list):
     if not op.exists(tfrecorddir):
         os.makedirs(tfrecorddir)
     
-    imgs_perfile=1000
-    cnt_a=0
+    imgs_perfile=2000
+    
     
     for ind,i in enumerate(ret):
         tep=i[0]
@@ -221,10 +221,10 @@ def write_to_rfrec(outdirname, name_label_list):
         })) 
         writer.write(example.SerializeToString())  #序列化为字符串
         print (ind,'/',len(ret),'  size:',size,'  to dir:',ftrecordfilename)
-        cnt_a+=1
+        
         
     writer.close()
-    print ('for all: write to ',tfrecorddir,'->',cnt_a,' images done!!')
+    print ('for all: write to ',tfrecorddir,'->',ind,' images done!!')
     
 
 '''
