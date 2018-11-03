@@ -33,6 +33,11 @@ class bp_model:
         self.dat_place=self.graph.get_tensor_by_name('Placeholder:0') 
         self.label_place=self.graph.get_tensor_by_name('Placeholder_1:0') 
         self.training=self.graph.get_tensor_by_name('Placeholder_2:0') 
+        
+        print(tf.trainable_variables())
+        print (self.graph.get_all_collection_keys())
+        
+        
          
     
     def load_model(self,modelpath):
@@ -44,4 +49,10 @@ class bp_model:
 
 
 if __name__ == '__main__':
-    pass
+    with tf.Session() as sess:
+        tep=bp_model(sess)
+        
+
+
+
+
