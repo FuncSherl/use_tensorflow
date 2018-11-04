@@ -21,7 +21,7 @@ from  use_tensor.locate_feature.vgg16_ori import *
 
 
 
-modelpath='./logs/VOC_2018-10-30_10-01-02_base_lr-0.001000_batchsize-30_maxstep-30000'
+modelpath='./logs/VOC_2018-11-02_20-45-58_base_lr-0.001000_batchsize-30_maxstep-30000'
 
 if __name__ == '__main__':
     #plt.ion()
