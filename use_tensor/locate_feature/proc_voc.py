@@ -65,19 +65,22 @@ def show_objects(path_xml):
     input:dirctory to xml like D:\data_DL\PascalVOC2012\VOC2012_all\VOC2012_trainval\Annotations
     '''
     
-    jpg_dir=op.join(op.split(path_xml)[0],'../JPEGImages/')
+    jpg_dir=op.join(op.split(path_xml)[0],'JPEGImages/')
     
     for i in os.listdir(path_xml):
         tep=op.join(path_xml, i)
         filname,bboxs=get_bboxs(tep)
         
         full_jpgpath=op.join(jpg_dir, filname)
+        
+        print (full_jpgpath)
     
         img=cv2.imread(full_jpgpath)
+        print (img)
         for j in bboxs:
-            cv2.rectangle(img, j[1:3], j[3:5], [255,0,0], 3)
+            cv2.rectangle(img, (j[1],j[2]), (j[3],j[4]), [255,0,0], 3)
             
-            cv2.putText(img, classes[j[0]], j[1:3], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255))
+            cv2.putText(img, classes[j[0]], (j[1],j[2]), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255))
     
         cv2.imshow('test', img)
         cv2.waitKey()
@@ -273,11 +276,11 @@ message Feature{
 '''
 def preprocess_img(image,outlen=224):
     #这里将图片变成224大小的，但是如果用crop可能导致切出来的图片里没有目标物体
-    '''
+    ''''''
     image=tf.image.resize_images(image, (230,230))
     image=tf.cast(image, dtype=tf.uint8)
-    '''
-    image = tf.image.resize_image_with_crop_or_pad(image, 230, 230)
+    
+    #image = tf.image.resize_image_with_crop_or_pad(image, 230, 230)
     image = tf.random_crop(image, [outlen, outlen, 3])
     image = tf.image.random_flip_left_right(image)
     
@@ -341,10 +344,10 @@ if __name__ == '__main__':
     
     #gen_tfrecord_bbox(test_annotation_dir,'VOC_test_data' )
     #gen_tfrecord_bbox(train_annotation_dir ,'VOC_train_data')
-    show_classes(test_annotation_dir)
+    #show_classes(test_annotation_dir)
     
     ''' '''
-
+    show_objects(train_annotation_dir)
     
     with tf.Session() as sess:
         ims,las=read_tfrecord_batch('./VOC_test_data-2018-11-02')##'/media/sherl/本地磁盘1/workspaces/eclipse/use_tensorflow/use_tensor/locate_feature/voc_train_data'
