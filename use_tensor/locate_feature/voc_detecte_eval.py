@@ -120,8 +120,10 @@ def voc_eval(detpath, annopath, imageset_file, classname, cache_dir, ovthresh=0.
         difficult = np.array([x['difficult'] for x in objects]).astype(np.bool)
         det = [False] * len(objects)  # stand for detected
         npos = npos + sum(~difficult)
-        class_recs[image_filename] = {'bbox': bbox,
-                                      'difficult': difficult,
+        
+        #GT保持的map
+        class_recs[image_filename] = {'bbox': bbox,#为1个list，每个元素为4int的list
+                                      'difficult': difficult,#每个框是否difficult
                                       'det': det}
 
     # read detections
@@ -137,7 +139,7 @@ def voc_eval(detpath, annopath, imageset_file, classname, cache_dir, ovthresh=0.
     # sort by confidence
     sorted_inds = np.argsort(-confidence)
     sorted_scores = np.sort(-confidence)
-    bbox = bbox[sorted_inds, :]
+    bbox = bbox[sorted_inds, :]#这里bbox和imgid都是按照confidence由大到小拍好的
     image_ids = [image_ids[x] for x in sorted_inds]
     #print('image_ids',image_ids)
     # go down detections and mark true positives and false positives
@@ -176,7 +178,7 @@ def voc_eval(detpath, annopath, imageset_file, classname, cache_dir, ovthresh=0.
             inters = iw * ih
             #print('inter:',inters)
             # union
-            uni = ((bb[2] - bb[0] + 1.) * (bb[3] - bb[1] + 1.) +
+            uni = ((bb[2] - bb[0] + 1.) * (bb[3] - bb[1] + 1.) +#为1个list，每个元素为4int的list
                    (bbgt[:, 2] - bbgt[:, 0] + 1.) *
                    (bbgt[:, 3] - bbgt[:, 1] + 1.) - inters)
             #
