@@ -169,7 +169,7 @@ def voc_eval(detpath, annopath, imageset_file, classname, cache_dir, ovthresh=0.
         if bbgt.size > 0:
             # compute overlaps
             # intersection
-            ixmin = np.maximum(bbgt[:, 0], bb[0])
+            ixmin = np.maximum(bbgt[:, 0], bb[0])#分别将每个bbgt中的与bb【0】做max操作，得到list
             iymin = np.maximum(bbgt[:, 1], bb[1])
             ixmax = np.minimum(bbgt[:, 2], bb[2])
             iymax = np.minimum(bbgt[:, 3], bb[3])
