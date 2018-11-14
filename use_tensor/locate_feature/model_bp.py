@@ -63,8 +63,8 @@ class bp_model:
             dif=[]
             for j in range(len(tep)-1):
                 dif.append(tep[j]-tep[j+1])
-                
-            plt.scatter(range(len(dif)), dif, c=cValue[ind%len(cValue)],s=1,marker='.')
+            tep=np.sort(tep)
+            #plt.scatter(range(len(dif)), dif, c=cValue[ind%len(cValue)],s=1,marker='.')
             plt.scatter(range(len(tep)), tep, c=cValue[(ind+1)%len(cValue)],s=1,marker='.')
             plt.show()
         
