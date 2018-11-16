@@ -301,6 +301,10 @@ class vgg16:
             self.parameters += [kernel, biases]
 
         # conv5_3
+        '''
+        out: Tensor("conv5_3/BiasAdd:0", shape=(30, 14, 14, 512), dtype=float32)
+        self.conv5_3 Tensor("conv5_3:0", shape=(30, 14, 14, 512), dtype=float32)
+        '''
         with tf.name_scope('conv5_3') as scope:
             kernel = tf.Variable(tf.truncated_normal([3, 3, 512, 512], dtype=tf.float32,
                                                      stddev=1e-1), name='weights')
@@ -308,7 +312,9 @@ class vgg16:
             biases = tf.Variable(tf.constant(0.0, shape=[512], dtype=tf.float32),
                                  trainable=True, name='biases')
             out = tf.nn.bias_add(conv, biases)
+            print ('out:',out)
             self.conv5_3 = tf.nn.relu(out, name=scope)
+            print ("self.conv5_3",self.conv5_3)
             self.parameters += [kernel, biases]
 
         # pool5
@@ -322,7 +328,7 @@ class vgg16:
     def fc_layers(self):
         # fc1
         with tf.name_scope('fc1') as scope:
-            shape = int(np.prod(self.pool5.get_shape()[1:]))
+            shape = int(np.prod(self.pool5.get_shape()[1:]))#除去batch维度，剩下的乘积，用于flatten原来的二维featuremap
             fc1w = tf.Variable(tf.truncated_normal([shape, 4096],
                                                          dtype=tf.float32,
                                                          stddev=1e-1), name='weights')
@@ -345,6 +351,7 @@ class vgg16:
                                  trainable=True, name='biases')
             fc2l = tf.nn.bias_add(tf.matmul(self.fc1, fc2w), fc2b)
             self.fc2 = tf.nn.relu(fc2l)
+            print("self.fc2",self.fc2)
             self.parameters += [fc2w, fc2b]
             
         #dropout2
@@ -358,6 +365,7 @@ class vgg16:
             fc3b = tf.Variable(tf.constant(1.0, shape=[out_class], dtype=tf.float32),
                                  trainable=True, name='biases')
             self.fc3l = tf.nn.bias_add(tf.matmul(self.fc2, fc3w), fc3b)
+            self.fc3 = tf.nn.relu(self.fc3l)
             self.parameters_last += [fc3w, fc3b]    #here we want to finetune,so shouldn't init the weight with model
             
             

@@ -38,13 +38,77 @@ class bp_model:
             print(i)
         print (self.graph.get_all_collection_keys())
         
+        '''
+        out: Tensor("conv5_3/BiasAdd:0", shape=(30, 14, 14, 512), dtype=float32)
+        self.conv5_3 Tensor("conv5_3:0", shape=(30, 14, 14, 512), dtype=float32)
+        '''
+        #/fc3////////////////////////////////////////////////////////
+        '''
         self.fc3_w=self.graph.get_tensor_by_name('fc3/weights:0')
         self.fc3_b=self.graph.get_tensor_by_name('fc3/biases:0')
         
-        w3,b3=self.sess.run([self.fc3_w, self.fc3_b])
-        print (w3,'\n',b3)
+        self.fc3_out=self.graph.get_tensor_by_name('fc3/BiasAdd:0')
+        #self.fc3_relu
         
+        #/fc2//////////////////////////////////////////////////////
+        self.fc2_w=self.graph.get_tensor_by_name('fc2/weights:0')
+        self.fc2_b=self.graph.get_tensor_by_name('fc2/biases:0')
+        self.fc2_out=self.graph.get_tensor_by_name('fc2/BiasAdd:0')
+        self.fc2_relu=self.graph.get_tensor_by_name('fc2/Relu:0')
+        '''
+        self.get_onelayer_tensors('fc3')
+        self.get_onelayer_tensors('fc2')
+        
+        #待测试图片
+        imgst,labst=self.sess.run([test_imgs, test_labs])
+        feed_tep={self.dat_place: imgst,self.label_place: labst, self.training:False}#
+        
+        
+        #///////////////////////////////////////////////////////////////////////////
+        w3,b3, out3,relu2=self.sess.run([self.fc3_w, self.fc3_b, self.fc3_out, self.fc2_relu], feed_dict=feed_tep)
+        
+        print (type(w3))
+        batch_select=0
+        
+        tep=out3[batch_select]
+        mx=np.argmax(tep)
+        
+       
+        #print (w3,'\n',b3)
+        print (w3.T.shape)
         self.show_weight(w3)
+        
+        
+    def get_layerandlastlayer_max(self,layername,lastlayername, feed_tep):
+        now=self.get_onelayer_tensors(layername)#
+        last=self.get_onelayer_tensors(lastlayername)#
+        
+        relu3, w3,b3, relu2=self.sess.run([*now, last[-1]], feed_dict=feed_tep)
+        
+        return [relu3, w3,b3, relu2]
+        
+        
+    def get_onelayer_tensors(self,name):
+        '''
+        get one namescope's tensors through name
+        '''
+        ret=[]
+        classname = self.__dict__
+        classname[name+'_w']=self.graph.get_tensor_by_name(name+'/weights:0')
+        ret.append(classname[name+'_w'])
+        
+        classname[name+'_b']=self.graph.get_tensor_by_name(name+'/biases:0')
+        ret.append(classname[name+'_b'])
+        
+        classname[name+'_out']=self.graph.get_tensor_by_name(name+'/BiasAdd:0')
+        ret.append(classname[name+'_out'])
+        
+        if name!='fc3':
+            classname[name+'_relu']=self.graph.get_tensor_by_name(name+'/Relu:0')
+            ret.append(classname[name+'_relu'])
+        
+        return ret
+        
          
     
     def load_model(self,modelpath=modelpath):
@@ -52,7 +116,14 @@ class bp_model:
         saver.restore(self.sess, tf.train.latest_checkpoint(modelpath))
         print ('restore weights done!')
         
+    def show_feature_oneimg(self,fea):
+        
+        pass
+        
     def show_weight(self,w3):
+        '''
+        w3 shape:[last lauer's shape, out shape] like [4096,20(class num)]
+        '''
         cValue = ['r','y','g','b','c','k','m']
         print (type(w3))
         w3=np.mat(w3)
