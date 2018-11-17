@@ -294,6 +294,7 @@ class vgg16:
             kernel = tf.Variable(tf.truncated_normal([3, 3, 512, 512], dtype=tf.float32,
                                                      stddev=1e-1), name='weights')
             conv = tf.nn.conv2d(self.conv5_1, kernel, [1, 1, 1, 1], padding='SAME')
+            
             biases = tf.Variable(tf.constant(0.0, shape=[512], dtype=tf.float32),
                                  trainable=True, name='biases')
             out = tf.nn.bias_add(conv, biases)
@@ -309,6 +310,9 @@ class vgg16:
             kernel = tf.Variable(tf.truncated_normal([3, 3, 512, 512], dtype=tf.float32,
                                                      stddev=1e-1), name='weights')
             conv = tf.nn.conv2d(self.conv5_2, kernel, [1, 1, 1, 1], padding='SAME')
+            
+            print (conv.get_shape())
+            
             biases = tf.Variable(tf.constant(0.0, shape=[512], dtype=tf.float32),
                                  trainable=True, name='biases')
             out = tf.nn.bias_add(conv, biases)
@@ -329,6 +333,9 @@ class vgg16:
         # fc1
         with tf.name_scope('fc1') as scope:
             shape = int(np.prod(self.pool5.get_shape()[1:]))#除去batch维度，剩下的乘积，用于flatten原来的二维featuremap
+            
+            print ('input to first fc length:',shape)
+            
             fc1w = tf.Variable(tf.truncated_normal([shape, 4096],
                                                          dtype=tf.float32,
                                                          stddev=1e-1), name='weights')

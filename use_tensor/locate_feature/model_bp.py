@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 
 #当前路径下的文件
 from  use_tensor.locate_feature.vgg16_ori import *
+from use_tensor.locate_feature.proc_voc import classes
 
 
 
@@ -56,8 +57,7 @@ class bp_model:
         self.fc2_out=self.graph.get_tensor_by_name('fc2/BiasAdd:0')
         self.fc2_relu=self.graph.get_tensor_by_name('fc2/Relu:0')
         '''
-        self.get_onelayer_tensors('fc3')
-        self.get_onelayer_tensors('fc2')
+
         
         #待测试图片
         imgst,labst=self.sess.run([test_imgs, test_labs])
@@ -65,18 +65,42 @@ class bp_model:
         
         
         #///////////////////////////////////////////////////////////////////////////
-        w3,b3, out3,relu2=self.sess.run([self.fc3_w, self.fc3_b, self.fc3_out, self.fc2_relu], feed_dict=feed_tep)
+        batch_select=1
+        numselect=10
+        print ('batchselect:',batch_select)
+        print("label_batchselect:",labst[batch_select],'-->',classes[labst[batch_select]])
         
-        print (type(w3))
-        batch_select=0
+        #////////////////////////////////////////////////////////////////////////////////////////////////////////
+        self.get_onelayer_tensors('fc3')
+        
+        self.get_onelayer_tensors('fc2')
+        w3,b3, out3,relu2=self.sess.run([self.fc3_w, self.fc3_b, self.fc3_out, self.fc2_relu], feed_dict=feed_tep)
         
         tep=out3[batch_select]
         mx=np.argmax(tep)
         
-       
+        wtep=(w3.T)[mx]
+        mult=wtep*relu2[batch_select]
+        
+        tepsort=np.argsort(mult)
+        fc2_maxindexs=tepsort[-numselect:]
+        fc2_minindexs=tepsort[:numselect]
+        
+        #print(mult[fc2_minindexs[0:3]])
+        #/////////////////////////////////////////////////////////////////////////
+        
+        
+        
+        
+        #self.show_a_vector(mult)
+        #////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        
+        
+        
         #print (w3,'\n',b3)
-        print (w3.T.shape)
-        self.show_weight(w3)
+        #print (w3.T.shape)
+        #self.show_weight(w3)
         
         
     def get_layerandlastlayer_max(self,layername,lastlayername, feed_tep):
@@ -86,7 +110,7 @@ class bp_model:
         relu3, w3,b3, relu2=self.sess.run([*now, last[-1]], feed_dict=feed_tep)
         
         return [relu3, w3,b3, relu2]
-        
+    #pool5 Tensor("pool4_1:0", shape=(30, 7, 7, 512)
         
     def get_onelayer_tensors(self,name):
         '''
@@ -104,8 +128,12 @@ class bp_model:
         ret.append(classname[name+'_out'])
         
         if name!='fc3':
-            classname[name+'_relu']=self.graph.get_tensor_by_name(name+'/Relu:0')
-            ret.append(classname[name+'_relu'])
+            if name.startswith('fc'):
+                classname[name+'_relu']=self.graph.get_tensor_by_name(name+'/Relu:0')
+                ret.append(classname[name+'_relu'])
+            elif name.startswith('con'):#conv层的relu层名字比较特殊
+                classname[name+'_relu']=self.graph.get_tensor_by_name(name+':0')
+                ret.append(classname[name+'_relu'])
         
         return ret
         
@@ -116,10 +144,21 @@ class bp_model:
         saver.restore(self.sess, tf.train.latest_checkpoint(modelpath))
         print ('restore weights done!')
         
+        
+        
+        
+        
     def show_feature_oneimg(self,fea):
         
         pass
-        
+    
+    def show_a_vector(self,vec): 
+        tep=np.sort(vec)
+        #tep=vec
+        #plt.scatter(range(len(dif)), dif, c=cValue[ind%len(cValue)],s=1,marker='.')
+        plt.scatter(range(len(tep)), tep,s=1,marker='.')
+        plt.show()
+    
     def show_weight(self,w3):
         '''
         w3 shape:[last lauer's shape, out shape] like [4096,20(class num)]
