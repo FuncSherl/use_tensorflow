@@ -116,6 +116,8 @@ def get_bbox_labeltoimg(path_xml):
     
 def get_label_file(dir_labels,classes=classes):
     '''
+    warning:this method is wrong , this leads to a image with various labels,even the bbox in image is very small
+    
     input:dir to these label files
     out:a map with key->class name, val->a list of file names in this class,for example:
         aeroplane ['2008_000021', '2008_000033']
@@ -148,7 +150,7 @@ def get_label_file(dir_labels,classes=classes):
 def gen_tfrecord(dir_labels,stage='train',classes=classes):
     '''
     stage in [train, val, test]
-    :由于voc中test没有标注，只好用train和val数据集fenbie训练和测试，但是train和val数量都是8000多，训练不够，就把val生成的tfrecord中拷2个（4000数据）到train中
+    :由于voc中test没有标注，只好用train和val数据集分别训练和测试，但是train和val数量都是8000多，训练不够，就把val生成的tfrecord中拷2个（4000数据）到train中
     '''
     ret=[]
     for label,i in enumerate(classes):
@@ -355,9 +357,6 @@ if __name__ == '__main__':
     test_annotation_dir=op.join(testdir, 'Annotations')
     test_label_dir=op.join(testdir, 'ImageSets\Main')
     #get_label_file(label_dir)
-    
-    #gen_tfrecord(train_label_dir)
-    #gen_tfrecord(train_label_dir,'val')
     
     
     #gen_tfrecord_bbox(test_annotation_dir,'VOC_test_data' )
