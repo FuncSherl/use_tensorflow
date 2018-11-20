@@ -136,7 +136,13 @@ class bp_model:
         print (len(minmap),'->',minmap)
         print (len(maxmap),'->',maxmap)
         
+        
+        
         #这里是fc向卷积的过度，从这里开始元素有了位置信息，注意下标的转化，由一维到多维
+        self.get_layerandlastlayer_pool2cnn(minmap, maxmap,  'conv5_3', feed_tep)
+        
+        
+        
         
         
         
@@ -158,6 +164,69 @@ class bp_model:
         #print (w3,'\n',b3)
         #print (w3.T.shape)
         #self.show_weight(w3)
+    
+        
+    def index2shape(self,index, targetsahpe):
+        '''
+        :主要用于由fc到pool时的下表转化，由一维到多维
+        '''
+        ret=[]
+        mult=np.prod(targetsahpe)
+        
+        if index>=mult: return None
+        
+        for i in targetsahpe:
+            mult=mult//i
+            ret.append(index//mult)
+            index=index%mult
+        return ret
+    
+    def shape2index(self,shape, coordinate):
+        '''
+        :用于shape的数组中的坐标到一维index的转化
+        '''
+        ret=0
+        mult=np.prod(shape)
+        
+        if len(shape)!= len(coordinate): return None
+        
+        for ind,i in enumerate(shape):
+            mult//=i
+            ret+=mult*coordinate[ind]
+        return ret
+        
+        
+    def get_layerandlastlayer_pool2cnn(self, indexs_min, indexs_max,  cnnname, feed_tep,pool_stride=np.array([2,2,1]), pool_kernel=np.array([2,2,1])):
+        cnn_tensors=self.get_onelayer_tensors(cnnname)
+        
+        feat=sess.run([cnn_tensors[-1]], feed_dict=feed_tep)[0][batch_select]
+        shape=np.array(feat.shape)#feature shape
+        poolshape=np.ceil(shape/pool_stride).astype(int)
+        
+        
+        
+        
+        
+        pass
+    
+    def get_padding(self, ni, k, s):
+        if ni%s==0:
+            return max(k-s,0)
+        else:
+            return max(k-ni%s,0)
+    
+    
+
+    
+    
+    def cal_cnn(self,cnnfeature, kernel, outindexs, kernelshape, stride):
+        '''
+        :需要 cnn的输入feature(去掉batch)  卷积后的坐标    卷积kernel  stride 计算对应上层featuremap中的坐标
+        outindex:[ [[x,y,z],count], [[x2,y2,z2],count2] ...]
+        '''
+        pass
+        
+        
     def get_layerandlastlayer_fc2pool(self, indexs_min, indexs_max, fcname, poolname, feed_tep):
         '''
         :当本层为fc，上层为pool时使用

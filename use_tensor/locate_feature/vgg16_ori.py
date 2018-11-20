@@ -334,7 +334,7 @@ class vgg16:
         with tf.name_scope('fc1') as scope:
             shape = int(np.prod(self.pool5.get_shape()[1:]))#除去batch维度，剩下的乘积，用于flatten原来的二维featuremap
             
-            print ('input to first fc length:',shape)
+            
             
             fc1w = tf.Variable(tf.truncated_normal([shape, 4096],
                                                          dtype=tf.float32,
