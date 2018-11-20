@@ -238,7 +238,15 @@ class bp_model:
         feature_withpad=np.append(pad, 0)+fshape
         tep_feat=np.zeros(feature_withpad)
         
-        tep_feat[pad[0]:pad[0]+fshape_wh[0], pad[1]:pad[1]+fshape_wh[1], :]=cnnfeature
+        tep_feat[pad[0]//2:pad[0]//2+fshape_wh[0], pad[1]//2:pad[1]//2+fshape_wh[1], :]=cnnfeature
+        
+        for i in indexs_min.keys():
+            coor=np.array(self.index2shape(i, outshape))
+            oricoor_hw=coor[0:2]*stride
+            
+            #print(oricoor)
+            tepf=tep_feat[oricoor_hw[0]:oricoor_hw[0]+kernel_wh[0], \
+                          oricoor_hw[1]:oricoor_hw[1]+kernel_wh[1], kernel.shape[2]]
         
         pass
             
