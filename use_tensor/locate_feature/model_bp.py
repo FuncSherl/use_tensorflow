@@ -139,8 +139,10 @@ class bp_model:
         
         
         #这里是fc向卷积的过度，从这里开始元素有了位置信息，注意下标的转化，由一维到多维
-        self.get_layerandlastlayer_pool2cnn(minmap, maxmap,  'conv5_3', feed_tep)
-        
+        minmap, maxmap=self.get_layerandlastlayer_pool2cnn(minmap, maxmap,  'conv5_3', feed_tep)
+        print ('\npool4-->conv5_3:')
+        print (len(minmap),'->',minmap)
+        print (len(maxmap),'->',maxmap)
         
         
         
@@ -201,30 +203,71 @@ class bp_model:
         
         feat=sess.run([cnn_tensors[-1]], feed_dict=feed_tep)[0][batch_select]
         shape=np.array(feat.shape)#feature shape
-        poolshape=np.ceil(shape/pool_stride).astype(int)
+        poolshape=np.ceil(shape/pool_stride).astype(int)#根据这里算出来的shape将index转化为坐标
         
+        pad=self.get_padding(shape, pool_kernel, pool_stride)
+        tep_feat=np.zeros(shape+pad)
         
+        #print (tep_feat.shape)
         
+        for i in indexs_min.keys():
+            coor=np.array(self.index2shape(i, poolshape))
+            oricoor=coor*pool_stride
+            
+            #print(oricoor)
+            tepf=tep_feat[oricoor[0]:oricoor[0]+pool_kernel[0], oricoor[1]:oricoor[1]+pool_kernel[1], oricoor[2]:oricoor[2]+pool_kernel[2]]
+            
+    
+    def cal_cnn(self,cnnfeature, kernel, indexs_min, indexs_max,  stride):
+        '''
+        cnnfeature:the 上一层输出的featuremap，被卷积的[width,height, channel]
+        kernel：4维度的kernel weight， shape:[filter_height, filter_width, in_channels, out_channels]
+        indexs:a map key is index, val is count, will trans index to coordinate by the shape cal use cnnfeature shape and stride shape
+        stride : 2 dim
+        '''
+        fshape=np.array(cnnfeature.shape)#feature shape
+        fshape_wh=fshape[0:2]
         
+        outshape_wh=np.ceil(fshape_wh/stride).astype(int)
+        outshape=np.append(outshape_wh, kernel.shape[-1])#根据这里算出来的shape将index转化为坐标   默认SAME模式
+        print ('outshape:',outshape.shape)
+        
+        kernel_wh=kernel.shape[0:2]
+        
+        pad=self.get_padding(fshape_wh, kernel_wh, stride)
+        feature_withpad=np.append(pad, 0)+fshape
+        tep_feat=np.zeros(feature_withpad)
+        
+        tep_feat[pad[0]:pad[0]+fshape_wh[0], pad[1]:pad[1]+fshape_wh[1], :]=cnnfeature
         
         pass
+            
+            
+            
+            
+        
+        
+        
+        
+        
+        
     
     def get_padding(self, ni, k, s):
-        if ni%s==0:
-            return max(k-s,0)
-        else:
-            return max(k-ni%s,0)
-    
+        '''
+        :输入的形状（没有batch）   kernel形状（同ni对应）    stride形状  （维数要一致）
+        https://www.tensorflow.org/api_guides/python/nn#Notes_on_SAME_Convolution_Padding
+        '''
+        ret=[]
+        for i in range(len(ni)):#只在长宽上有padding
+            if ni[i]%s[i]==0:
+                ret.append( max(k[i]-s[i],0))
+            else:
+                ret.append( max(k[i]-ni[i]%s[i],0))
+        return ret
     
 
     
-    
-    def cal_cnn(self,cnnfeature, kernel, outindexs, kernelshape, stride):
-        '''
-        :需要 cnn的输入feature(去掉batch)  卷积后的坐标    卷积kernel  stride 计算对应上层featuremap中的坐标
-        outindex:[ [[x,y,z],count], [[x2,y2,z2],count2] ...]
-        '''
-        pass
+
         
         
     def get_layerandlastlayer_fc2pool(self, indexs_min, indexs_max, fcname, poolname, feed_tep):
@@ -298,18 +341,18 @@ class bp_model:
         return ret_min, ret_max
     
     
-    def get_minindexs(self,vec):
+    def get_minindexs(self,vec,numselect=12):
         '''
         :用于取出给定的向量中的最小部分 这里可能需要一些套路
         '''
-        numselect=12
+        
         return np.argsort(vec)[:numselect]
     
-    def get_maxindexs(self,vec):
+    def get_maxindexs(self,vec, numselect=12):
         '''
         :用于取出给定的向量中的最da部分 这里可能需要一些套路
         '''
-        numselect=12
+        
         return np.argsort(vec)[-numselect:]
         
         
