@@ -202,21 +202,13 @@ class bp_model:
         cnn_tensors=self.get_onelayer_tensors(cnnname)
         
         feat=sess.run([cnn_tensors[-1]], feed_dict=feed_tep)[0][batch_select]
-        shape=np.array(feat.shape)#feature shape
-        poolshape=np.ceil(shape/pool_stride).astype(int)#根据这里算出来的shape将index转化为坐标
+        mi,ma=self.cal_cnn(feat, np.ones([2,2,1,1]),indexs_min, indexs_max,[2,2],True)
         
-        pad=self.get_padding(shape, pool_kernel, pool_stride)
-        tep_feat=np.zeros(shape+pad)
         
+        
+        return mi,ma
         #print (tep_feat.shape)
         
-        for i in indexs_min.keys():
-            coor=np.array(self.index2shape(i, poolshape))
-            oricoor=coor*pool_stride
-            
-            #print(oricoor)
-            tepf=tep_feat[oricoor[0]:oricoor[0]+pool_kernel[0], oricoor[1]:oricoor[1]+pool_kernel[1], oricoor[2]:oricoor[2]+pool_kernel[2]]
-            
     
     def cal_cnn(self,cnnfeature, kernel, indexs_min, indexs_max,  stride, pooling=False):
         '''
@@ -238,7 +230,7 @@ class bp_model:
         else:
             outshape=np.append(outshape_wh, fshape[-1])#根据这里算出来的shape将index转化为坐标   默认SAME模式
         
-        print ('outshape:',outshape.shape)
+        print ('outshape:',outshape)
         
         kernel_wh=kernel.shape[0:2]
         
@@ -249,7 +241,9 @@ class bp_model:
         tep_feat[pad[0]//2:pad[0]//2+fshape_wh[0], pad[1]//2:pad[1]//2+fshape_wh[1], :]=cnnfeature
         
         for i in indexs_min.keys():
+            print('\n',i,' index2coor:',outshape)
             coor=np.array(self.index2shape(i, outshape))
+           # print (coor, stride)
             oricoor_hw=coor[0:2]*stride#padding 后坐标
             
             #print(oricoor)
@@ -279,7 +273,7 @@ class bp_model:
                     ret_min[ind]+=indexs_min[i]
                 else:
                     ret_min[ind]=indexs_min[i]
-        
+        #////////////////////////////////////////////////////////////////////////////////
         for i in indexs_max.keys():
             coor=np.array(self.index2shape(i, outshape))
             oricoor_hw=coor[0:2]*stride#padding 后坐标
@@ -308,10 +302,10 @@ class bp_model:
                     
                 ind=self.shape2index(fshape, full_coor)
                 if ind in ret_min.keys():
-                    ret_min[ind]+=indexs_min[i]
+                    ret_max[ind]+=indexs_max[i]
                 else:
-                    ret_min[ind]=indexs_min[i]
-            
+                    ret_max[ind]=indexs_max[i]
+        return ret_min, ret_max
             
             
             
@@ -341,7 +335,7 @@ class bp_model:
                 ret.append( max(k[i]-s[i],0))
             else:
                 ret.append( max(k[i]-ni[i]%s[i],0))
-        return ret
+        return np.array(ret)
     
 
     
