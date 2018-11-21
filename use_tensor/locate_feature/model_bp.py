@@ -257,6 +257,7 @@ class bp_model:
                 tep_mult=tepf#2 dim
             
             
+            
             #!!!!!!!!!!!!!!!!!!!
             coor_inkernel=self.index2shape(np.argmin(tep_mult), tep_mult.shape)
             global_coor=oricoor_hw+coor_inkernel[0:2]-pad//2
@@ -267,7 +268,10 @@ class bp_model:
                     full_coor=np.append(global_coor, coor_inkernel[-1])
                 else:
                     full_coor=np.append(global_coor, coor[-1])
-                    
+                
+                print (full_coor)
+                print (cnnfeature[full_coor[0], full_coor[1], full_coor[2]])
+                
                 ind=self.shape2index(fshape, full_coor)
                 if ind in ret_min.keys():
                     ret_min[ind]+=indexs_min[i]
@@ -392,6 +396,7 @@ class bp_model:
             tepvec=tepw*teprelu
             #print (tepvec.shape)
             tepminind=self.get_minindexs(tepvec)
+            print ("fc layer last feat--min:",tepminind, '\n',lastfeature[tepminind])
             for j in tepminind:
                 if j in ret_min.keys():
                     ret_min[j]+=indexs_min[i]
