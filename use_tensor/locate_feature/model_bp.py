@@ -246,9 +246,14 @@ class bp_model:
             
             #print(oricoor)
             tepf=tep_feat[oricoor_hw[0]:oricoor_hw[0]+kernel_wh[0], \
-                          oricoor_hw[1]:oricoor_hw[1]+kernel_wh[1], kernel.shape[2]]
+                          oricoor_hw[1]:oricoor_hw[1]+kernel_wh[1], :kernel.shape[2]]
+            
+            tep_mult=tepf*kernel[:,:,:,coor[-1]]
+            
+            
+            
+            
         
-        pass
             
             
             
