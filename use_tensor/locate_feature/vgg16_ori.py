@@ -153,6 +153,7 @@ class vgg16:
     
     def eval_once(self,sess, eval_size=eval_size):
         cnt_true=0.0
+        cnt_loss=0.0
         
         batch_num=int(eval_size/batchsize)+1
         for i in range(batch_num):
@@ -163,22 +164,24 @@ class vgg16:
             
             #how many true in every batch
             #这里是测试，应设置training为false
-            batch_true = sess.run([eval_b], feed_dict={self.imgs: imgst, self.labs: labst, self.training:False})[0]
+            batch_true,cross_loss = sess.run([eval_b,self.loss], feed_dict={self.imgs: imgst, self.labs: labst, self.training:False})
             
-            print (i,'/',batch_num,'  eval one batch:',batch_true,'/',batchsize,'-->',float(batch_true)/batchsize)
+            print (i,'/',batch_num,'  eval one batch:',batch_true,'/',batchsize,'-->',float(batch_true)/batchsize,'  loss:',cross_loss)
             
             
             #top_k_op = tf.nn.in_top_k(self.probs, labst, topk)
             cnt_true+=batch_true   # tf.reduce_sum(tf.cast(top_k_op,tf.int32))
+            cnt_loss+=cross_loss
         
         rate_true=cnt_true/(batch_num*batchsize)
+        average_loss=cnt_loss/batch_num
         
         #tepsummary=tf.summary.scalar('accuracy rate:', rate_true)
         #self.test_summarys.append(tepsummary)
         
         #ret_summ=sess.run([tepsummary] )[0]
             
-        return rate_true 
+        return rate_true ,average_loss
          
         
         
@@ -463,19 +466,19 @@ if __name__ == '__main__':
                 
         
         #再开始前先测试一次，看下准确率，也将summary加入tf中，免得后面tf.summary.merge_all()没将这个eval_once里面的summary算进去
-        acc=vgg.eval_once(sess)
+        acc,_=vgg.eval_once(sess)
         print ('eval the test datas:',acc)
         
         begin_t=time.time()
         for i in range(maxstep):            
             if ((i+1)%300==0):
-                acc=vgg.eval_once(sess)
+                acc,tloss=vgg.eval_once(sess)
                 print ('training at %d eval the test datas:'%i,acc)
                 
                 #自己构建summary
                 tsummary = tf.Summary()
-                tsummary.value.add(tag='accuracy rate:', simple_value=acc)
-                #tsummary.value.add(tag='loss:', simple_value=)
+                tsummary.value.add(tag='test epoch accuracy rate:', simple_value=acc)
+                tsummary.value.add(tag='test epoch loss:', simple_value=tloss)
                 #写入日志
                 logwriter.add_summary(tsummary, i)
                 
