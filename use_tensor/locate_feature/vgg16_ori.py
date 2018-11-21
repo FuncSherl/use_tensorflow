@@ -40,23 +40,31 @@ class vgg16:
         
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
         
+        self.train_summarys=[]
+        self.test_summarys=[]
+        
         #先构建网络结构
         self.convlayers()
         self.fc_layers()
         
-        #再构建train等操作
+        #再构建train,evaluate等操作
         self.loss=self.getloss()#loss operation
         self.train_op=self.training_op(baselr=base_lr,decay_steps=decay_steps, decay_rate=decay_rate)
+        #self.eval_all_op=self.eval_epoch(topk=1)
         self.eval_batch_op=self.eval_batch(topk=1)
         
-
+        #softmax op
         self.probs = tf.nn.softmax(self.fc3l)
         
+        #输出看下类里面的成员
         for i in self.__dict__:
             print('dict in vgg16:',i,self.__dict__[i])
         
-        self.merged = tf.summary.merge_all()
+        #merge 两类train/test summary，注意不可直接merge_all否则出来的evaluate结果是训练集上的
+        if len(self.train_summarys): self.merged_train = tf.summary.merge(self.train_summarys)
+        if len(self.test_summarys): self.merged_test = tf.summary.merge(self.test_summarys)
         
+        #一些初始化操作        
         init = tf.global_variables_initializer()#初始化tf.Variable,虽然后面会有初始化权重过程，但是最后一层是要根据任务来的,无法finetune，其参数需要随机初始化
         sess.run(init)
         
@@ -69,14 +77,16 @@ class vgg16:
         losst=tf.losses.sparse_softmax_cross_entropy(labels=self.labs, logits=self.fc3l )#这里应该传入softmax之前的tensor
         cross_entropy_mean = tf.reduce_mean(losst)
         
-        tf.summary.scalar('loss',cross_entropy_mean)
+        tepsummary=tf.summary.scalar('loss',cross_entropy_mean)
+        self.train_summarys.append(tepsummary)
         
         return cross_entropy_mean
     
     def training_op(self,baselr=base_lr,decay_steps=1000, decay_rate=0.99):
         lr_rate = tf.train.exponential_decay(baselr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         
-        tf.summary.scalar('learning rate', lr_rate)
+        tepsummary=tf.summary.scalar('learning rate', lr_rate)
+        self.train_summarys.append(tepsummary)
     
         # Use the optimizer to apply the gradients that minimize the loss
         # (and also increment the global step counter) as a single training step.
@@ -94,7 +104,7 @@ class vgg16:
         imgst,labels=sess.run([train_imgs,train_labs])
         
         #训练时启用dropout
-        los,_, sum_ret=sess.run([self.loss, self.train_op, self.merged], feed_dict={self.imgs: imgst,self.labs: labels, self.training:True})
+        los,_, sum_ret=sess.run([self.loss, self.train_op, self.merged_train], feed_dict={self.imgs: imgst,self.labs: labels, self.training:True})
         return los,sum_ret
 
     
@@ -103,8 +113,43 @@ class vgg16:
         cnt=tf.reduce_sum(tf.cast(top_k_op,tf.int32))
         
         #tf.summary.scalar('accuracy rate:', (cnt)/labels.shape[0])
-        tf.summary.scalar('accuracy rate:', cnt/self.labs.shape[0])
+        
+        #这里的summary没什么效果，因为在train时候出来的是在训练集上的准确率
+        #tepsummary=tf.summary.scalar('accuracy rate:', cnt/self.labs.shape[0])
+        #self.test_summarys.append(tepsummary)
+        
         return cnt
+    
+    
+    def eval_epoch(self, topk=1):
+        '''
+        :在这种先获取img再输入网络中的方式不适合，适合直接链接数据输入到网络的结构，可以全部在gpu上计算完成
+        '''
+        batch_num=tf.constant(int(eval_size/batchsize)+1)
+        i=tf.Variable(0,trainable=False)
+        
+        cnt_true=tf.Variable(0,dtype=tf.float32,trainable=False)
+        cnt_img=tf.Variable(1,dtype=tf.float32,trainable=False)
+        
+        def cond(i, n):
+            return i<n
+        
+        def body(i,n):
+            i.assign_add(1)
+            
+            cnt_true.assign_add(self.eval_batch(topk))            
+            cnt_img.assign_add(batchsize)
+            
+            return i,n
+        
+        i, batch_num=tf.while_loop(cond, body, [i, batch_num])
+        
+        tepsummary=tf.summary.scalar('accuracy rate:', cnt_true/cnt_img)
+        self.test_summarys.append(tepsummary)
+        
+        return cnt_true/cnt_img
+        
+         
     
     def eval_once(self,sess, eval_size=eval_size):
         cnt_true=0.0
@@ -122,13 +167,21 @@ class vgg16:
             
             print (i,'/',batch_num,'  eval one batch:',batch_true,'/',batchsize,'-->',float(batch_true)/batchsize)
             
+            
             #top_k_op = tf.nn.in_top_k(self.probs, labst, topk)
             cnt_true+=batch_true   # tf.reduce_sum(tf.cast(top_k_op,tf.int32))
         
         rate_true=cnt_true/(batch_num*batchsize)
         
-        return rate_true
-
+        #tepsummary=tf.summary.scalar('accuracy rate:', rate_true)
+        #self.test_summarys.append(tepsummary)
+        
+        #ret_summ=sess.run([tepsummary] )[0]
+            
+        return rate_true 
+         
+        
+        
 
     def convlayers(self):
         self.parameters = []
@@ -418,6 +471,14 @@ if __name__ == '__main__':
             if ((i+1)%300==0):
                 acc=vgg.eval_once(sess)
                 print ('training at %d eval the test datas:'%i,acc)
+                
+                #自己构建summary
+                tsummary = tf.Summary()
+                tsummary.value.add(tag='accuracy rate:', simple_value=acc)
+                #tsummary.value.add(tag='loss:', simple_value=)
+                #写入日志
+                logwriter.add_summary(tsummary, i)
+                
                 
                 print ('saving models...')
                 pat=all_saver.save(sess, op.join(logdir,'model_keep'),global_step=i)
