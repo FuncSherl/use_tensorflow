@@ -218,18 +218,26 @@ class bp_model:
             tepf=tep_feat[oricoor[0]:oricoor[0]+pool_kernel[0], oricoor[1]:oricoor[1]+pool_kernel[1], oricoor[2]:oricoor[2]+pool_kernel[2]]
             
     
-    def cal_cnn(self,cnnfeature, kernel, indexs_min, indexs_max,  stride):
+    def cal_cnn(self,cnnfeature, kernel, indexs_min, indexs_max,  stride, pooling=False):
         '''
+        :将maxpool 和  卷积  的反向合到一个函数里面
         cnnfeature:the 上一层输出的featuremap，被卷积的[width,height, channel]
         kernel：4维度的kernel weight， shape:[filter_height, filter_width, in_channels, out_channels]
         indexs:a map key is index, val is count, will trans index to coordinate by the shape cal use cnnfeature shape and stride shape
-        stride : 2 dim
+        stride : 2 [h,w]
         '''
+        ret_min={}
+        ret_max={}
         fshape=np.array(cnnfeature.shape)#feature shape
         fshape_wh=fshape[0:2]
         
         outshape_wh=np.ceil(fshape_wh/stride).astype(int)
-        outshape=np.append(outshape_wh, kernel.shape[-1])#根据这里算出来的shape将index转化为坐标   默认SAME模式
+        
+        if not pooling:
+            outshape=np.append(outshape_wh, kernel.shape[-1])#根据这里算出来的shape将index转化为坐标   默认SAME模式
+        else:
+            outshape=np.append(outshape_wh, fshape[-1])#根据这里算出来的shape将index转化为坐标   默认SAME模式
+        
         print ('outshape:',outshape.shape)
         
         kernel_wh=kernel.shape[0:2]
@@ -242,13 +250,38 @@ class bp_model:
         
         for i in indexs_min.keys():
             coor=np.array(self.index2shape(i, outshape))
-            oricoor_hw=coor[0:2]*stride
+            oricoor_hw=coor[0:2]*stride#padding 后坐标
             
             #print(oricoor)
-            tepf=tep_feat[oricoor_hw[0]:oricoor_hw[0]+kernel_wh[0], \
-                          oricoor_hw[1]:oricoor_hw[1]+kernel_wh[1], :kernel.shape[2]]
+            if not pooling:
+                tepf=tep_feat[oricoor_hw[0]:oricoor_hw[0]+kernel_wh[0], \
+                              oricoor_hw[1]:oricoor_hw[1]+kernel_wh[1], :kernel.shape[2]]
+                tep_mult=tepf*kernel[:,:,:,coor[-1]]#3 -dim
+            else:
+                tepf=tep_feat[oricoor_hw[0]:oricoor_hw[0]+kernel_wh[0], \
+                              oricoor_hw[1]:oricoor_hw[1]+kernel_wh[1], coor[-1]]
+                tep_mult=tepf#2 dim
             
-            tep_mult=tepf*kernel[:,:,:,coor[-1]]
+            
+            #!!!!!!!!!!!!!!!!!!!
+            coor_inkernel=self.index2shape(np.argmax(tep_mult), tep_mult.shape)
+            global_coor=oricoor_hw+coor_inkernel[0:2]-pad//2
+            
+            #如果坐标都小于0，说明都在补的pad上
+            if (global_coor>=0).all() and (global_coor<fshape_wh).all():
+                if not pooling:
+                    full_coor=np.append(global_coor, coor_inkernel[-1])
+                else:
+                    full_coor=np.append(global_coor, coor[-1])
+                    
+                ind=self.shape2index(fshape, full_coor)
+                if ind in ret_min.keys():
+                    ret_min[ind]+=indexs_min[i]
+                else:
+                    ret_min[ind]=indexs_min[i]
+            
+            
+            
             
             
             
