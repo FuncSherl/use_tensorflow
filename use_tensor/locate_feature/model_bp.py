@@ -264,6 +264,38 @@ class bp_model:
             
             
             #!!!!!!!!!!!!!!!!!!!
+            coor_inkernel=self.index2shape(np.argmin(tep_mult), tep_mult.shape)
+            global_coor=oricoor_hw+coor_inkernel[0:2]-pad//2
+            
+            #如果坐标都小于0，说明都在补的pad上
+            if (global_coor>=0).all() and (global_coor<fshape_wh).all():
+                if not pooling:
+                    full_coor=np.append(global_coor, coor_inkernel[-1])
+                else:
+                    full_coor=np.append(global_coor, coor[-1])
+                    
+                ind=self.shape2index(fshape, full_coor)
+                if ind in ret_min.keys():
+                    ret_min[ind]+=indexs_min[i]
+                else:
+                    ret_min[ind]=indexs_min[i]
+        
+        for i in indexs_max.keys():
+            coor=np.array(self.index2shape(i, outshape))
+            oricoor_hw=coor[0:2]*stride#padding 后坐标
+            
+            #print(oricoor)
+            if not pooling:
+                tepf=tep_feat[oricoor_hw[0]:oricoor_hw[0]+kernel_wh[0], \
+                              oricoor_hw[1]:oricoor_hw[1]+kernel_wh[1], :kernel.shape[2]]
+                tep_mult=tepf*kernel[:,:,:,coor[-1]]#3 -dim
+            else:
+                tepf=tep_feat[oricoor_hw[0]:oricoor_hw[0]+kernel_wh[0], \
+                              oricoor_hw[1]:oricoor_hw[1]+kernel_wh[1], coor[-1]]
+                tep_mult=tepf#2 dim
+            
+            
+            #!!!!!!!!!!!!!!!!!!!
             coor_inkernel=self.index2shape(np.argmax(tep_mult), tep_mult.shape)
             global_coor=oricoor_hw+coor_inkernel[0:2]-pad//2
             
