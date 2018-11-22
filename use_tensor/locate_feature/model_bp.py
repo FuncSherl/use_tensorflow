@@ -198,19 +198,62 @@ class bp_model:
         return ret
         
         
-    def get_layerandlastlayer_pool2cnn(self, indexs_min, indexs_max,  cnnname, feed_tep,pool_stride=np.array([2,2,1]), pool_kernel=np.array([2,2,1])):
+    def get_layerandlastlayer_pool2cnn(self, indexs_min, indexs_max,  cnnname, feed_tep,pool_stride=np.array([2,2]), pool_kernel=np.array([2,2,1,1])):
         cnn_tensors=self.get_onelayer_tensors(cnnname)
         
         feat=sess.run([cnn_tensors[-1]], feed_dict=feed_tep)[0][batch_select]
-        mi,ma=self.cal_cnn(feat, np.ones([2,2,1,1]),indexs_min, indexs_max,[2,2],True)
         
-        
+        mi,ma=self.cal_cnn(feat, np.ones(pool_kernel),indexs_min, indexs_max,pool_stride,True)
         
         return mi,ma
         #print (tep_feat.shape)
         
+    def get_layerandlastlayer_cnn2cnn(self, indexs_min, indexs_max,  cnnname_src,cnnname_des, feed_tep,cnn_stride=np.array([2,2]) ):
+        now=self.get_onelayer_tensors(cnnname_src)#
+        last=self.get_onelayer_tensors(cnnname_des)#
+        
+        print('the out shape should be:',now[-1].get_shape())
+        
+        w,feat=self.sess.run([now[0], last[-1]], feed_dict=feed_tep)
+        self.cal_cnn(feat,w,indexs_min, indexs_max,[1,1])
+           
+        
+    def get_layerandlastlayer_fc2pool(self, indexs_min, indexs_max, fcname, poolname, feed_tep):
+        '''
+        :当本层为fc，上层为pool时使用
+        '''
+        pool5_feat_tensor=self.graph.get_tensor_by_name(poolname)# 'pool4_1:0'
+        w1_tensor=self.graph.get_tensor_by_name(fcname+'/weights:0')# 
+        w,feat=sess.run([w1_tensor, pool5_feat_tensor], feed_dict=feed_tep)
+        tepw=w.T
+        feat=feat[batch_select]
+        
+        shape=feat.shape
+        tepfeat=feat.reshape(-1)
+        
+        #print (tepw.shape, tepfeat.shape)
+        
+        return self.cal_fc2fc(indexs_min, indexs_max,tepw, tepfeat)
+        
+        
+    def get_layerandlastlayer_fc2fc(self,indexs_min, indexs_max, layername,lastlayername, feed_tep):
+        '''
+        indexs_min/max: a map, key is index, value is count
+        :当本层为fc且上层也为fc时用
+        '''
+        now=self.get_onelayer_tensors(layername)#
+        last=self.get_onelayer_tensors(lastlayername)#
+        
+        w3,relu2=self.sess.run([now[0], last[-1]], feed_dict=feed_tep)
+        w3=w3.T#默认下fc3->w 为4096*20 
+        relu2=relu2[batch_select]
+        #print(relu2.shape)           
+        
+        return self.cal_fc2fc(indexs_min, indexs_max,w3, relu2)
+    #pool5 Tensor("pool4_1:0", shape=(30, 7, 7, 512)
+        
     
-    def cal_cnn(self,cnnfeature, kernel, indexs_min, indexs_max,  stride, pooling=False):
+    def cal_cnn(self,cnnfeature, kernel, indexs_min, indexs_max,  stride, pooling=False, selnum=1):
         '''
         :将maxpool 和  卷积  的反向合到一个函数里面
         cnnfeature:the 上一层输出的featuremap，被卷积的[width,height, channel]
@@ -259,23 +302,26 @@ class bp_model:
             
             
             #!!!!!!!!!!!!!!!!!!!
-            coor_inkernel=self.index2shape(np.argmin(tep_mult), tep_mult.shape)
-            global_coor=oricoor_hw+coor_inkernel[0:2]-pad//2
-            
-            #如果坐标都小于0，说明都在补的pad上
-            if (global_coor>=0).all() and (global_coor<fshape_wh).all():
-                if not pooling:
-                    full_coor=np.append(global_coor, coor_inkernel[-1])
-                else:
-                    full_coor=np.append(global_coor, coor[-1])
+            min_sel=np.argsort(tep_mult.reshape(-1))[:selnum]
+            for ti in min_sel:
+                #print(ti)
+                coor_inkernel=self.index2shape(ti, tep_mult.shape)
+                global_coor=oricoor_hw+coor_inkernel[0:2]-pad//2
                 
-                
-                
-                ind=self.shape2index(fshape, full_coor)
-                if ind in ret_min.keys():
-                    ret_min[ind]+=indexs_min[i]
-                else:
-                    ret_min[ind]=indexs_min[i]
+                #如果坐标都小于0，说明都在补的pad上
+                if (global_coor>=0).all() and (global_coor<fshape_wh).all():
+                    if not pooling:
+                        full_coor=np.append(global_coor, coor_inkernel[-1])
+                    else:
+                        full_coor=np.append(global_coor, coor[-1])
+                    
+                    
+                    
+                    ind=self.shape2index(fshape, full_coor)
+                    if ind in ret_min.keys():
+                        ret_min[ind]+=indexs_min[i]
+                    else:
+                        ret_min[ind]=indexs_min[i]
         #////////////////////////////////////////////////////////////////////////////////
         for i in indexs_max.keys():
             #print('\n',i,' index2coor:',outshape)
@@ -294,41 +340,29 @@ class bp_model:
             
             
             #!!!!!!!!!!!!!!!!!!!
-            coor_inkernel=self.index2shape(np.argmax(tep_mult), tep_mult.shape)
-            global_coor=oricoor_hw+coor_inkernel[0:2]-pad//2
-            
-            #如果坐标都小于0，说明都在补的pad上
-            if (global_coor>=0).all() and (global_coor<fshape_wh).all():
-                if not pooling:
-                    full_coor=np.append(global_coor, coor_inkernel[-1])
-                else:
-                    full_coor=np.append(global_coor, coor[-1])
+            max_sel=np.argsort(tep_mult.reshape(-1))[-selnum:]
+            for ti in max_sel:            
+                coor_inkernel=self.index2shape(ti, tep_mult.shape)
+                global_coor=oricoor_hw+coor_inkernel[0:2]-pad//2
                 
-                #print (full_coor)
-                #print (cnnfeature[full_coor[0], full_coor[1], full_coor[2]])    
-                
-                ind=self.shape2index(fshape, full_coor)
-                if ind in ret_min.keys():
-                    ret_max[ind]+=indexs_max[i]
-                else:
-                    ret_max[ind]=indexs_max[i]
+                #如果坐标都小于0，说明都在补的pad上
+                if (global_coor>=0).all() and (global_coor<fshape_wh).all():
+                    if not pooling:
+                        full_coor=np.append(global_coor, coor_inkernel[-1])
+                    else:
+                        full_coor=np.append(global_coor, coor[-1])
+                    
+                    #print (full_coor)
+                    #print (cnnfeature[full_coor[0], full_coor[1], full_coor[2]])    
+                    
+                    ind=self.shape2index(fshape, full_coor)
+                    if ind in ret_min.keys():
+                        ret_max[ind]+=indexs_max[i]
+                    else:
+                        ret_max[ind]=indexs_max[i]
         return ret_min, ret_max
             
-            
-            
-            
-            
-            
-        
-            
-            
-            
-            
-        
-        
-        
-        
-        
+             
         
     
     def get_padding(self, ni, k, s):
@@ -345,43 +379,6 @@ class bp_model:
         return np.array(ret)
     
 
-    
-
-        
-        
-    def get_layerandlastlayer_fc2pool(self, indexs_min, indexs_max, fcname, poolname, feed_tep):
-        '''
-        :当本层为fc，上层为pool时使用
-        '''
-        pool5_feat_tensor=self.graph.get_tensor_by_name(poolname)# 'pool4_1:0'
-        w1_tensor=self.graph.get_tensor_by_name(fcname+'/weights:0')# 
-        w,feat=sess.run([w1_tensor, pool5_feat_tensor], feed_dict=feed_tep)
-        tepw=w.T
-        feat=feat[batch_select]
-        
-        shape=feat.shape
-        tepfeat=feat.reshape(-1)
-        
-        #print (tepw.shape, tepfeat.shape)
-        
-        return self.cal_fc2fc(indexs_min, indexs_max,tepw, tepfeat)
-        
-        
-    def get_layerandlastlayer_fc2fc(self,indexs_min, indexs_max, layername,lastlayername, feed_tep):
-        '''
-        indexs_min/max: a map, key is index, value is count
-        :当本层为fc且上层也为fc时用
-        '''
-        now=self.get_onelayer_tensors(layername)#
-        last=self.get_onelayer_tensors(lastlayername)#
-        
-        w3,relu2=self.sess.run([now[0], last[-1]], feed_dict=feed_tep)
-        w3=w3.T#默认下fc3->w 为4096*20 
-        relu2=relu2[batch_select]
-        #print(relu2.shape)           
-        
-        return self.cal_fc2fc(indexs_min, indexs_max,w3, relu2)
-    #pool5 Tensor("pool4_1:0", shape=(30, 7, 7, 512)
     
     def cal_fc2fc(self, indexs_min, indexs_max,now_weight, lastfeature):
         '''
