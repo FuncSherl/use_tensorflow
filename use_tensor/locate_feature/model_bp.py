@@ -139,15 +139,15 @@ class bp_model:
         print ('pool4-->conv5_3:')
         self.print_minmax(minmap, maxmap)
         
-        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv5_3','conv5_2', feed_tep,np.array([1,1]))
+        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv5_3','conv5_2', feed_tep,np.array([1,1]),  2)
         print ('conv5_3-->conv5_2:')
         self.print_minmax(minmap, maxmap)
         
-        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv5_2','conv5_1', feed_tep,np.array([1,1]))
+        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv5_2','conv5_1', feed_tep,np.array([1,1]),  2)
         print ('conv5_2-->conv5_1:')
         self.print_minmax(minmap, maxmap)
         
-        minmap, maxmap=self.get_layerandlastlayer_cnn2pool(minmap, maxmap,  'conv5_1','pool4:0', feed_tep,np.array([1,1]))
+        minmap, maxmap=self.get_layerandlastlayer_cnn2pool(minmap, maxmap,  'conv5_1','pool4:0', feed_tep,np.array([1,1]),  2)
         print ('conv5_1-->pool4:0:')
         self.print_minmax(minmap, maxmap)
         
@@ -159,15 +159,15 @@ class bp_model:
         print ('pool4:0-->conv4_3:')
         self.print_minmax(minmap, maxmap)
         
-        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv4_3','conv4_2', feed_tep,np.array([1,1]))
+        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv4_3','conv4_2', feed_tep,np.array([1,1]),  2)
         print ('conv4_3-->conv4_2:')
         self.print_minmax(minmap, maxmap)
         
-        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv4_2','conv4_1', feed_tep,np.array([1,1]))
+        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv4_2','conv4_1', feed_tep,np.array([1,1]),   2)
         print ('conv4_2-->conv4_1:')
         self.print_minmax(minmap, maxmap)
         
-        minmap, maxmap=self.get_layerandlastlayer_cnn2pool(minmap, maxmap,  'conv4_1','pool3:0', feed_tep,np.array([1,1]))
+        minmap, maxmap=self.get_layerandlastlayer_cnn2pool(minmap, maxmap,  'conv4_1','pool3:0', feed_tep,np.array([1,1]),   2)
         print ('conv4_1-->pool3:0:')
         self.print_minmax(minmap, maxmap)
         
@@ -178,15 +178,15 @@ class bp_model:
         print ('pool3:0-->conv3_3:')
         self.print_minmax(minmap, maxmap)
         
-        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv3_3','conv3_2', feed_tep,np.array([1,1]))
+        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv3_3','conv3_2', feed_tep,np.array([1,1]),   1)
         print ('conv3_3-->conv3_2:')
         self.print_minmax(minmap, maxmap)
         
-        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv3_2','conv3_1', feed_tep,np.array([1,1]))
+        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv3_2','conv3_1', feed_tep,np.array([1,1]),   1)
         print ('conv3_2-->conv3_1:')
         self.print_minmax(minmap, maxmap)
         
-        minmap, maxmap=self.get_layerandlastlayer_cnn2pool(minmap, maxmap,  'conv3_1','pool2:0', feed_tep,np.array([1,1]))
+        minmap, maxmap=self.get_layerandlastlayer_cnn2pool(minmap, maxmap,  'conv3_1','pool2:0', feed_tep,np.array([1,1]),   1)
         print ('conv3_1-->pool2:0:')
         self.print_minmax(minmap, maxmap)
         
@@ -198,11 +198,11 @@ class bp_model:
         print ('pool2:0-->conv2_2:')
         self.print_minmax(minmap, maxmap)
         
-        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv2_2','conv2_1', feed_tep,np.array([1,1]))
+        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv2_2','conv2_1', feed_tep,np.array([1,1]),   1)
         print ('conv2_2-->conv2_1:')
         self.print_minmax(minmap, maxmap)
         
-        minmap, maxmap=self.get_layerandlastlayer_cnn2pool(minmap, maxmap,  'conv2_1','pool1:0', feed_tep,np.array([1,1]))
+        minmap, maxmap=self.get_layerandlastlayer_cnn2pool(minmap, maxmap,  'conv2_1','pool1:0', feed_tep,np.array([1,1]), 1)
         print ('conv2_1-->pool1:0:')
         self.print_minmax(minmap, maxmap)
         
@@ -215,13 +215,13 @@ class bp_model:
         print ('pool1:0-->conv1_2:')
         self.print_minmax(minmap, maxmap)
         
-        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv1_2','conv1_1', feed_tep,np.array([1,1]))
+        minmap, maxmap=self.get_layerandlastlayer_cnn2cnn(minmap, maxmap,  'conv1_2','conv1_1', feed_tep,np.array([1,1]),   1)
         print ('conv1_2-->conv1_1:')
         self.print_minmax(minmap, maxmap)
         
         
         #finally
-        minmap, maxmap=self.get_layerandlastlayer_cnn2img(minmap, maxmap, 'conv1_1',imgst[batch_select] ,feed_tep,np.array([1,1]))
+        minmap, maxmap=self.get_layerandlastlayer_cnn2img(minmap, maxmap, 'conv1_1',imgst[batch_select] ,feed_tep,np.array([1,1]), 1)
         print ('conv1_1-->image:')
         self.print_minmax(minmap, maxmap)
         
@@ -284,7 +284,7 @@ class bp_model:
             ret+=mult*coordinate[ind]
         return ret
     
-    def get_layerandlastlayer_cnn2img(self, indexs_min, indexs_max,  cnnname_src,imagedata, feed_tep,cnn_stride ):
+    def get_layerandlastlayer_cnn2img(self, indexs_min, indexs_max,  cnnname_src,imagedata, feed_tep,cnn_stride,selnum=2 ):
         now=self.get_onelayer_tensors(cnnname_src)#
         #last=self.get_onelayer_tensors(cnnname_des)#
         feat=imagedata
@@ -293,10 +293,10 @@ class bp_model:
         w=self.sess.run([now[0]], feed_dict=feed_tep)[0]
         
         
-        return self.cal_cnn(feat,w,indexs_min, indexs_max,cnn_stride,False,2)
+        return self.cal_cnn(feat,w,indexs_min, indexs_max,cnn_stride,False,selnum)
         
     
-    def get_layerandlastlayer_cnn2pool(self, indexs_min, indexs_max,  cnnname_src,poolname_des, feed_tep,cnn_stride ):
+    def get_layerandlastlayer_cnn2pool(self, indexs_min, indexs_max,  cnnname_src,poolname_des, feed_tep,cnn_stride ,selnum=2):
         now=self.get_onelayer_tensors(cnnname_src)#
         last=[self.graph.get_tensor_by_name(poolname_des)]#pool的name比较特殊
         
@@ -305,7 +305,7 @@ class bp_model:
         w,feat=self.sess.run([now[0], last[-1]], feed_dict=feed_tep)
         feat=feat[batch_select]
         
-        return self.cal_cnn(feat,w,indexs_min, indexs_max,cnn_stride,False,2)
+        return self.cal_cnn(feat,w,indexs_min, indexs_max,cnn_stride,False,selnum)
         
     def get_layerandlastlayer_pool2cnn(self, indexs_min, indexs_max,  cnnname, feed_tep,pool_stride=np.array([2,2]), pool_kernel=np.array([2,2,1,1])):
         cnn_tensors=self.get_onelayer_tensors(cnnname)
@@ -319,7 +319,7 @@ class bp_model:
         return mi,ma
         #print (tep_feat.shape)
         
-    def get_layerandlastlayer_cnn2cnn(self, indexs_min, indexs_max,  cnnname_src,cnnname_des, feed_tep,cnn_stride ):
+    def get_layerandlastlayer_cnn2cnn(self, indexs_min, indexs_max,  cnnname_src,cnnname_des, feed_tep,cnn_stride ,selnum=2):
         now=self.get_onelayer_tensors(cnnname_src)#
         last=self.get_onelayer_tensors(cnnname_des)#
         
@@ -328,7 +328,7 @@ class bp_model:
         w,feat=self.sess.run([now[0], last[-1]], feed_dict=feed_tep)
         feat=feat[batch_select]
         
-        return self.cal_cnn(feat,w,indexs_min, indexs_max,cnn_stride,False,2)
+        return self.cal_cnn(feat,w,indexs_min, indexs_max,cnn_stride,False,selnum)
            
         
     def get_layerandlastlayer_fc2pool(self, indexs_min, indexs_max, fcname, poolname, feed_tep):
