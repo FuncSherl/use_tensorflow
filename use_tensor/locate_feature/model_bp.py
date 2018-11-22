@@ -241,7 +241,7 @@ class bp_model:
         tep_feat[pad[0]//2:pad[0]//2+fshape_wh[0], pad[1]//2:pad[1]//2+fshape_wh[1], :]=cnnfeature
         
         for i in indexs_min.keys():
-            print('\n',i,' index2coor:',outshape)
+            
             coor=np.array(self.index2shape(i, outshape))
            # print (coor, stride)
             oricoor_hw=coor[0:2]*stride#padding 后坐标
@@ -269,8 +269,7 @@ class bp_model:
                 else:
                     full_coor=np.append(global_coor, coor[-1])
                 
-                print (full_coor)
-                print (cnnfeature[full_coor[0], full_coor[1], full_coor[2]])
+                
                 
                 ind=self.shape2index(fshape, full_coor)
                 if ind in ret_min.keys():
@@ -279,6 +278,7 @@ class bp_model:
                     ret_min[ind]=indexs_min[i]
         #////////////////////////////////////////////////////////////////////////////////
         for i in indexs_max.keys():
+            #print('\n',i,' index2coor:',outshape)
             coor=np.array(self.index2shape(i, outshape))
             oricoor_hw=coor[0:2]*stride#padding 后坐标
             
@@ -303,7 +303,10 @@ class bp_model:
                     full_coor=np.append(global_coor, coor_inkernel[-1])
                 else:
                     full_coor=np.append(global_coor, coor[-1])
-                    
+                
+                #print (full_coor)
+                #print (cnnfeature[full_coor[0], full_coor[1], full_coor[2]])    
+                
                 ind=self.shape2index(fshape, full_coor)
                 if ind in ret_min.keys():
                     ret_max[ind]+=indexs_max[i]
@@ -396,7 +399,7 @@ class bp_model:
             tepvec=tepw*teprelu
             #print (tepvec.shape)
             tepminind=self.get_minindexs(tepvec)
-            print ("fc layer last feat--min:",tepminind, '\n',lastfeature[tepminind])
+            #print ("fc layer last feat--min:",tepminind, '\n',lastfeature[tepminind])
             for j in tepminind:
                 if j in ret_min.keys():
                     ret_min[j]+=indexs_min[i]
@@ -410,6 +413,7 @@ class bp_model:
             tepvec=tepw*teprelu
             #print (tepvec.shape)
             tepmaxind=self.get_maxindexs(tepvec)
+            #print ("fc layer last feat--max:",tepmaxind, '\n',lastfeature[tepmaxind])
             for j in tepmaxind:
                 if j in ret_max.keys():
                     ret_max[j]+=indexs_max[i]
