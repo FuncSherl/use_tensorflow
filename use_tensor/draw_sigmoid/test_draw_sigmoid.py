@@ -181,19 +181,25 @@ def evaluate(sess, logits, dat_place):
     
     axes2.grid(True, color = "r")
     axes2.plot(range(len(loss_list)), loss_list)
+    axes.plot([0],[0])
     
     #axes.grid(True, color = "r")
     if len(kep_out)>0:
         tep=np.array(kep_out)
-        
+        axes.set_xlim(-RANGE_x,RANGE_x)
+        axes.set_ylim(-1,1)
         axes.scatter(tep[:,0],tep[:,1],color='g',s=1,marker='.')#外面的是
         
     
     #print (kep_in)
     if len(kep_in)>0:#刚开始时weight都是随机的，所以前向的时候可能一个预测结果都不在圆里面，这时kep_in为空，要有一定判断
         tep2=np.array(kep_in)
+        axes.set_xlim(-RANGE_x,RANGE_x)
+        axes.set_ylim(-1,1)
         axes.scatter(tep2[:,0],tep2[:,1],color='b',s=1,marker='.')#里面的是blue
-    plt.ylim(0,1)
+        
+    
+    
     plt.suptitle(u'test')   #对中文的支持很差！
     plt.pause(0.0001)
         
@@ -213,7 +219,7 @@ def start():
     sess = tf.Session()
     
     merged = tf.summary.merge_all()
-    writer = tf.summary.FileWriter("logs/", sess.graph)
+    writer = tf.summary.FileWriter("logs/"+TIMESTAMP, sess.graph)
     
     sess.run(init)
     stti=time.time()
