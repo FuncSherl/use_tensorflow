@@ -220,10 +220,13 @@ def evaluate(sess, logits, dat_place):
         
 
     
+logdir="logs/"+TIMESTAMP
 
 def start():
     dat_place = tf.placeholder(tf.float32, shape=(batchsize, NUM_INPUTS), name='input_img')
     label_place= tf.placeholder(tf.float32, shape=(batchsize), name='input_lab')
+    
+    print (dat_place)
     
     logits=inference(dat_place)
     print (logits)#Tensor("softmax_linear/add:0", shape=(100, 2), dtype=float32)
@@ -234,7 +237,7 @@ def start():
     init = tf.global_variables_initializer()#初始化tf.Variable
     sess = tf.Session()
     
-    logdir="logs/"+TIMESTAMP
+
     merged = tf.summary.merge_all()
     writer = tf.summary.FileWriter(logdir, sess.graph)
     
@@ -271,7 +274,7 @@ if __name__ == '__main__':
     start()
     
     plt.ioff()
-    plt.savefig("./"+TIMESTAMP+'_lr'+str(lr)+'_max_step'+str(max_step)+'_hidden1_units'+str(hidden1_units)+".png")
+    plt.savefig(logdir+"/"+'lr'+str(lr)+'_max_step'+str(max_step)+'_hidden1_units'+str(hidden1_units)+".png")
     #plt.show()
     
     '''
