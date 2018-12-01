@@ -9,6 +9,7 @@ import numpy as np
 import math,random,time
 import matplotlib.pyplot as plt
 from datetime import datetime
+import os.path as op
 
 NUM_CLASSES = 2
 NUM_INPUTS=2
@@ -19,6 +20,7 @@ hidden3_units=10
 batchsize = 100
 RANGE_x=10  #这里代表正负10
 draw_gap=20
+model_step=1000
 max_step=50000
 lr=0.04
 
@@ -120,6 +122,11 @@ def training(loss, learning_rate):
 def function_sigmoid(x):
     return 1.0 / (1.0 + np.exp(-x))
 
+def function_tanh(x):
+    ex=np.exp(x)
+    nex=np.exp(-x)
+    return (ex-nex)/(nex+ex)
+
 def get_batch_data():
     '''
             这里数据的产生时标签决定了最终图形，如生成数据时在圆里面为1，则训出来的网络就按照这个圆取拟合
@@ -130,12 +137,12 @@ def get_batch_data():
 
     for i in range(batchsize):
         x=random.random()*RANGE_x*2-RANGE_x#in -10->10
-        y=random.random()#in -10->10
+        y=random.random()*4-2#in -10->10
         dat.append([x,y])
         #print (x,":",y)
 
         
-        if function_sigmoid(x)>=y:#拟合一个fun
+        if function_tanh(x)>=y:#拟合一个fun
         #if abs(x)+abs(y)<=1:#拟合菱形
         #if y<=1/x:#拟合y=1/x
             #print (x,":",y,"in the circle")
@@ -162,15 +169,23 @@ plt.title("loss")
 loss_list=[]
  
 def evaluate(sess, logits, dat_place):
+    cnt_true=0
+    cnt_all=0
+    
     kep_in=[]
     kep_out=[]
-    for i in range(200):
+    for i in range(50):
         dat,lab=get_batch_data()
         l=sess.run(logits, feed_dict={dat_place:dat})
         for id,i in enumerate(l):
             if i.argmax()==0:
                 kep_out.append(dat[id])
             else: kep_in.append(dat[id])
+        cnt_all+=batchsize
+        tep=np.sum(np.argmax(l,axis=1)==lab)
+        cnt_true+=tep
+    print ('eval once, accu:',cnt_true/cnt_all,'\n')
+        
     
     
 
@@ -207,10 +222,11 @@ def evaluate(sess, logits, dat_place):
     
 
 def start():
-    dat_place = tf.placeholder(tf.float32, shape=(batchsize, NUM_INPUTS))
-    label_place= tf.placeholder(tf.float32, shape=(batchsize))
+    dat_place = tf.placeholder(tf.float32, shape=(batchsize, NUM_INPUTS), name='input_img')
+    label_place= tf.placeholder(tf.float32, shape=(batchsize), name='input_lab')
     
     logits=inference(dat_place)
+    print (logits)#Tensor("softmax_linear/add:0", shape=(100, 2), dtype=float32)
     los=loss(logits, label_place)
     
     train_op=training(los, lr)
@@ -218,8 +234,11 @@ def start():
     init = tf.global_variables_initializer()#初始化tf.Variable
     sess = tf.Session()
     
+    logdir="logs/"+TIMESTAMP
     merged = tf.summary.merge_all()
-    writer = tf.summary.FileWriter("logs/"+TIMESTAMP, sess.graph)
+    writer = tf.summary.FileWriter(logdir, sess.graph)
+    
+    all_saver = tf.train.Saver(max_to_keep=2) 
     
     sess.run(init)
     stti=time.time()
@@ -232,8 +251,13 @@ def start():
             loss_list.append(loss_value)
             print("step:",step," loss=",loss_value)
             
+        if (step+1)%model_step==0:
+            pat=all_saver.save(sess, op.join(logdir,'model_keep'),global_step=step)
+            print ('saved at:',pat)
+            
         if (step+1)%draw_gap==0:
             evaluate(sess, logits, dat_place)
+            
         writer.add_summary(summary_resu, step)
     print ("done!!! time:",(time.time()-stti))
     
