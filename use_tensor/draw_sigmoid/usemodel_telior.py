@@ -14,6 +14,7 @@ from use_tensor.draw_sigmoid.test_draw_sigmoid import *
 
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
+div_step=0.00001
 modelpath='./logs/2018-12-01_13-32-33'
 
 class cal_tailor:
@@ -31,6 +32,38 @@ class cal_tailor:
             print(i)
         print (self.graph.get_all_collection_keys())
         
+    def get_onedimval(self, point,dim=0, num=1000, step=div_step):
+        ret=[]
+        point=np.array(point)
+        start=point[dim]-num*step/2
+        dat=np.zeros([batchsize, len(point)])
+        print('dim:',dim,'  from:',start, '  to  ',start+num*step)
+        for i in range(num):
+            dat[i%batchsize]=point.copy()
+            dat[i%batchsize][dim]=start+i*step
+            if (i+1)%batchsize==0 or i==(num-1):
+                lot=self.sess.run(self.logit, feed_dict={self.dat_place:dat})
+                ret.extend(lot[0:i%batchsize+1])
+                
+        ret=np.array(ret)
+        print (ret.shape)
+        return ret
+        
+    def get_values(self, point, num=1000, step=div_step):
+        '''
+        :以point为基本点进行泰勒拟合，num是取多少点，step是数据间隔，注意有可能因为计算机精确度的原因加上step后结果并不改变
+        '''
+        #kep_val=np.zeros([num]*len(point))
+        tep=self.get_onedimval(point, 0, num, step=0.1)
+    
+        print (tep)
+        #fig = plt.figure() 
+        plt.scatter(list(range(len(tep))),tep[:,0],s=1,marker='.')
+        plt.scatter(list(range(len(tep))),tep[:,1], color="orange",s=1,marker='.')
+        plt.scatter(list(range(len(tep))),tep[:,1]+tep[:,0], color="red",s=1,marker='.')
+        plt.show()
+        
+        
         
     def eval_model(self):
         cnt_true=0
@@ -43,9 +76,9 @@ class cal_tailor:
             cnt_all+=batchsize
             tep=np.sum(np.argmax(l,axis=1)==lab)
             cnt_true+=tep
-            print ('eval one batch:',tep,'/',batchsize,'-->',tep/batchsize)
+            #print ('eval one batch:',tep,'/',batchsize,'-->',tep/batchsize)
             
-        print ('eval once, accu:',cnt_true/cnt_all,'\n')
+        print ('\neval once, accu:',cnt_true/cnt_all,'\n')
         
     
     def load_model(self,modelpath=modelpath):
@@ -61,6 +94,7 @@ if __name__ == '__main__':
     with tf.Session() as sess:
         tep=cal_tailor(sess)
         tep.eval_model()
-    
+        #tep.get_onedimval([0,1])
+        tep.get_values([1,0])
     
     

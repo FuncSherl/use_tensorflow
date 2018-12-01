@@ -149,20 +149,21 @@ def get_batch_data():
             label.append(1)
         else: label.append(0)
     return dat,label
- 
-plt.ion()
 
-fig = plt.figure() 
-
-
-axes = fig.add_subplot(121)
-axes.axis('equal')
-plt.title('test fitness')
-
-
-axes2 = fig.add_subplot(122)
-#axes2.axis("equal")
-plt.title("loss")
+if __name__ == '__main__':
+    plt.ion()
+    
+    fig = plt.figure() 
+    
+    
+    axes = fig.add_subplot(121)
+    axes.axis('equal')
+    plt.title('test fitness')
+    
+    
+    axes2 = fig.add_subplot(122)
+    #axes2.axis("equal")
+    plt.title("loss")
 
 
 
