@@ -37,6 +37,7 @@ class cal_tailor:
         point=np.array(point)
         start=point[dim]-num*step/2
         dat=np.zeros([batchsize, len(point)])
+        print('point:',point)
         print('dim:',dim,'  from:',start, '  to  ',start+num*step)
         for i in range(num):
             dat[i%batchsize]=point.copy()
@@ -54,7 +55,7 @@ class cal_tailor:
         :以point为基本点进行泰勒拟合，num是取多少点，step是数据间隔，注意有可能因为计算机精确度的原因加上step后结果并不改变
         '''
         #kep_val=np.zeros([num]*len(point))
-        tep=self.get_onedimval(point, 0, num, step=0.1)
+        tep=self.get_onedimval(point, 1, num, step=0.1)
     
         print (tep)
         #fig = plt.figure() 
@@ -95,6 +96,6 @@ if __name__ == '__main__':
         tep=cal_tailor(sess)
         tep.eval_model()
         #tep.get_onedimval([0,1])
-        tep.get_values([1,0])
+        tep.get_values([5,0])
     
     
