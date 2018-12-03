@@ -49,13 +49,49 @@ class cal_tailor:
         ret=np.array(ret)
         print (ret.shape)
         return ret
+    
+    def cal_derivative(self, l, cnt=10, step=div_step):
+        '''
+        :算一个list的数的导数
+        l:list of data
+        cnt: how many data to cal one derivative
+        '''
+        ret=[]
+        tep=cnt//2
+        for i in range(0,len(l)):
+            st=max(0, i-tep)
+            ed=min(len(l)-1, i+tep)
+            cnt_all=0
+            for j in range(st,ed):
+                cnt_all+=(l[j+1]-l[j])/step
+            ret.append(cnt_all/(ed-st))
+            
+        return np.array(ret)
+    
+    def test_derivative(self):
+        '''
+        :对上面的求导函数测试
+        '''
+        tep=[]
+        r=1000
+        step=2.0*np.pi/r
+        for i in range(r):
+            tep.append(math.sin(i*step))
+        ret=self.cal_derivative(tep,10, step)
+        print(len(tep),len(ret))
+        
+        plt.grid(True, color = "b")
+        plt.scatter(list(range(r)),tep, color="orange",s=1,marker='.')
+        plt.scatter(list(range(r)),ret, color="red",s=1,marker='.')
+        plt.show()
+        
         
     def get_values(self, point, num=1000, step=div_step):
         '''
         :以point为基本点进行泰勒拟合，num是取多少点，step是数据间隔，注意有可能因为计算机精确度的原因加上step后结果并不改变
         '''
         #kep_val=np.zeros([num]*len(point))
-        tep=self.get_onedimval(point, 1, num, step=0.1)
+        tep=self.get_onedimval(point, 1, num=num, step=0.003)
     
         print (tep)
         #fig = plt.figure() 
@@ -96,6 +132,6 @@ if __name__ == '__main__':
         tep=cal_tailor(sess)
         tep.eval_model()
         #tep.get_onedimval([0,1])
-        tep.get_values([5,0])
-    
+        #tep.get_values([5,0])
+        tep.test_derivative()
     
