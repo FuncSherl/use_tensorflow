@@ -13,10 +13,12 @@ import os.path as op
 from use_tensor.draw_sigmoid.test_draw_sigmoid import *
 from scipy.special import comb, perm
 
+from mpl_toolkits.mplot3d import Axes3D
+
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 max_val=2.0#s数据跨度，即在标定点处上下范围的和
-num_step=16
+num_step=10
 div_step=max_val/num_step
 
 modelpath='./logs/2018-12-01_13-32-33'
@@ -60,7 +62,9 @@ class cal_tailor:
     
     def get_values(self, point, num=num_step, step=div_step, class_choose=0):
         '''
-        :以point为基本点进行泰勒拟合，num是取多少点，step是数据间隔，注意有可能因为计算机精确度的原因加上step后结果并不改变
+        :利用get_onedimval函数，这里先选定一个维度，针对该维度上的每一个step点，利用get_onedimval对该点对的另一个维度每个点取网络跑出来的logit值
+        :最终获得一个2维的存储，里面对应网格状的点的对应class_choose的输出的值
+        ,num是取多少点，step是数据间隔，注意有可能因为计算机精确度的原因加上step后结果并不改变
         '''
         kep_val=np.zeros([num]*len(point))
         tp=np.array(point, dtype=np.float32)
@@ -89,6 +93,7 @@ class cal_tailor:
     def get_all_derivative(self,point, num=num_step, step=div_step, class_choose=0):
         '''
         :这里以2位point为例,考虑利用递归
+        :调用算导数的递归函数，并且分配一个空间存储对不同导数次数的x，y的导数值
         '''
         all_der=np.zeros([num]*len(point))#这里行列分别代表x的和y的n次导数，应有f(x,y)dxy=f(x,y)dyx
         #print (all_der.shape)
@@ -99,6 +104,7 @@ class cal_tailor:
         all_der=self.recursive_cal_deribatice(indata, all_der, point)
         print (all_der[0][0],all_der[num//2][num//2])
         return all_der
+    
     
     def recursive_cal_deribatice(self,indata,all_der,point=[num_step/2,num_step/2],cnt=0):
         '''
@@ -133,15 +139,13 @@ class cal_tailor:
             return all_der
         
         
-        
-        
-    def cal_derivative(self, l, cnt=10, step=div_step):
+    def cal_derivative(self, l, cnt=max(min(num_step/10, 8), 3), step=div_step):
         '''
         :算一个list的数的导数
         l:list of data
         cnt: how many data to cal one derivative
         '''
-        print ('derivate from:',l)
+        #print ('derivate from:',l)
         ret=[]
         tep=cnt//2
         for i in range(0,len(l)):
@@ -153,7 +157,7 @@ class cal_tailor:
                 cnt_all+=(l[j+1]-l[j])/step
                 #if math.isnan((l[j+1]-l[j])/step):print (j,l[j+1],l[j],(l[j+1]-l[j]),step), exit()
             ret.append(cnt_all/(ed-st))
-        print ('derivate to:',ret)
+        #print ('derivate to:',ret)
         return np.array(ret)
     
     def test_derivative(self):
@@ -199,7 +203,32 @@ class cal_tailor:
             p2=self.tailor_2(der2, num_step, point_xk, i)
             if np.argmax([p1,p2])==lab[ind]: cnt_true+=1
         print ('the tailor accu:', cnt_true/len(lab))
-                
+        
+    def draw3d_ori_talior(self,num=num_step, step=div_step):
+        tep=num//2*step
+        point_xk=[0,0]
+        z=self.get_values(point_xk,class_choose=0)
+        xa=np.arange(point_xk[0]-tep,point_xk[0]+tep, step)
+        ya=np.arange(point_xk[1]-tep,point_xk[1]+tep, step)
+        x,y=np.meshgrid(xa,ya)    # x-y 平面的网格
+        
+        fig = plt.figure()
+        # 创建3d图形的两种方式
+        # ax = Axes3D(fig)
+        ax = fig.add_subplot(111, projection='3d')
+        # rstride:行之间的跨度  cstride:列之间的跨度
+        # rcount:设置间隔个数，默认50个，ccount:列的间隔个数  不能与上面两个参数同时出现
+        #vmax和vmin  颜色的最大值和最小值
+        #ax.plot_surface(x,y,z, rstride=1, cstride=1,cmap=plt.cm.winter)#, cmap=plt.get_cmap('rainbow')
+        #plt.show()
+        
+        
+        der=self.get_all_derivative(point_xk,class_choose=0)
+        for i in range(len(xa)):
+            for j in range(len(ya)):
+                z[i][j]=self.tailor_2(der, num, point_xk, [xa[i],ya[j]])
+        ax.plot_surface(x,y,z, rstride=1, cstride=1, cmap=plt.get_cmap('rainbow'))
+        plt.show()
             
         
     def tailor_2(self, all_der, num, point_xk, point):
@@ -262,7 +291,8 @@ if __name__ == '__main__':
         #tep.get_onedimval([0,1])
         #tep.get_values([5,0])
         #tep.test_derivative()
-        tep.test_tailor()
+        #tep.test_tailor()
+        tep.draw3d_ori_talior()
         
         
         
