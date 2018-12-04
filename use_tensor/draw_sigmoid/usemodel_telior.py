@@ -15,6 +15,7 @@ from use_tensor.draw_sigmoid.test_draw_sigmoid import *
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 div_step=0.00001
+num_step=1000
 modelpath='./logs/2018-12-01_13-32-33'
 
 class cal_tailor:
@@ -32,7 +33,7 @@ class cal_tailor:
             print(i)
         print (self.graph.get_all_collection_keys())
         
-    def get_onedimval(self, point,dim=0, num=1000, step=div_step):
+    def get_onedimval(self, point,dim, num=num_step, step=div_step):
         ret=[]
         point=np.array(point)
         start=point[dim]-num*step/2
@@ -50,6 +51,44 @@ class cal_tailor:
         print (ret.shape)
         return ret
     
+    
+    def get_values(self, point, num=num_step, step=div_step):
+        '''
+        :以point为基本点进行泰勒拟合，num是取多少点，step是数据间隔，注意有可能因为计算机精确度的原因加上step后结果并不改变
+        '''
+        kep_val=np.zeros([num]*len(point))
+        tp=np.array(point)
+        
+        for i in range(num):
+            tp[0]=point[0]+(i-num//2)*step
+            tep=self.get_onedimval(tp, 1, num=num, step=step)
+            
+            
+        
+    
+        '''
+        print (tep)
+        #fig = plt.figure() 
+        plt.scatter(list(range(len(tep))),tep[:,0],s=1,marker='.')
+        plt.scatter(list(range(len(tep))),tep[:,1], color="orange",s=1,marker='.')
+        plt.scatter(list(range(len(tep))),tep[:,1]+tep[:,0], color="red",s=1,marker='.')
+        plt.show()
+        '''
+        
+    def get_all_derivative(self,point, num=num_step, step=div_step):
+        '''
+        :这里以2位point为例,考虑利用递归
+        '''
+        all_der=np.zeros([num]*len(point))#这里行列分别代表x的和y的n次导数，虽然应有f(x,y)dxy=f(x,y)dyx但可能不连续
+        print (all_der.shape)
+        
+        
+        for i in range(num):
+            for j in range(num):
+                pass
+        
+        
+        
     def cal_derivative(self, l, cnt=10, step=div_step):
         '''
         :算一个list的数的导数
@@ -86,20 +125,7 @@ class cal_tailor:
         plt.show()
         
         
-    def get_values(self, point, num=1000, step=div_step):
-        '''
-        :以point为基本点进行泰勒拟合，num是取多少点，step是数据间隔，注意有可能因为计算机精确度的原因加上step后结果并不改变
-        '''
-        #kep_val=np.zeros([num]*len(point))
-        tep=self.get_onedimval(point, 1, num=num, step=0.003)
     
-        print (tep)
-        #fig = plt.figure() 
-        plt.scatter(list(range(len(tep))),tep[:,0],s=1,marker='.')
-        plt.scatter(list(range(len(tep))),tep[:,1], color="orange",s=1,marker='.')
-        plt.scatter(list(range(len(tep))),tep[:,1]+tep[:,0], color="red",s=1,marker='.')
-        plt.show()
-        
         
         
     def eval_model(self):
