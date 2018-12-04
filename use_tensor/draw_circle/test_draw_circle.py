@@ -8,7 +8,8 @@ import tensorflow as tf
 import numpy as np
 import math,random,time
 import matplotlib.pyplot as plt
-import datetime
+from datetime import datetime
+import os.path as op
 
 NUM_CLASSES = 2
 NUM_INPUTS=2
@@ -17,13 +18,14 @@ hidden2_units=10
 batchsize = 100
 RANGE_circle=4
 draw_gap=20
+model_step=1000
 max_step=50000
 lr=0.04
 
-today = datetime.date.today()   #datetime.date类型当前日期
-str_today = str(today)   #字符串型当前日期,2016-10-09格式
+#today = datetime.date.today()   #datetime.date类型当前日期
+#str_today = str(today)   #字符串型当前日期,2016-10-09格式
 
-
+TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 def inference(points):
     with tf.name_scope('hidden1'):
@@ -182,10 +184,10 @@ def evaluate(sess, logits, dat_place):
         
 
     
-
+logdir="logs/"+TIMESTAMP
 def start():
-    dat_place = tf.placeholder(tf.float32, shape=(batchsize, NUM_INPUTS))
-    label_place= tf.placeholder(tf.float32, shape=(batchsize))
+    dat_place = tf.placeholder(tf.float32, shape=(batchsize, NUM_INPUTS),name='input_img')
+    label_place= tf.placeholder(tf.float32, shape=(batchsize),name='input_lab')
     
     logits=inference(dat_place)
     los=loss(logits, label_place)
@@ -196,7 +198,9 @@ def start():
     sess = tf.Session()
     
     merged = tf.summary.merge_all()
-    writer = tf.summary.FileWriter("logs/", sess.graph)
+    writer = tf.summary.FileWriter(logdir, sess.graph)
+    
+    all_saver = tf.train.Saver(max_to_keep=2) 
     
     sess.run(init)
     stti=time.time()
@@ -208,6 +212,10 @@ def start():
         if (step+1)%100==0:
             loss_list.append(loss_value)
             print("step:",step," loss=",loss_value)
+            
+        if (step+1)%model_step==0:
+            pat=all_saver.save(sess, op.join(logdir,'model_keep'),global_step=step)
+            print ('saved at:',pat)
             
         if (step+1)%draw_gap==0:
             evaluate(sess, logits, dat_place)
