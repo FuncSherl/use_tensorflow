@@ -14,7 +14,7 @@ from use_tensor.draw_sigmoid.test_draw_sigmoid import *
 
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
-div_step=0.00001
+div_step=0.002
 num_step=1000
 modelpath='./logs/2018-12-01_13-32-33'
 
@@ -34,6 +34,9 @@ class cal_tailor:
         print (self.graph.get_all_collection_keys())
         
     def get_onedimval(self, point,dim, num=num_step, step=div_step):
+        '''
+        :跑模型得出结果
+        '''
         ret=[]
         point=np.array(point)
         start=point[dim]-num*step/2
@@ -48,21 +51,25 @@ class cal_tailor:
                 ret.extend(lot[0:i%batchsize+1])
                 
         ret=np.array(ret)
-        print (ret.shape)
+        #print (ret.shape)
         return ret
     
     
-    def get_values(self, point, num=num_step, step=div_step):
+    def get_values(self, point, num=num_step, step=div_step, class_choose=0):
         '''
         :以point为基本点进行泰勒拟合，num是取多少点，step是数据间隔，注意有可能因为计算机精确度的原因加上step后结果并不改变
         '''
         kep_val=np.zeros([num]*len(point))
-        tp=np.array(point)
+        tp=np.array(point, dtype=np.float32)
         
         for i in range(num):
             tp[0]=point[0]+(i-num//2)*step
-            tep=self.get_onedimval(tp, 1, num=num, step=step)
             
+            print('\n',i,'/',num,'-->',tp)
+            tep=self.get_onedimval(tp, 1, num=num, step=step)
+            kep_val[i]=tep[:,class_choose]
+            
+        return kep_val
             
         
     
@@ -86,6 +93,36 @@ class cal_tailor:
         for i in range(num):
             for j in range(num):
                 pass
+    def recursive_cal_deribatice(self,indata,all_der,point=[num_step/2,num_step/2],cnt=0):
+        '''
+        :递归计算行列的导数，对第一行和列，是原数据的求导，对第二行和列，是以f(x,y)dx,y为基础计算，如此可以递归
+        indata:输入的数据，一开始输入源数据
+        all_der:记录导数的矩阵
+        point:输入数据中以那个为中心，同上面的point不同，这里应为[len/2，len/2],注意分别代表x,y
+        cnt：当前递归到那一行了
+        '''
+        
+        all_der[cnt,cnt]=indata[point[0],point[1]]
+        
+        tep_x=indata[point[0]].copy()#固定x的point那一行的data
+        tep_y=indata[:,point[1]].copy()
+        for i in range(cnt+1, indata.shape[0]):#填充x方向的导数，应该用tep_y
+            tep_y=self.cal_derivative(tep_y)
+            all_der[i,cnt]=tep_y[point[1]]
+        for i in range(cnt+1, indata.shape[1]):#填充y方向的导数，应该用tep_x
+            tep_x=self.cal_derivative(tep_x)
+            all_der[cnt,i]=tep_x[point[0]]
+        
+        for i in range(indata.shape[0]):
+            indata[i]=self.cal_derivative(indata[i])
+        for i in range(indata.shape[1]):
+            indata[:,i]=self.cal_derivative(indata[:,i])
+            
+        if cnt<indata.shape[0]-1:
+            self.recursive_cal_deribatice(indata, all_der, point, cnt+1)
+        else: return all_der
+            
+        
         
         
         
@@ -159,5 +196,12 @@ if __name__ == '__main__':
         tep.eval_model()
         #tep.get_onedimval([0,1])
         #tep.get_values([5,0])
-        tep.test_derivative()
+        #tep.test_derivative()
+        tep.get_values([0,0])
+        
+        
+        
+        
+        
+        
     
