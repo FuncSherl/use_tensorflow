@@ -24,6 +24,8 @@ model_step=1000
 max_step=50000
 lr=0.04
 
+
+
 #today = datetime.date.today()   #datetime.date类型当前日期
 #str_today = str(today)   #字符串型当前日期,2016-10-09格式
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())

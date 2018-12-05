@@ -10,18 +10,28 @@ import math,random,time
 import matplotlib.pyplot as plt
 from datetime import datetime
 import os.path as op
-from use_tensor.draw_sigmoid.test_draw_sigmoid import *
+import  use_tensor.draw_sigmoid.test_draw_sigmoid as draw_sigmoid
+import  use_tensor.draw_circle.test_draw_circle as draw_circle
 from scipy.special import comb, perm
 
 from mpl_toolkits.mplot3d import Axes3D
 
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
+batchsize=draw_sigmoid.batchsize
 
-max_val=2.0#s数据跨度，即在标定点处上下范围的和
-num_step=10
-div_step=max_val/num_step
+#s数据跨度，即上下范围
+max_data=2
+min_data=-2
 
-modelpath='./logs/2018-12-01_13-32-33'
+
+num_step=30
+div_step=(max_data-min_data)*1.0/num_step
+
+num_derv=4   #泰勒展开到多少次
+
+num_classes=2
+
+modelpath='./logs/2018-12-04_21-16-10' #'./logs/2018-12-01_13-32-33' #
 
 class cal_tailor:
     def __init__(self,sess, modelpath=modelpath):
@@ -34,20 +44,29 @@ class cal_tailor:
         self.label_place=self.graph.get_tensor_by_name('input_lab:0') 
         #self.training=self.graph.get_tensor_by_name('Placeholder_2:0') 
         
+        self.get_batch_data=draw_circle.get_batch_data
+        
         for i in tf.trainable_variables():
             print(i)
         print (self.graph.get_all_collection_keys())
         
-    def get_onedimval(self, point,dim, num=num_step, step=div_step):
+        
+    def get_onedimval(self, point,dim, num=num_step, start=min_data, end=max_data):
         '''
         :跑模型得出结果
+        point:在哪个点处展开
+        dim:获取该点处哪个维度的网格点
+        num:获取多少网格点，决定了每个点之间的间隔
+        start：该维度数据取点的起点
+        end：下界
+        return:[num, num_classs]  2 dim list
         '''
         ret=[]
         point=np.array(point)
-        start=point[dim]-num*step/2
-        dat=np.zeros([batchsize, len(point)])
+        step=1.0*(end-start)/num
+        dat=np.zeros([batchsize, num_classes])
         print('point:',point)
-        print('dim:',dim,'  from:',start, '  to  ',start+num*step)
+        #print('dim:',dim,'  from:',start, '  to  ',end)
         for i in range(num):
             dat[i%batchsize]=point.copy()
             dat[i%batchsize][dim]=start+i*step
@@ -60,20 +79,21 @@ class cal_tailor:
         return ret
     
     
-    def get_values(self, point, num=num_step, step=div_step, class_choose=0):
+    def get_values(self, dim_num=2, num=num_step, start=min_data, end=max_data, class_choose=0):
         '''
         :利用get_onedimval函数，这里先选定一个维度，针对该维度上的每一个step点，利用get_onedimval对该点对的另一个维度每个点取网络跑出来的logit值
         :最终获得一个2维的存储，里面对应网格状的点的对应class_choose的输出的值
         ,num是取多少点，step是数据间隔，注意有可能因为计算机精确度的原因加上step后结果并不改变
         '''
-        kep_val=np.zeros([num]*len(point))
-        tp=np.array(point, dtype=np.float32)
+        step=1.0*(end-start)/num
+        kep_val=np.zeros([num]*dim_num)
         
+        #！！！！！！！！！！！！对于大于2维度的这里应该修改
         for i in range(num):
-            tp[0]=point[0]+(i-num//2)*step
-            
+            x=i*step+start
+            tp=[x,0]
             print('\n',i,'/',num,'-->',tp)
-            tep=self.get_onedimval(tp, 1, num=num, step=step)
+            tep=self.get_onedimval(tp, 1, num, start, end)
             kep_val[i]=tep[:,class_choose]
             #print (tep)
             
@@ -90,23 +110,25 @@ class cal_tailor:
         plt.show()
         '''
         
-    def get_all_derivative(self,point, num=num_step, step=div_step, class_choose=0):
+    def get_all_derivative(self,point, div_num=num_derv, num=num_step, start=min_data, end=max_data, class_choose=0):
         '''
         :这里以2位point为例,考虑利用递归
         :调用算导数的递归函数，并且分配一个空间存储对不同导数次数的x，y的导数值
         '''
-        all_der=np.zeros([num]*len(point))#这里行列分别代表x的和y的n次导数，应有f(x,y)dxy=f(x,y)dyx
+        step=1.0*(end-start)/num
+        all_der=np.zeros([div_num]*len(point))#这里行列分别代表x的和y的n次导数，应有f(x,y)dxy=f(x,y)dyx
         #print (all_der.shape)
         
-        #这里选择第0个class
-        indata=self.get_values(point, num, step, class_choose=class_choose)
+        #这里选择class
+        indata=self.get_values(len(point), num, start, end, class_choose)
         
-        all_der=self.recursive_cal_deribatice(indata, all_der, point)
-        print (all_der[0][0],all_der[num//2][num//2])
+        index=list(map(lambda x:int((x-start)//step ), point  ))
+        all_der=self.recursive_cal_deribatice(indata, all_der, index, step)
+        print (all_der[0][0])
         return all_der
     
     
-    def recursive_cal_deribatice(self,indata,all_der,point=[num_step/2,num_step/2],cnt=0):
+    def recursive_cal_deribatice(self,indata,all_der,index=[num_step//2,num_step//2], step=div_step,cnt=0):
         '''
         :递归计算行列的导数，对第一行和列，是原数据的求导，对第二行和列，是以f(x,y)dx,y为基础计算，如此可以递归
         indata:输入的数据，一开始输入源数据
@@ -114,32 +136,36 @@ class cal_tailor:
         point:输入数据中以那个为中心，同上面的point不同，这里应为[len/2，len/2],注意分别代表x,y
         cnt：当前递归到那一行了
         '''
+        #下面只适合二维
         print('recursive in :',cnt)
-        all_der[cnt,cnt]=indata[point[0],point[1]]
+        #print (index)
+        all_der[cnt,cnt]=indata[index[0],index[1]]
         
-        tep_x=indata[point[0]].copy()#固定x的point那一行的data
-        tep_y=indata[:,point[1]].copy()
+        tep_x=indata[index[0]].copy()#固定x的index那一行的data
+        tep_y=indata[:,index[1]].copy()
         
-        for i in range(cnt+1, indata.shape[0]):#填充x方向的导数，应该用tep_y
-            tep_y=self.cal_derivative(tep_y)
+        for i in range(cnt+1, all_der.shape[0]):#填充x方向的导数，应该用tep_y
+            tep_y=self.cal_derivative(tep_y,step)
             print (i,tep_y[0:10])
-            all_der[i,cnt]=tep_y[point[1]]
-        for i in range(cnt+1, indata.shape[1]):#填充y方向的导数，应该用tep_x
-            tep_x=self.cal_derivative(tep_x)
-            all_der[cnt,i]=tep_x[point[0]]
+            all_der[i,cnt]=tep_y[index[0]]
+            
+        for i in range(cnt+1, all_der.shape[1]):#填充y方向的导数，应该用tep_x
+            tep_x=self.cal_derivative(tep_x,step)
+            all_der[cnt,i]=tep_x[index[1]]
         
-        
-        if cnt<indata.shape[0]-1:
+        if cnt<all_der.shape[0]-1:
+            print ('calculating dxdy for next loop...')
             for i in range(indata.shape[0]):
-                indata[i]=self.cal_derivative(indata[i])
+                indata[i]=self.cal_derivative(indata[i],step)
             for i in range(indata.shape[1]):
-                indata[:,i]=self.cal_derivative(indata[:,i])
-            return self.recursive_cal_deribatice(indata, all_der, point, cnt+1)
+                indata[:,i]=self.cal_derivative(indata[:,i],step)
+            return self.recursive_cal_deribatice(indata, all_der, index,step, cnt+1)
         else: 
             return all_der
         
         
-    def cal_derivative(self, l, cnt=max(min(num_step/10, 8), 3), step=div_step):
+        
+    def cal_derivative(self, l,  step=div_step, cnt=max(min(num_step//50, 12), 3)):
         '''
         :算一个list的数的导数
         l:list of data
@@ -160,6 +186,7 @@ class cal_tailor:
         #print ('derivate to:',ret)
         return np.array(ret)
     
+    
     def test_derivative(self):
         '''
         :对上面的求导函数测试
@@ -169,7 +196,7 @@ class cal_tailor:
         step=2.0*np.pi/r
         for i in range(r):
             tep.append(math.sin(i*step))
-        ret=self.cal_derivative(tep,10, step)
+        ret=self.cal_derivative(tep, step)
         print(len(tep),len(ret))
         
         plt.grid(True, color = "b")
@@ -179,37 +206,42 @@ class cal_tailor:
         
     
     
-    def test_tailor(self):#excited
-        point_xk=[0,0]
-        der=self.get_all_derivative(point_xk,class_choose=0)
+    def test_tailor(self,point_xk=[0,0],div_num=num_derv, num=num_step, start=min_data, end=max_data,class_choose=0):#excited
+        step=1.0*(end-start)/num
+        der=self.get_all_derivative(point_xk, div_num, num, start, end,class_choose)
         
         print (der)
         
-        point=[1,1]
-        dimval=self.get_onedimval(point, 0)
-        for i in range(num_step):
+        #上面获取的导数矩阵，下面对比模型输出的值与拟合的值对比
+        point=[0.5,0.5]
+        dimval=self.get_onedimval(point, 0, num, start, end)
+        for i in range(num):
             tep=np.array(point, dtype=np.float32)
-            tep[0]=point[0]+(i-num_step//2)*div_step
-            res=self.tailor_2(der, num_step, point_xk, tep)
+            tep[0]=start+i*step
+            res=self.tailor_2(der,  point_xk, tep)
             print ('\npoint:',tep)
             print ('test taior-->ori:',dimval[i],'  tailor:', res)
             
-        der2=self.get_all_derivative(point_xk,class_choose=1)
+        der2=self.get_all_derivative(point_xk,div_num, num, start, end, 1-class_choose)
         
+        #再获取另一个类的导数矩阵，用于概率判别得到准确率
         cnt_true=0
-        dat,lab=get_batch_data()
-        for ind,i in enumerate(dat):
-            p1=self.tailor_2(der, num_step, point_xk, i)
-            p2=self.tailor_2(der2, num_step, point_xk, i)
-            if np.argmax([p1,p2])==lab[ind]: cnt_true+=1
-        print ('the tailor accu:', cnt_true/len(lab))
+        cnt_all=0
+        for j in range(100):
+            dat,lab=self.get_batch_data()#!!!!!!!!!!!!!!!!!!!
+            for ind,i in enumerate(dat):
+                p1=self.tailor_2(der,  point_xk, i)
+                p2=self.tailor_2(der2,  point_xk, i)
+                if np.argmax([p1,p2])==lab[ind]: cnt_true+=1
+            cnt_all+=batchsize
+        print ('the tailor accu:', cnt_true/cnt_all)
         
-    def draw3d_ori_talior(self,num=num_step, step=div_step):
-        tep=num//2*step
-        point_xk=[0,0]
-        z=self.get_values(point_xk,class_choose=0)
-        xa=np.arange(point_xk[0]-tep,point_xk[0]+tep, step)
-        ya=np.arange(point_xk[1]-tep,point_xk[1]+tep, step)
+    def draw3d_ori_talior(self,point_xk=[0,0],div_num=num_derv,num=num_step, start=min_data, end=max_data, class_choose=0):
+        step=1.0*(end-start)/num
+        
+        z=self.get_values(len(point_xk),num, start,end,class_choose)
+        xa=np.arange(start,end, step)
+        ya=np.arange(start,end, step)
         x,y=np.meshgrid(xa,ya)    # x-y 平面的网格
         
         fig = plt.figure()
@@ -219,26 +251,28 @@ class cal_tailor:
         # rstride:行之间的跨度  cstride:列之间的跨度
         # rcount:设置间隔个数，默认50个，ccount:列的间隔个数  不能与上面两个参数同时出现
         #vmax和vmin  颜色的最大值和最小值
-        #ax.plot_surface(x,y,z, rstride=1, cstride=1,cmap=plt.cm.winter)#, cmap=plt.get_cmap('rainbow')
+        ax.plot_surface(x,y,z, rstride=1, cstride=1)#, cmap=plt.get_cmap('rainbow')
         #plt.show()
         
         
-        der=self.get_all_derivative(point_xk,class_choose=0)
+        der=self.get_all_derivative(point_xk,div_num, num, start, end, class_choose)
         for i in range(len(xa)):
             for j in range(len(ya)):
-                z[i][j]=self.tailor_2(der, num, point_xk, [xa[i],ya[j]])
-        ax.plot_surface(x,y,z, rstride=1, cstride=1, cmap=plt.get_cmap('rainbow'))
+                z[i][j]=self.tailor_2(der,  point_xk, [xa[i],ya[j]])
+                
+        #print (x.shape, y.shape, z.shape)
+        #ax.plot_surface(x,y,z, rstride=1, cstride=1, cmap=plt.get_cmap('rainbow'))
         plt.show()
             
         
-    def tailor_2(self, all_der, num, point_xk, point):
+    def tailor_2(self, all_der,  point_xk, point):
         resu=0
         
         point_xk=np.array(point_xk)
         point=np.array(point)
         x_xk=point-point_xk
         
-        for i in range(num):
+        for i in range(all_der.shape[0]):
             for j in range(i+1):#x的导数数目
                 '''
                 print (math.factorial(i))
@@ -251,20 +285,12 @@ class cal_tailor:
         
         
         
-   
-            
-        
-    
-        
-    
-        
-        
     def eval_model(self):
         cnt_true=0
         cnt_all=0
     
         for i in range(100):
-            dat,lab=get_batch_data()
+            dat,lab=self.get_batch_data()
             l=self.sess.run(self.logit, feed_dict={self.dat_place:dat})
             
             cnt_all+=batchsize
