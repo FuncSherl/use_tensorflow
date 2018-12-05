@@ -24,14 +24,14 @@ max_data=2
 min_data=-2
 
 
-num_step=30
+num_step=300
 div_step=(max_data-min_data)*1.0/num_step
 
-num_derv=60   #泰勒展开到多少次
+num_derv=3   #泰勒展开到多少次
 
 num_classes=2
 
-modelpath='./logs/2018-12-01_13-32-33' #'./logs/2018-12-04_21-16-10' #
+modelpath='./logs/2018-12-05_18-52-26' #'./logs/2018-12-01_13-32-33' #'./logs/2018-12-04_21-16-10' #
 
 class cal_tailor:
     def __init__(self,sess, modelpath=modelpath):
@@ -44,7 +44,8 @@ class cal_tailor:
         self.label_place=self.graph.get_tensor_by_name('input_lab:0') 
         #self.training=self.graph.get_tensor_by_name('Placeholder_2:0') 
         
-        self.get_batch_data=draw_sigmoid.get_batch_data #draw_circle.get_batch_data #
+        #self.get_batch_data=draw_sigmoid.get_batch_data 
+        self.get_batch_data=draw_circle.get_batch_data 
         
         for i in tf.trainable_variables():
             print(i)
@@ -251,7 +252,7 @@ class cal_tailor:
         # rstride:行之间的跨度  cstride:列之间的跨度
         # rcount:设置间隔个数，默认50个，ccount:列的间隔个数  不能与上面两个参数同时出现
         #vmax和vmin  颜色的最大值和最小值
-        ax.plot_surface(x,y,z, rstride=1, cstride=1)#, cmap=plt.get_cmap('rainbow')
+        #ax.plot_surface(x,y,z, rstride=1, cstride=1)#, cmap=plt.get_cmap('rainbow')
         #plt.show()
         
         
@@ -318,7 +319,7 @@ if __name__ == '__main__':
         #tep.get_onedimval([0,1])
         #tep.get_values([5,0])
         #tep.test_derivative()
-        #tep.test_tailor()
+        tep.test_tailor()
         tep.draw3d_ori_talior()
         
         
