@@ -24,8 +24,11 @@ def function_tanh(x):
 def function_xn(x):
     return 6*(x**6)+10*(x**5)+6*(x**4)-3*(x**2)+x+2
 
+def function_ex(x):
+    return math.pow(math.e, x)
+
 def mystery_model(x):
-    return function_xn(x)
+    return function_ex(x)
 
 def cal_derivative( l, cnt, step):
         '''
@@ -54,14 +57,28 @@ s_max=5
 num_step=1000
 step=(s_max-s_min)/num_step
 
-der_step=10
+der_step=60
+
+def soft(li, num=3):
+    for i in range(len(li)-num):
+        sum=0
+        for j in range(num):
+            sum+=li[i+j]
+        li[i]=sum/num
+    return li
 
 def cal_all_der(oridata, der_num=der_step, point=num_step//2):
     kep=np.zeros([der_num])
     for i in range(len(kep)):
         kep[i]=oridata[point]
         oridata=cal_derivative(oridata, 20, step)
+        #oridata=soft(oridata)
+        print (i,' div:',oridata[point])
         
+        plt.ylim(-5,5)
+        plt.grid(True, color = "b")
+        plt.scatter(range(len(oridata)),oridata, color="y",s=1,marker='.')
+        plt.show()
     return kep
 
 def tailor_test(derlist, pointxk, point):

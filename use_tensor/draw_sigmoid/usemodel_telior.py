@@ -27,11 +27,11 @@ min_data=-2
 num_step=30
 div_step=(max_data-min_data)*1.0/num_step
 
-num_derv=4   #泰勒展开到多少次
+num_derv=60   #泰勒展开到多少次
 
 num_classes=2
 
-modelpath='./logs/2018-12-04_21-16-10' #'./logs/2018-12-01_13-32-33' #
+modelpath='./logs/2018-12-01_13-32-33' #'./logs/2018-12-04_21-16-10' #
 
 class cal_tailor:
     def __init__(self,sess, modelpath=modelpath):
@@ -44,7 +44,7 @@ class cal_tailor:
         self.label_place=self.graph.get_tensor_by_name('input_lab:0') 
         #self.training=self.graph.get_tensor_by_name('Placeholder_2:0') 
         
-        self.get_batch_data=draw_circle.get_batch_data
+        self.get_batch_data=draw_sigmoid.get_batch_data #draw_circle.get_batch_data #
         
         for i in tf.trainable_variables():
             print(i)
@@ -261,8 +261,9 @@ class cal_tailor:
                 z[i][j]=self.tailor_2(der,  point_xk, [xa[i],ya[j]])
                 
         #print (x.shape, y.shape, z.shape)
-        #ax.plot_surface(x,y,z, rstride=1, cstride=1, cmap=plt.get_cmap('rainbow'))
+        ax.plot_surface(x,y,z, rstride=1, cstride=1, cmap=plt.get_cmap('rainbow'))
         plt.show()
+        
             
         
     def tailor_2(self, all_der,  point_xk, point):

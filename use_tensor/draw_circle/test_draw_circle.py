@@ -121,7 +121,8 @@ def get_batch_data():
         #print (x,":",y)
         #在半径为1的圆里面为1 
         
-        if x**2+y**2<=5 and x**2+y**2>1:#拟合一个圆
+        if x*x-1>y:
+        #if x**2+y**2<=5 and x**2+y**2>1:#拟合一个圆
         #if abs(x)+abs(y)<=1:#拟合菱形
         #if y<=1/x:#拟合y=1/x
             #print (x,":",y,"in the circle")
