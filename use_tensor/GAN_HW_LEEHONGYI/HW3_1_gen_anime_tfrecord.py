@@ -110,21 +110,27 @@ def read_tfrecord_batch(tfdir,batchsize=32):
 
     return image_batch
 
-def test_showtfimgs(tfdir):
+def test_showtfimgs(tfdir='./'+outname_ori):
     tep=read_tfrecord_batch(tfdir)
     with tf.Session() as sess:
         while True:
             images=sess.run(tep)
             plt.imshow(images[0])
             plt.show()
-        
 
-if __name__ == '__main__':
+def gen_data_all():
     ori=read_imglist(oridatadir)
     write_tfrec(ori, outname_ori)
     
     extra=read_imglist(extradatadir)
     write_tfrec(extra, outname_extra)
+    
+
+
+
+if __name__ == '__main__':
+    #gen_data_all()
+    test_showtfimgs()
     
     
     
