@@ -61,8 +61,62 @@ def write_tfrec(imglist, outdirname):
     writer.close()
     print ('for all: write to ',tfrecorddir,'->',ind,' images done!!')
     return ind
+
+def preprocess_img(image,outlen=96):
+    #这里将图片变成224大小的，但是如果用crop可能导致切出来的图片里没有目标物体
+    ''''''
+    #image=tf.image.resize_images(image, (outlen*5//4,outlen*5//4))
+    #image=tf.cast(image, dtype=tf.uint8)
+    
+    #image = tf.image.resize_image_with_crop_or_pad(image, 230, 230)
+    #image = tf.random_crop(image, [outlen, outlen, 3])
+    image = tf.image.random_flip_left_right(image)
+    
+    
+    return image
+
+
+def read_tfrecord_batch(tfdir,batchsize=32):
+    tep=os.listdir(tfdir)
+    tep=list(map(lambda x:op.join(tfdir, x), tep))
+    print (tep)
+    dataset = tf.data.TFRecordDataset(tep).repeat()
+   
+    
+    def parse(one_element):
+        feats = tf.parse_single_example(one_element, features={'data':tf.FixedLenFeature([], tf.string), 
+                                                           #'label':tf.FixedLenFeature([],tf.int64), 
+                                                           'width':tf.FixedLenFeature([], tf.int64),
+                                                           'height':tf.FixedLenFeature([], tf.int64)})
+        image = tf.decode_raw(feats['data'], tf.uint8)
+        #label = tf.cast(feats['label'],tf.int32)
+        width = tf.cast(feats['width'], tf.int32)
+        height= tf.cast(feats['height'], tf.int32)
+        
+        image=tf.reshape(image,[height,width,3])
+        image=preprocess_img(image)
         
         
+        return image
+    
+    dataset=dataset.map(parse,num_parallel_calls=4)#注意把值回赋给dataset
+    
+    dataset=dataset.batch(batchsize).shuffle(batchsize*10)
+    #print("dataset.output_shapes",dataset.output_shapes)
+    
+    iterator = dataset.make_one_shot_iterator()
+
+    image_batch = iterator.get_next()
+
+    return image_batch
+
+def test_showtfimgs(tfdir):
+    tep=read_tfrecord_batch(tfdir)
+    with tf.Session() as sess:
+        while True:
+            images=sess.run(tep)
+            plt.imshow(images[0])
+            plt.show()
         
 
 if __name__ == '__main__':
