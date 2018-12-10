@@ -13,12 +13,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 oridatadir='F:\\DL_datasets\\LEEHongYi_HW3-1\\ori_data\\faces'
 extradatadir='F:\\DL_datasets\\LEEHongYi_HW3-1\\extra_data\\images'
 
 outname_ori='anime_tfrecord_ori'
 outname_extra='anime_tfrecord_extra'
 imgs_perfile=6000
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def read_imglist(ddir):
     #prof=op.split(ddir)[-1]
@@ -63,25 +67,29 @@ def write_tfrec(imglist, outdirname):
     return ind
 
 def preprocess_img(image,outlen=96):
-    #这里将图片变成224大小的，但是如果用crop可能导致切出来的图片里没有目标物体
+    #这里将图片
     ''''''
-    #image=tf.image.resize_images(image, (outlen*5//4,outlen*5//4))
-    #image=tf.cast(image, dtype=tf.uint8)
+    image=tf.image.resize_images(image, (outlen,outlen))
+    image=tf.cast(image, dtype=tf.uint8)
     
     #image = tf.image.resize_image_with_crop_or_pad(image, 230, 230)
     #image = tf.random_crop(image, [outlen, outlen, 3])
+    
+    
+    
     image = tf.image.random_flip_left_right(image)
     
     
     return image
 
 
-def read_tfrecord_batch(tfdir,batchsize=32):
+def read_tfrecord_batch(tfdir='./'+outname_ori,batchsize=32):
     tep=os.listdir(tfdir)
+    tep=random.shuffle(tep)
     tep=list(map(lambda x:op.join(tfdir, x), tep))
     print (tep)
     dataset = tf.data.TFRecordDataset(tep).repeat()
-   
+    
     
     def parse(one_element):
         feats = tf.parse_single_example(one_element, features={'data':tf.FixedLenFeature([], tf.string), 
@@ -95,7 +103,6 @@ def read_tfrecord_batch(tfdir,batchsize=32):
         
         image=tf.reshape(image,[height,width,3])
         image=preprocess_img(image)
-        
         
         return image
     
