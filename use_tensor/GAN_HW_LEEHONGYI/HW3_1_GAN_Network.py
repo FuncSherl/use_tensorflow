@@ -24,7 +24,7 @@ batchsize=32
 noise_size=100
 img_size=64  #96
 
-base_lr=0.0002 #基础学习率
+base_lr=0.0004 #基础学习率
 beta=0.5
 
 maxstep=100000 #训练多少次
@@ -50,7 +50,7 @@ class GAN_Net:
         self.dropout=0.5 
         self.leakyrelurate=0.2
         self.stddev=0.1
-        self.bias_init=0
+        self.bias_init=0.001
         
         #3个placeholder， img和noise,training 
         self.noise_pla=tf.placeholder(tf.float64, [batchsize, noise_size], name='noise_in')
