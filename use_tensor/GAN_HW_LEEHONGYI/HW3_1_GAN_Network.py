@@ -33,6 +33,8 @@ eval_step=100
 decay_steps=1000
 decay_rate=0.9
 
+incase_div_zero=1e-7
+
 logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -55,12 +57,15 @@ class GAN_Net:
         self.imgs_pla = tf.placeholder(tf.float64, [batchsize, img_size, img_size, 3], name='imgs_in')
         self.training=tf.placeholder(tf.bool, name='training_in')
         
+        
+        
         self.whole_net=self.Discriminator_net(self.Generator_net(self.noise_pla))
         #由于有重复构建网络结构的操作，这里重新清零保持weight的list，这样就能保障每个weight tensor只在list中出现一次
         #self.G_para=[]
         #self.D_para=[]
-        self.D_net=self.Discriminator_net(  self.img2tanh(self.tf_inimg)  ) #self.imgs_pla
         self.G_net=self.Generator_net(self.noise_pla)
+        self.D_net=self.Discriminator_net(  self.img2tanh(self.tf_inimg)  ) #self.imgs_pla
+        
         
         
         
@@ -70,6 +75,7 @@ class GAN_Net:
         self.train_G=self.trainonce_G(decay_steps, decay_rate)
         
         for i in self.G_para: print (i)
+        print('\nnext is D:\n')
         for i in self.D_para: print (i)
         
         self.summary_all=tf.summary.merge_all()
@@ -82,8 +88,8 @@ class GAN_Net:
     
             
     def D_loss(self):
-        fir=tf.log(self.D_net)
-        sec=tf.log(self.whole_net*(-1)+1)
+        fir=tf.log(tf.maximum(self.D_net,incase_div_zero) )
+        sec=tf.log( tf.maximum(self.whole_net*(-1)+1,incase_div_zero)  )
         loss=tf.add_n([fir,sec] )
         #print ('loss shape:',loss.get_shape())
         loss_mean = tf.reduce_mean(loss, name='D_loss_mean')
@@ -94,7 +100,7 @@ class GAN_Net:
         
     
     def G_loss(self):
-        sec=tf.log(self.whole_net)
+        sec=tf.log( tf.maximum(self.whole_net, incase_div_zero)  )
         loss_mean = tf.reduce_mean(sec, name='G_loss_mean')
         tf.summary.scalar('G_loss_mean',loss_mean)
         
@@ -106,7 +112,7 @@ class GAN_Net:
         print ('G: AdamOptimizer to maxmize %d vars..'%(len(self.G_para)))
         
         #这将lr调为负数，因为应该最大化目标
-        train_op = tf.train.AdamOptimizer(lr_rate).minimize(-self.G_loss_mean, global_step=self.global_step,var_list=self.G_para)
+        train_op = tf.train.AdamOptimizer(-lr_rate).minimize(self.G_loss_mean, global_step=self.global_step,var_list=self.G_para)
         
         return train_op
     
@@ -116,7 +122,7 @@ class GAN_Net:
         
         #这将lr调为负数，因为应该最大化目标
         #这里就不管globalstep了，否则一次迭代会加2次
-        train_op = tf.train.AdamOptimizer(lr_rate).minimize(-self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
+        train_op = tf.train.AdamOptimizer(-lr_rate).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
         
         return train_op
                                                                                                                                                        
@@ -130,6 +136,8 @@ class GAN_Net:
         
         noise=self.get_noise()
         _,summary,gloss=self.sess.run([self.train_G, self.summary_all, self.G_loss_mean], feed_dict={  self.noise_pla: noise })   #self.imgs_pla: self.img2tanh(self.tf_inimg),
+        #print('deb1:',deb1[0][0])
+        #print ("debug:",debug[0])
         return summary,dloss,gloss
     
     
@@ -267,14 +275,18 @@ class GAN_Net:
                 
     
     def Discriminator_net(self, imgs):
-        imgs=tf.cast(imgs, tf.float64)
+        #cast to float 
+        self.imgs_float64=tf.cast(imgs, tf.float64)
         #conv1
         with tf.variable_scope('D_conv1',  reuse=tf.AUTO_REUSE) as scope: 
             kernel=tf.get_variable('weights', [4,4, 3, 32], dtype=tf.float64, initializer=tf.random_normal_initializer(stddev=self.stddev))
             bias=tf.get_variable('bias', [32], dtype=tf.float64, initializer=tf.constant_initializer(self.bias_init))
             #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
             #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
-            conv=tf.nn.conv2d(imgs, kernel, strides=[1,2,2,1], padding='SAME')
+            #self.deb1=kernel
+            #self.deb2=bias
+            
+            conv=tf.nn.conv2d(self.imgs_float64, kernel, strides=[1,2,2,1], padding='SAME')
             self.D_conv1=tf.nn.bias_add(conv, bias)
             
             self.D_para += [kernel, bias]
