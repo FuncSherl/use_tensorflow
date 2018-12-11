@@ -24,11 +24,11 @@ batchsize=32
 noise_size=100
 img_size=64  #96
 
-base_lr=0.00002 #基础学习率
+base_lr=0.000002 #基础学习率
 beta=0.5
 
 maxstep=100000 #训练多少次
-eval_step=1000
+eval_step=100
 
 decay_steps=1000
 decay_rate=0.9
@@ -55,16 +55,22 @@ class GAN_Net:
         self.imgs_pla = tf.placeholder(tf.float64, [batchsize, img_size, img_size, 3], name='imgs_in')
         self.training=tf.placeholder(tf.bool, name='training_in')
         
-        for i in self.G_para: print (i)
-        for i in self.D_para: print (i)
-        
         self.whole_net=self.Discriminator_net(self.Generator_net(self.noise_pla))
+        #由于有重复构建网络结构的操作，这里重新清零保持weight的list，这样就能保障每个weight tensor只在list中出现一次
+        #self.G_para=[]
+        #self.D_para=[]
         self.D_net=self.Discriminator_net(  self.img2tanh(self.tf_inimg)  ) #self.imgs_pla
         self.G_net=self.Generator_net(self.noise_pla)
+        
+        
+        
         self.D_loss_mean=self.D_loss()
         self.G_loss_mean=self.G_loss()
         self.train_D=self.trainonce_D(decay_steps, decay_rate)
         self.train_G=self.trainonce_G(decay_steps, decay_rate)
+        
+        for i in self.G_para: print (i)
+        for i in self.D_para: print (i)
         
         self.summary_all=tf.summary.merge_all()
         init = tf.global_variables_initializer()#初始化tf.Variable,虽然后面会有初始化权重过程，但是最后一层是要根据任务来的,无法finetune，其参数需要随机初始化
@@ -100,7 +106,7 @@ class GAN_Net:
         print ('G: AdamOptimizer to maxmize %d vars..'%(len(self.G_para)))
         
         #这将lr调为负数，因为应该最大化目标
-        train_op = tf.train.AdamOptimizer(-lr_rate).minimize(self.G_loss_mean, global_step=self.global_step,var_list=self.G_para)
+        train_op = tf.train.AdamOptimizer(lr_rate).minimize(-self.G_loss_mean, global_step=self.global_step,var_list=self.G_para)
         
         return train_op
     
@@ -110,7 +116,7 @@ class GAN_Net:
         
         #这将lr调为负数，因为应该最大化目标
         #这里就不管globalstep了，否则一次迭代会加2次
-        train_op = tf.train.AdamOptimizer(-lr_rate).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
+        train_op = tf.train.AdamOptimizer(lr_rate).minimize(-self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
         
         return train_op
                                                                                                                                                        
@@ -344,7 +350,7 @@ if __name__ == '__main__':
 
         begin_t=time.time()
         for i in range(maxstep):            
-            if (i==0 or (i+1)%500==0):#一次测试
+            if ((i+1)%500==0):#一次测试
                 gan.eval_G_once(i)
                 
                 print ('begining to eval D:')
