@@ -66,6 +66,8 @@ class GAN_Net:
         self.train_D=self.trainonce_D(decay_steps, decay_rate)
         self.train_G=self.trainonce_G(decay_steps, decay_rate)
         
+        self.summary_all=tf.summary.merge_all()
+        
         
     def img2tanh(self,img):
         return img*2/255-1
@@ -115,7 +117,12 @@ class GAN_Net:
     
     #tensor 范围外   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     def train_once_all(self):
-        self.sess.run(self.train_D, )
+        noise=self.get_noise()
+        _,dloss=self.sess.run([self.train_D, self.D_loss_mean], feed_dict={ self.imgs_pla: self.img2tanh(self.tf_inimg), self.noise_pla: noise })
+        
+        noise=self.get_noise()
+        _,summary,gloss=self.sess.run([self.train_G, self.summary_all, self.G_loss_mean], feed_dict={  self.noise_pla: noise })   #self.imgs_pla: self.img2tanh(self.tf_inimg),
+        return summary,dloss,gloss
     
     
     def tanh2img(self,tanhd):
@@ -359,12 +366,12 @@ if __name__ == '__main__':
             stt=time.time()
             print ('\n%d/%d  start train_once...'%(i,maxstep))
             #lost,sum_log=vgg.train_once(sess) #这里每次训练都run一个summary出来
-            
+            sum_log,gloss,dloss=gan.train_once_all()
             #写入日志
-            #logwriter.add_summary(sum_log, i)
+            logwriter.add_summary(sum_log, i)
             #print ('write summary done!')
             
-            print ('train once-->loss:',lost,'  time:',time.time()-stt)
+            print ('train once-->gloss:',gloss,'  dloss:',dloss,'  time:',time.time()-stt)
         
         print ('Training done!!!-->time used:',(time.time()-begin_t))
 
