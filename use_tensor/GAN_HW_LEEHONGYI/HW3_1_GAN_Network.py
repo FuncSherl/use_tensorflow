@@ -28,7 +28,10 @@ base_lr=0.0002 #基础学习率
 beta=0.5
 
 maxstep=100000 #训练多少次
+eval_step=1000
 
+decay_steps=1000
+decay_rate=0.9
 
 logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -38,6 +41,7 @@ class GAN_Net:
     def __init__(self, sess):
         self.sess=sess
         self.tf_inimg=anime_data.read_tfrecord_batch( batchsize=batchsize, imgsize=img_size)  #tensor的img输入
+        self.global_step = tf.Variable(0, name='global_step', trainable=False)
         
         self.G_para=[]
         self.D_para=[]       
@@ -57,30 +61,113 @@ class GAN_Net:
         self.whole_net=self.Discriminator_net(self.Generator_net(self.noise_pla))
         self.D_net=self.Discriminator_net(self.imgs_pla)
         self.G_net=self.Generator_net(self.noise_pla)
+        self.D_loss_mean=self.D_loss()
+        self.G_loss_mean=self.G_loss()
+        self.train_D=self.trainonce_D(decay_steps, decay_rate)
+        self.train_G=self.trainonce_G(decay_steps, decay_rate)
+        
         
     def img2tanh(self,img):
         return img*2/255-1
     
+            
+    def D_loss(self):
+        fir=tf.log(self.D_net)
+        sec=tf.log(self.whole_net*(-1)+1)
+        loss=tf.add_n(fir,sec)
+        print ('loss shape:',loss.get_shape())
+        loss_mean = tf.reduce_mean(loss, name='D_loss_mean')
+        
+        tf.summary.scalar('D_loss_mean',loss_mean)
+        
+        return loss_mean
+        
+    
+    def G_loss(self):
+        sec=tf.log(self.whole_net)
+        loss_mean = tf.reduce_mean(sec, name='G_loss_mean')
+        tf.summary.scalar('G_loss_mean',loss_mean)
+        
+        return loss_mean
+    
+    
+    def trainonce_G(self,decay_steps=1000, decay_rate=0.99):
+        lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+        print ('G: AdamOptimizer to maxmize %d vars..'%(len(self.G_para)))
+        
+        #这将lr调为负数，因为应该最大化目标
+        train_op = tf.train.AdamOptimizer(-lr_rate).minimize(self.G_loss_mean, global_step=self.global_step,var_list=self.G_para)
+        
+        return train_op
+    
+    def trainonce_D(self,decay_steps=1000, decay_rate=0.99):
+        lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+        print ('D: AdamOptimizer to maxmize %d vars..'%(len(self.D_para)))
+        
+        #这将lr调为负数，因为应该最大化目标
+        #这里就不管globalstep了，否则一次迭代会加2次
+        train_op = tf.train.AdamOptimizer(-lr_rate).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
+        
+        return train_op
+                                                                                                                                                       
+    
+    
+    
+    #tensor 范围外   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    def train_once_all(self):
+        self.sess.run(self.train_D, )
+    
+    
     def tanh2img(self,tanhd):
         tep= (tanhd+1)*255//2
-        return tep.astype(np.uint8)                                                                                                                                                                   
+        return tep.astype(np.uint8)  
+    
     
     def Run_G(self):
         noise=self.get_noise()
         inerimg=self.sess.run(self.G_net, feed_dict={self.noise_pla: noise})
         return inerimg
     
-    def Run_D(self, imgs):#这里imgs要求是tanh化过的，即归一化到-1~1
-        probs=self.sess.run(self.D_net, feed_dict={self.imgs_pla: imgs})
+    def Run_WholeNet(self):
+        noise=self.get_noise()
+        probs=self.sess.run(self.whole_net, feed_dict={self.noise_pla: noise})
+        return probs
+    
+    def Run_D(self):#这里imgs要求是tanh化过的，即归一化到-1~1       
+        probs=self.sess.run(self.D_net, feed_dict={ self.imgs_pla: self.img2tanh(self.tf_inimg) })
         #越接近真实图像越接近1
         return probs
+    
     
         
     def get_noise(self):
         return np.random.random([batchsize, noise_size])
     
-    def eval_D_once(self):
-        pass
+    def eval_G_once(self, step=0):
+        desdir=op.join(logdir, step)
+        if not op.isdir(desdir): os.makedirs(desdir)
+        
+        for i in range(10):
+            tepimgs=self.Run_G()
+            for ind,j in enumerate(tepimgs):  
+                j=self.tanh2img(j)              
+                im = Image.fromarray(j)
+                imgname=str(i)+'_'+str(ind)+".jpg"
+                im.save(op.join(desdir, imgname))
+        print ('eval_G_once,saved imgs to:',desdir)
+        
+    def evla_D_once(self):
+        cnt_real=0
+        cnt_fake=0
+        for i in range(eval_step):
+            probs=self.Run_WholeNet()
+            print ('show prob shape:',probs.shape)
+            cnt_fake+=np.mean(probs)
+        
+        for i in range(eval_step):
+            probs=self.Run_D()
+            cnt_real+=np.mean(probs)
+        return cnt_real/eval_step, cnt_fake/eval_step
         
     
     def Generator_net(self, noise):
@@ -162,8 +249,7 @@ class GAN_Net:
         
         return self.G_tanh
             
-        
-            
+                
     
     def Discriminator_net(self, imgs):
         #conv1
@@ -248,28 +334,34 @@ if __name__ == '__main__':
 
         begin_t=time.time()
         for i in range(maxstep):            
-            if ((i+1)%500==0):#一次测试
-                acc,tloss=vgg.eval_once(sess)
-                print ('training at %d eval the test datas:'%i,acc)
+            if (i==0 or (i+1)%500==0):#一次测试
+                gan.eval_G_once(i)
+                
+                real,fake=gan.evla_D_once()
+                print ('mean prob of real/fake:',real,fake)
                 
                 #自己构建summary
                 tsummary = tf.Summary()
-                tsummary.value.add(tag='test epoch accuracy rate:', simple_value=acc)
-                tsummary.value.add(tag='test epoch loss:', simple_value=tloss)
+                tsummary.value.add(tag='mean prob of real', simple_value=real)
+                tsummary.value.add(tag='mean prob of fake', simple_value=fake)
+                #tsummary.value.add(tag='test epoch loss:', simple_value=tloss)
                 #写入日志
                 logwriter.add_summary(tsummary, i)
                 
-            if (i+1)%1000==0:#保存模型
+                
+                
+            if (i+1)%2000==0:#保存模型
                 print ('saving models...')
                 pat=all_saver.save(sess, op.join(logdir,'model_keep'),global_step=i)
                 print ('saved at:',pat)
             
+            
             stt=time.time()
             print ('\n%d/%d  start train_once...'%(i,maxstep))
-            lost,sum_log=vgg.train_once(sess) #这里每次训练都run一个summary出来
+            #lost,sum_log=vgg.train_once(sess) #这里每次训练都run一个summary出来
             
             #写入日志
-            logwriter.add_summary(sum_log, i)
+            #logwriter.add_summary(sum_log, i)
             #print ('write summary done!')
             
             print ('train once-->loss:',lost,'  time:',time.time()-stt)
