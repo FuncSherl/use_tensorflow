@@ -85,7 +85,7 @@ def preprocess_img(image,outlen):
 
 def read_tfrecord_batch(tfdir='./'+outname_ori,batchsize=32, imgsize=96):
     tep=os.listdir(tfdir)
-    tep=random.shuffle(tep)
+    random.shuffle(tep)
     tep=list(map(lambda x:op.join(tfdir, x), tep))
     print (tep)
     dataset = tf.data.TFRecordDataset(tep).repeat()
