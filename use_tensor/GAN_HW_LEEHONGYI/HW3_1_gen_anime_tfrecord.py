@@ -66,7 +66,7 @@ def write_tfrec(imglist, outdirname):
     print ('for all: write to ',tfrecorddir,'->',ind,' images done!!')
     return ind
 
-def preprocess_img(image,outlen=96):
+def preprocess_img(image,outlen):
     #这里将图片
     ''''''
     image=tf.image.resize_images(image, (outlen,outlen))
@@ -83,7 +83,7 @@ def preprocess_img(image,outlen=96):
     return image
 
 
-def read_tfrecord_batch(tfdir='./'+outname_ori,batchsize=32):
+def read_tfrecord_batch(tfdir='./'+outname_ori,batchsize=32, imgsize=96):
     tep=os.listdir(tfdir)
     tep=random.shuffle(tep)
     tep=list(map(lambda x:op.join(tfdir, x), tep))
@@ -102,7 +102,7 @@ def read_tfrecord_batch(tfdir='./'+outname_ori,batchsize=32):
         height= tf.cast(feats['height'], tf.int32)
         
         image=tf.reshape(image,[height,width,3])
-        image=preprocess_img(image)
+        image=preprocess_img(image, imgsize)
         
         return image
     

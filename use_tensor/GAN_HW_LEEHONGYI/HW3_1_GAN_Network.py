@@ -4,31 +4,40 @@ Created on 2018年12月10日
 
 @author: sherl
 '''
-from xml.dom import minidom
-import cv2,os,random
+import cv2,os,random,time
 from datetime import datetime
 import os.path as op
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from use_tensor import GAN_HW_LEEHONGYI
 import use_tensor.GAN_HW_LEEHONGYI.HW3_1_gen_anime_tfrecord as anime_data
 
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
+
+
+train_size=33431 #训练集规模
 batchsize=32
 noise_size=100
-img_size=96
+img_size=64  #96
 
+base_lr=0.0002 #基础学习率
+beta=0.5
+
+maxstep=100000 #训练多少次
+
+
+logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 class GAN_Net:
     def __init__(self, sess):
         self.sess=sess
-        self.tf_inimg=anime_data.read_tfrecord_batch( batchsize=batchsize)  #tensor的img输入
+        self.tf_inimg=anime_data.read_tfrecord_batch( batchsize=batchsize, imgsize=img_size)  #tensor的img输入
         
         self.G_para=[]
         self.D_para=[]       
@@ -37,13 +46,41 @@ class GAN_Net:
         self.stddev=0.1
         self.bias_init=0
         
-        #3个placeholder， img和noise
+        #3个placeholder， img和noise,training 
         self.noise_pla=tf.placeholder(tf.float32, [batchsize, noise_size], name='noise_in')
         self.imgs_pla = tf.placeholder(tf.float32, [batchsize, img_size, img_size, 3], name='imgs_in')
         self.training=tf.placeholder(tf.bool, name='training_in')
         
+        for i in self.G_para: print (i)
+        for i in self.D_para: print (i)
+        
+        self.whole_net=self.Discriminator_net(self.Generator_net(self.noise_pla))
+        self.D_net=self.Discriminator_net(self.imgs_pla)
+        self.G_net=self.Generator_net(self.noise_pla)
+        
+    def img2tanh(self,img):
+        return img*2/255-1
+    
+    def tanh2img(self,tanhd):
+        tep= (tanhd+1)*255//2
+        return tep.astype(np.uint8)                                                                                                                                                                   
+    
+    def Run_G(self):
+        noise=self.get_noise()
+        inerimg=self.sess.run(self.G_net, feed_dict={self.noise_pla: noise})
+        return inerimg
+    
+    def Run_D(self, imgs):#这里imgs要求是tanh化过的，即归一化到-1~1
+        probs=self.sess.run(self.D_net, feed_dict={self.imgs_pla: imgs})
+        #越接近真实图像越接近1
+        return probs
+    
+        
     def get_noise(self):
         return np.random.random([batchsize, noise_size])
+    
+    def eval_D_once(self):
+        pass
         
     
     def Generator_net(self, noise):
@@ -121,9 +158,9 @@ class GAN_Net:
             #self.G_conv3=tf.nn.leaky_relu(self.G_conv3, self.leakyrelurate)
             
         #tanh
-        G_tanh= tf.nn.tanh(self.G_conv3, name='G_tanh')
+        self.G_tanh= tf.nn.tanh(self.G_conv3, name='G_tanh')
         
-        return G_tanh
+        return self.G_tanh
             
         
             
@@ -185,11 +222,12 @@ class GAN_Net:
             D_fc1w = tf.get_variable('weights', [self.flatten.get_shape()[-1], 1], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
             D_fc1b = tf.get_variable('bias', [1], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
         
-            D_fc1l = tf.nn.bias_add(tf.matmul(self.flatten, D_fc1w), D_fc1b)
+            self.D_fc1 = tf.nn.bias_add(tf.matmul(self.flatten, D_fc1w), D_fc1b)
             
-            self.D_fc1 = tf.nn.leaky_relu(D_fc1l, self.leakyrelurate)
+            #self.D_fc1 = tf.nn.leaky_relu(self.D_fc1, self.leakyrelurate)
             self.D_para += [D_fc1w, D_fc1b]
             
+        #sigmoid
         self.D_sigmoid=tf.nn.sigmoid(self.D_fc1, name='D_sigmoid')
         
         return self.D_sigmoid
@@ -199,11 +237,44 @@ class GAN_Net:
 
 
 
-if __name__ == '__main__':
-    pass
+if __name__ == '__main__':   
+    with tf.Session() as sess:      
+        gan=GAN_Net(sess)
+        
+        logwriter = tf.summary.FileWriter(logdir,   sess.graph)
+        
+        all_saver = tf.train.Saver(max_to_keep=2) 
 
 
-
+        begin_t=time.time()
+        for i in range(maxstep):            
+            if ((i+1)%500==0):#一次测试
+                acc,tloss=vgg.eval_once(sess)
+                print ('training at %d eval the test datas:'%i,acc)
+                
+                #自己构建summary
+                tsummary = tf.Summary()
+                tsummary.value.add(tag='test epoch accuracy rate:', simple_value=acc)
+                tsummary.value.add(tag='test epoch loss:', simple_value=tloss)
+                #写入日志
+                logwriter.add_summary(tsummary, i)
+                
+            if (i+1)%1000==0:#保存模型
+                print ('saving models...')
+                pat=all_saver.save(sess, op.join(logdir,'model_keep'),global_step=i)
+                print ('saved at:',pat)
+            
+            stt=time.time()
+            print ('\n%d/%d  start train_once...'%(i,maxstep))
+            lost,sum_log=vgg.train_once(sess) #这里每次训练都run一个summary出来
+            
+            #写入日志
+            logwriter.add_summary(sum_log, i)
+            #print ('write summary done!')
+            
+            print ('train once-->loss:',lost,'  time:',time.time()-stt)
+        
+        print ('Training done!!!-->time used:',(time.time()-begin_t))
 
 
 
