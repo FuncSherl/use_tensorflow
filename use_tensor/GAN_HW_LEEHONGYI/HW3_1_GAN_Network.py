@@ -24,7 +24,7 @@ batchsize=32
 noise_size=100
 img_size=64  #96
 
-base_lr=0.0004 #基础学习率
+base_lr=0.00002 #基础学习率
 beta=0.5
 
 maxstep=100000 #训练多少次
