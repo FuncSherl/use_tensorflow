@@ -202,7 +202,7 @@ class GAN_Net:
         desdir=op.join(logdir, str(step))
         if not op.isdir(desdir): os.makedirs(desdir)
         
-        for i in range(6):
+        for i in range(4):
             tepimgs=self.Run_G()
             for ind,j in enumerate(tepimgs):  
                 j=self.tanh2img(j)              
