@@ -27,7 +27,7 @@ img_size=64  #96
 base_lr=0.00002 #基础学习率
 beta1=0.5
 
-maxstep=20000 #训练多少次
+maxstep=60000 #训练多少次
 eval_step=100
 
 decay_steps=1000
@@ -202,7 +202,7 @@ class GAN_Net:
         desdir=op.join(logdir, str(step))
         if not op.isdir(desdir): os.makedirs(desdir)
         
-        for i in range(10):
+        for i in range(6):
             tepimgs=self.Run_G()
             for ind,j in enumerate(tepimgs):  
                 j=self.tanh2img(j)              
