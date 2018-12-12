@@ -398,8 +398,6 @@ if __name__ == '__main__':
         begin_t=time.time()
         for i in range(maxstep):            
             if ((i+1)%500==0):#一次测试
-                gan.eval_G_once(i)
-                
                 print ('begining to eval D:')
                 real,fake=gan.evla_D_once()
                 print ('mean prob of real/fake:',real,fake)
@@ -412,6 +410,8 @@ if __name__ == '__main__':
                 #写入日志
                 logwriter.add_summary(tsummary, i)
                 
+            if (i+1)%1000==0:#保存一波图片
+                gan.eval_G_once(i)
                 
                 
             if (i+1)%2000==0:#保存模型
