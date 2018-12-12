@@ -33,7 +33,7 @@ eval_step=100
 decay_steps=1000
 decay_rate=0.9
 
-incase_div_zero=1e-7
+incase_div_zero=1e-9
 
 logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -130,7 +130,7 @@ class GAN_Net:
         print ('G: AdamOptimizer to maxmize %d vars..'%(len(self.G_para)))
         
         #这将lr调为负数，因为应该最大化目标
-        optimizer=tf.train.AdamOptimizer(-lr_rate*4, beta1=beta1)
+        optimizer=tf.train.AdamOptimizer(-lr_rate*2, beta1=beta1)
         
         #for i in optimizer.compute_gradients(self.G_loss_mean, var_list=self.G_para): print (i)
         
