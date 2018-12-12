@@ -25,7 +25,7 @@ noise_size=100
 img_size=64  #96
 
 base_lr=0.00002 #基础学习率
-beta=0.5
+beta1=0.5
 
 maxstep=20000 #训练多少次
 eval_step=100
@@ -66,7 +66,11 @@ class GAN_Net:
         self.G_net=self.Generator_net(self.noise_pla)
         self.D_net=self.Discriminator_net(  self.img2tanh(self.tf_inimg)  ) #self.imgs_pla
         
-        
+        '''
+        print ('\nshow all trainable vars:',len(tf.trainable_variables()))
+        for i in tf.trainable_variables():
+            print (i)
+        '''
         
         
         self.D_loss_mean=self.D_loss()
@@ -74,7 +78,7 @@ class GAN_Net:
         self.train_D=self.trainonce_D(decay_steps, decay_rate)
         self.train_G=self.trainonce_G(decay_steps, decay_rate)
         
-        
+        print ('\nfirst show G params')
         for i in self.G_para: print (i)
         print('\nnext is D:\n')
         for i in self.D_para: print (i)
@@ -89,19 +93,24 @@ class GAN_Net:
     
             
     def D_loss(self):
-        self.D_loss_fir=tf.log(tf.maximum(self.D_net,incase_div_zero) )
-        self.D_loss_sec=tf.log( tf.maximum(self.whole_net*(-1)+1,incase_div_zero)  )
+        self.D_loss_fir=tf.log(tf.maximum(self.D_net,incase_div_zero) )  #real
+        self.D_loss_sec=tf.log( tf.maximum(self.whole_net*(-1)+1,incase_div_zero)  )  #fake
+        
+        '''
         loss=tf.add_n([self.D_loss_fir,self.D_loss_sec] )
         #print ('loss shape:',loss.get_shape())
         loss_mean = tf.reduce_mean(loss, name='D_loss_mean')
-        
-        tf.summary.scalar('D_loss_mean',loss_mean)
+        '''
         
         #testing target
         fir_loss_mean=tf.reduce_mean(self.D_loss_fir)
         sec_loss_mean=tf.reduce_mean(self.D_loss_sec)
         tf.summary.scalar('D_DNET_loss_mean',fir_loss_mean)
         tf.summary.scalar('D_WholeNet_loss_mean',sec_loss_mean)
+        
+        loss_mean=fir_loss_mean+sec_loss_mean
+        
+        tf.summary.scalar('D_loss_mean',loss_mean)        
         ############################################################
         
         return loss_mean
@@ -116,12 +125,12 @@ class GAN_Net:
         return loss_mean
     
     
-    def trainonce_G(self,decay_steps=1000, decay_rate=0.99):
+    def trainonce_G(self,decay_steps=1000, decay_rate=0.99, beta1=beta1):
         lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         print ('G: AdamOptimizer to maxmize %d vars..'%(len(self.G_para)))
         
         #这将lr调为负数，因为应该最大化目标
-        optimizer=tf.train.AdamOptimizer(-lr_rate)
+        optimizer=tf.train.AdamOptimizer(-lr_rate, beta1=beta1)
         
         #for i in optimizer.compute_gradients(self.G_loss_mean, var_list=self.G_para): print (i)
         
@@ -129,13 +138,13 @@ class GAN_Net:
         
         return train_op
     
-    def trainonce_D(self,decay_steps=1000, decay_rate=0.99):
+    def trainonce_D(self,decay_steps=1000, decay_rate=0.99, beta1=beta1):
         lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         print ('D: AdamOptimizer to maxmize %d vars..'%(len(self.D_para)))
         
         #这将lr调为负数，因为应该最大化目标
         #这里就不管globalstep了，否则一次迭代会加2次
-        train_op = tf.train.AdamOptimizer(-lr_rate).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
+        train_op = tf.train.AdamOptimizer(-lr_rate, beta1=beta1).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
         
         return train_op
                                                                                                                                                        
@@ -145,7 +154,7 @@ class GAN_Net:
     #tensor 范围外   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     def train_once_all(self):
         #print ('deb1',self.sess.run(self.debug))                   
-        
+        '''
         noise=self.get_noise()
         _,dloss=self.sess.run([self.train_D, self.D_loss_mean], feed_dict={  self.noise_pla: noise })  #self.imgs_pla: self.img2tanh(self.tf_inimg),
         #print ('deb2',self.sess.run(self.debug)) 
@@ -155,6 +164,10 @@ class GAN_Net:
         _,summary,gloss=self.sess.run([self.train_G,  self.summary_all, self.G_loss_mean], feed_dict={  self.noise_pla: noise })   #self.imgs_pla: self.img2tanh(self.tf_inimg),
         #print ('deb3',self.sess.run(self.debug)) 
         #print ("debug:",debug[0])  
+        '''
+        
+        noise=self.get_noise()
+        _,_,dloss,gloss,summary=self.sess.run([self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,self.summary_all], feed_dict={  self.noise_pla: noise })
         
         return summary,dloss,gloss
     
@@ -182,7 +195,8 @@ class GAN_Net:
     
         
     def get_noise(self):
-        return np.random.random([batchsize, noise_size])
+        return np.random.uniform(-1, 1, size=[batchsize, noise_size])
+        #return np.random.random([batchsize, noise_size])
     
     def eval_G_once(self, step=0):
         desdir=op.join(logdir, str(step))
