@@ -130,7 +130,7 @@ class GAN_Net:
         print ('G: AdamOptimizer to maxmize %d vars..'%(len(self.G_para)))
         
         #这将lr调为负数，因为应该最大化目标
-        optimizer=tf.train.AdamOptimizer(-lr_rate*2, beta1=beta1)
+        optimizer=tf.train.AdamOptimizer(-lr_rate*2 , beta1=beta1)
         
         #for i in optimizer.compute_gradients(self.G_loss_mean, var_list=self.G_para): print (i)
         
@@ -397,7 +397,7 @@ if __name__ == '__main__':
 
         begin_t=time.time()
         for i in range(maxstep):            
-            if ((i+1)%500==0):#一次测试
+            if ((i+1)%100==0):#一次测试
                 print ('begining to eval D:')
                 real,fake=gan.evla_D_once()
                 print ('mean prob of real/fake:',real,fake)
