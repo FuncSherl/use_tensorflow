@@ -27,7 +27,7 @@ img_size=64  #96
 base_lr=0.00002 #基础学习率
 beta=0.5
 
-maxstep=100000 #训练多少次
+maxstep=20000 #训练多少次
 eval_step=100
 
 decay_steps=1000
@@ -50,7 +50,7 @@ class GAN_Net:
         self.dropout=0.5 
         self.leakyrelurate=0.2
         self.stddev=0.1
-        self.bias_init=0.001
+        self.bias_init=0
         
         #3个placeholder， img和noise,training 
         self.noise_pla=tf.placeholder(tf.float64, [batchsize, noise_size], name='noise_in')
@@ -61,8 +61,8 @@ class GAN_Net:
         
         self.whole_net=self.Discriminator_net(self.Generator_net(self.noise_pla))
         #由于有重复构建网络结构的操作，这里重新清零保持weight的list，这样就能保障每个weight tensor只在list中出现一次
-        #self.G_para=[]
-        #self.D_para=[]
+        self.G_para=[]
+        self.D_para=[]
         self.G_net=self.Generator_net(self.noise_pla)
         self.D_net=self.Discriminator_net(  self.img2tanh(self.tf_inimg)  ) #self.imgs_pla
         
@@ -73,6 +73,7 @@ class GAN_Net:
         self.G_loss_mean=self.G_loss()
         self.train_D=self.trainonce_D(decay_steps, decay_rate)
         self.train_G=self.trainonce_G(decay_steps, decay_rate)
+        
         
         for i in self.G_para: print (i)
         print('\nnext is D:\n')
@@ -88,21 +89,29 @@ class GAN_Net:
     
             
     def D_loss(self):
-        fir=tf.log(tf.maximum(self.D_net,incase_div_zero) )
-        sec=tf.log( tf.maximum(self.whole_net*(-1)+1,incase_div_zero)  )
-        loss=tf.add_n([fir,sec] )
+        self.D_loss_fir=tf.log(tf.maximum(self.D_net,incase_div_zero) )
+        self.D_loss_sec=tf.log( tf.maximum(self.whole_net*(-1)+1,incase_div_zero)  )
+        loss=tf.add_n([self.D_loss_fir,self.D_loss_sec] )
         #print ('loss shape:',loss.get_shape())
         loss_mean = tf.reduce_mean(loss, name='D_loss_mean')
         
         tf.summary.scalar('D_loss_mean',loss_mean)
         
+        #testing target
+        fir_loss_mean=tf.reduce_mean(self.D_loss_fir)
+        sec_loss_mean=tf.reduce_mean(self.D_loss_sec)
+        tf.summary.scalar('D_DNET_loss_mean',fir_loss_mean)
+        tf.summary.scalar('D_WholeNet_loss_mean',sec_loss_mean)
+        ############################################################
+        
         return loss_mean
         
     
     def G_loss(self):
-        sec=tf.log( tf.maximum(self.whole_net, incase_div_zero)  )
-        loss_mean = tf.reduce_mean(sec, name='G_loss_mean')
+        self.G_loss_fir=tf.log( tf.maximum(self.whole_net, incase_div_zero)  )
+        loss_mean = tf.reduce_mean(self.G_loss_fir, name='G_loss_mean')
         tf.summary.scalar('G_loss_mean',loss_mean)
+        
         
         return loss_mean
     
@@ -112,7 +121,11 @@ class GAN_Net:
         print ('G: AdamOptimizer to maxmize %d vars..'%(len(self.G_para)))
         
         #这将lr调为负数，因为应该最大化目标
-        train_op = tf.train.AdamOptimizer(-lr_rate).minimize(self.G_loss_mean, global_step=self.global_step,var_list=self.G_para)
+        optimizer=tf.train.AdamOptimizer(-lr_rate)
+        
+        #for i in optimizer.compute_gradients(self.G_loss_mean, var_list=self.G_para): print (i)
+        
+        train_op =optimizer.minimize(self.G_loss_mean, global_step=self.global_step,var_list=self.G_para)
         
         return train_op
     
@@ -131,13 +144,18 @@ class GAN_Net:
     
     #tensor 范围外   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     def train_once_all(self):
-        noise=self.get_noise()
-        _,dloss=self.sess.run([self.train_D, self.D_loss_mean], feed_dict={  self.noise_pla: noise })  #self.imgs_pla: self.img2tanh(self.tf_inimg),
+        #print ('deb1',self.sess.run(self.debug))                   
         
         noise=self.get_noise()
-        _,summary,gloss=self.sess.run([self.train_G, self.summary_all, self.G_loss_mean], feed_dict={  self.noise_pla: noise })   #self.imgs_pla: self.img2tanh(self.tf_inimg),
-        #print('deb1:',deb1[0][0])
-        #print ("debug:",debug[0])
+        _,dloss=self.sess.run([self.train_D, self.D_loss_mean], feed_dict={  self.noise_pla: noise })  #self.imgs_pla: self.img2tanh(self.tf_inimg),
+        #print ('deb2',self.sess.run(self.debug)) 
+        
+        
+        noise=self.get_noise()
+        _,summary,gloss=self.sess.run([self.train_G,  self.summary_all, self.G_loss_mean], feed_dict={  self.noise_pla: noise })   #self.imgs_pla: self.img2tanh(self.tf_inimg),
+        #print ('deb3',self.sess.run(self.debug)) 
+        #print ("debug:",debug[0])  
+        
         return summary,dloss,gloss
     
     
@@ -200,7 +218,7 @@ class GAN_Net:
             G_fc1b = tf.get_variable('bias', [128*16*16], dtype=tf.float64, initializer=tf.constant_initializer(self.bias_init))
         
             G_fc1l = tf.nn.bias_add(tf.matmul(noise, G_fc1w), G_fc1b)
-            
+        #reakyrelu0
             self.G_fc1 = tf.nn.leaky_relu(G_fc1l, self.leakyrelurate)
             self.G_para += [G_fc1w, G_fc1b]
         
@@ -231,6 +249,7 @@ class GAN_Net:
             self.G_conv1=tf.nn.bias_add(conv, bias)
             
             self.G_para += [kernel, bias]
+        #reakyrelu1
             self.G_conv1=tf.nn.leaky_relu(self.G_conv1, self.leakyrelurate)
             
         #deconv2
@@ -254,6 +273,7 @@ class GAN_Net:
             self.G_conv2=tf.nn.bias_add(conv, bias)
             
             self.G_para += [kernel, bias]
+        #reakyrelu2
             self.G_conv2=tf.nn.leaky_relu(self.G_conv2, self.leakyrelurate)
             
         #conv3
@@ -275,6 +295,7 @@ class GAN_Net:
                 
     
     def Discriminator_net(self, imgs):
+        #这里输入的imgs应该是tanh后的，位于-1~1之间
         #cast to float 
         self.imgs_float64=tf.cast(imgs, tf.float64)
         #conv1
@@ -340,7 +361,7 @@ class GAN_Net:
             
             #self.D_fc1 = tf.nn.leaky_relu(self.D_fc1, self.leakyrelurate)
             self.D_para += [D_fc1w, D_fc1b]
-            
+        self.debug=D_fc1b
         #sigmoid
         self.D_sigmoid=tf.nn.sigmoid(self.D_fc1, name='D_sigmoid')
         
