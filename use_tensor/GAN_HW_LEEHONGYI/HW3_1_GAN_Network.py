@@ -27,13 +27,13 @@ img_size=64  #96
 base_lr=0.0002 #基础学习率
 beta1=0.5
 
-maxstep=60000 #训练多少次
+maxstep=160000 #训练多少次
 eval_step=100
 
 decay_steps=1000
 decay_rate=0.9
 
-incase_div_zero=1e-9
+incase_div_zero=1e-10
 
 logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -211,7 +211,7 @@ class GAN_Net:
                 im.save(op.join(desdir, imgname))
         print ('eval_G_once,saved imgs to:',desdir)
         
-    def evla_D_once(self):
+    def evla_D_once(self,eval_step=eval_step):
         cnt_real=0
         cnt_fake=0
         for i in range(eval_step):
@@ -429,6 +429,10 @@ if __name__ == '__main__':
             #print ('write summary done!')
             
             print ('train once-->gloss:',gloss,'  dloss:',dloss,'  time:',time.time()-stt)
+            
+            #######################
+            real,fake=gan.evla_D_once(1)
+            print ('once prob of real/fake:',real,fake)
         
         print ('Training done!!!-->time used:',(time.time()-begin_t))
 
