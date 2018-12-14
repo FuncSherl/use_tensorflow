@@ -49,8 +49,8 @@ class GAN_Net:
         self.D_para=[]       
         self.dropout=0.5 
         self.leakyrelurate=0.2
-        self.stddev=0.1
-        self.bias_init=0
+        self.stddev=0.02
+        self.bias_init=0.0
         
         #3个placeholder， img和noise,training 
         self.noise_pla=tf.placeholder(tf.float64, [batchsize, noise_size], name='noise_in')
@@ -126,11 +126,11 @@ class GAN_Net:
     
     
     def trainonce_G(self,decay_steps=1000, decay_rate=0.99, beta1=beta1):
-        lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+        self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         print ('G: AdamOptimizer to maxmize %d vars..'%(len(self.G_para)))
         
         #这将lr调为负数，因为应该最大化目标
-        optimizer=tf.train.AdamOptimizer(-lr_rate*2 , beta1=beta1)
+        optimizer=tf.train.AdamOptimizer(-self.lr_rate*4 , beta1=beta1)
         
         #for i in optimizer.compute_gradients(self.G_loss_mean, var_list=self.G_para): print (i)
         
@@ -139,12 +139,12 @@ class GAN_Net:
         return train_op
     
     def trainonce_D(self,decay_steps=1000, decay_rate=0.99, beta1=beta1):
-        lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+        self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         print ('D: AdamOptimizer to maxmize %d vars..'%(len(self.D_para)))
         
         #这将lr调为负数，因为应该最大化目标
         #这里就不管globalstep了，否则一次迭代会加2次
-        train_op = tf.train.AdamOptimizer(-lr_rate, beta1=beta1).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
+        train_op = tf.train.AdamOptimizer(-self.lr_rate, beta1=beta1).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
         
         return train_op
                                                                                                                                                        
@@ -167,8 +167,8 @@ class GAN_Net:
         '''
         
         noise=self.get_noise()
-        _,_,dloss,gloss,summary=self.sess.run([self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,self.summary_all], feed_dict={  self.noise_pla: noise })
-        
+        lrrate,_,_,dloss,gloss,summary=self.sess.run([self.lr_rate, self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,self.summary_all], feed_dict={  self.noise_pla: noise })
+        print ('the lr_rate is:', lrrate)
         return summary,dloss,gloss
     
     
@@ -205,7 +205,9 @@ class GAN_Net:
         for i in range(4):
             tepimgs=self.Run_G()
             for ind,j in enumerate(tepimgs):  
-                j=self.tanh2img(j)              
+                #print (j[0][0][0])
+                j=self.tanh2img(j)      
+                #print (j[0][0][0])        
                 im = Image.fromarray(j)
                 imgname=str(i)+'_'+str(ind)+".jpg"
                 im.save(op.join(desdir, imgname))
@@ -410,7 +412,7 @@ if __name__ == '__main__':
                 #写入日志
                 logwriter.add_summary(tsummary, i)
                 
-            if (i+1)%1000==0:#保存一波图片
+            if i==0 or (i+1)%1000==0:#保存一波图片
                 gan.eval_G_once(i)
                 
                 
@@ -423,7 +425,7 @@ if __name__ == '__main__':
             stt=time.time()
             print ('\n%d/%d  start train_once...'%(i,maxstep))
             #lost,sum_log=vgg.train_once(sess) #这里每次训练都run一个summary出来
-            sum_log,gloss,dloss=gan.train_once_all()
+            sum_log,dloss,gloss=gan.train_once_all()
             #写入日志
             logwriter.add_summary(sum_log, i)
             #print ('write summary done!')
@@ -431,8 +433,10 @@ if __name__ == '__main__':
             print ('train once-->gloss:',gloss,'  dloss:',dloss,'  time:',time.time()-stt)
             
             #######################
+            
             real,fake=gan.evla_D_once(1)
             print ('once prob of real/fake:',real,fake)
+            
         
         print ('Training done!!!-->time used:',(time.time()-begin_t))
 
