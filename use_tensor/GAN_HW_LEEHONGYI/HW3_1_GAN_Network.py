@@ -33,7 +33,7 @@ eval_step=100
 decay_steps=1000
 decay_rate=0.9
 
-incase_div_zero=1e-10
+incase_div_zero=1e-4
 
 logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
