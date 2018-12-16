@@ -131,7 +131,7 @@ class GAN_Net:
         print ('G: AdamOptimizer to maxmize %d vars..'%(len(self.G_para)))
         
         #这将lr调为负数，因为应该最大化目标
-        optimizer=tf.train.AdamOptimizer(-self.lr_rate*4 , beta1=beta1)
+        optimizer=tf.train.AdamOptimizer(-self.lr_rate*2 , beta1=beta1)
         
         #for i in optimizer.compute_gradients(self.G_loss_mean, var_list=self.G_para): print (i)
         
@@ -146,7 +146,7 @@ class GAN_Net:
         
         #这将lr调为负数，因为应该最大化目标
         #这里就不管globalstep了，否则一次迭代会加2次
-        train_op = tf.train.AdamOptimizer(-self.lr_rate, beta1=beta1).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
+        train_op = tf.train.AdamOptimizer(-self.lr_rate/2, beta1=beta1).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
         
         return train_op
                                                                                                                                                        
