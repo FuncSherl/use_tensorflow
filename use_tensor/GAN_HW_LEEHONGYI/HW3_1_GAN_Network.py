@@ -33,7 +33,7 @@ eval_step=100
 decay_steps=1000
 decay_rate=0.9
 
-incase_div_zero=1e-4
+incase_div_zero=1e-10  #这个值大一些可以避免d训得太好，也避免了g梯度
 
 logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -126,7 +126,8 @@ class GAN_Net:
     
     
     def trainonce_G(self,decay_steps=1000, decay_rate=0.99, beta1=beta1):
-        self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+        #self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+        self.lr_rate = base_lr
         print ('G: AdamOptimizer to maxmize %d vars..'%(len(self.G_para)))
         
         #这将lr调为负数，因为应该最大化目标
@@ -139,7 +140,8 @@ class GAN_Net:
         return train_op
     
     def trainonce_D(self,decay_steps=1000, decay_rate=0.99, beta1=beta1):
-        self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+        #self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+        self.lr_rate = base_lr
         print ('D: AdamOptimizer to maxmize %d vars..'%(len(self.D_para)))
         
         #这将lr调为负数，因为应该最大化目标
@@ -167,8 +169,8 @@ class GAN_Net:
         '''
         
         noise=self.get_noise()
-        lrrate,_,_,dloss,gloss,summary=self.sess.run([self.lr_rate, self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,self.summary_all], feed_dict={  self.noise_pla: noise })
-        print ('the lr_rate is:', lrrate)
+        _,_,dloss,gloss,summary=self.sess.run([self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,self.summary_all], feed_dict={  self.noise_pla: noise })
+        print ('the lr_rate is:', self.lr_rate)
         return summary,dloss,gloss
     
     
