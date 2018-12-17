@@ -59,12 +59,12 @@ class GAN_Net:
         
         
         
-        self.whole_net=self.Discriminator_net(self.Generator_net(self.noise_pla))
+        self.whole_net,self.D_fake_logit=self.Discriminator_net(self.Generator_net(self.noise_pla))
         #由于有重复构建网络结构的操作，这里重新清零保持weight的list，这样就能保障每个weight tensor只在list中出现一次
         self.G_para=[]
         self.D_para=[]
         self.G_net=self.Generator_net(self.noise_pla)
-        self.D_net=self.Discriminator_net(  self.img2tanh(self.tf_inimg)  ) #self.imgs_pla
+        self.D_net,self.D_real_logit=self.Discriminator_net(  self.img2tanh(self.tf_inimg)  ) #self.imgs_pla
         
         '''
         print ('\nshow all trainable vars:',len(tf.trainable_variables()))
@@ -93,9 +93,11 @@ class GAN_Net:
     
             
     def D_loss(self):
-        self.D_loss_fir=tf.log(tf.maximum(self.D_net,incase_div_zero) )  #real
-        self.D_loss_sec=tf.log( tf.maximum(self.whole_net*(-1)+1,incase_div_zero)  )  #fake
+        self.D_loss_fir=tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_real_logit, labels=tf.ones_like(self.D_net))   #real
+        #tf.log(tf.maximum(self.D_net,incase_div_zero)   #real
         
+        self.D_loss_sec=tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logit, labels=tf.zeros_like(self.whole_net))  #fake
+        #tf.log( tf.maximum(self.whole_net*(-1)+1,incase_div_zero)  )  #fake
         '''
         loss=tf.add_n([self.D_loss_fir,self.D_loss_sec] )
         #print ('loss shape:',loss.get_shape())
@@ -117,7 +119,8 @@ class GAN_Net:
         
     
     def G_loss(self):
-        self.G_loss_fir=tf.log( tf.maximum(self.whole_net, incase_div_zero)  )
+        self.G_loss_fir=tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logit, labels=tf.ones_like(self.whole_net))
+        #        tf.log( tf.maximum(self.whole_net, incase_div_zero)  )
         loss_mean = tf.reduce_mean(self.G_loss_fir, name='G_loss_mean')
         tf.summary.scalar('G_loss_mean',loss_mean)
         
@@ -131,7 +134,7 @@ class GAN_Net:
         print ('G: AdamOptimizer to maxmize %d vars..'%(len(self.G_para)))
         
         #这将lr调为负数，因为应该最大化目标
-        optimizer=tf.train.AdamOptimizer(-self.lr_rate*2 , beta1=beta1)
+        optimizer=tf.train.AdamOptimizer(self.lr_rate*2 , beta1=beta1)
         
         #for i in optimizer.compute_gradients(self.G_loss_mean, var_list=self.G_para): print (i)
         
@@ -146,7 +149,7 @@ class GAN_Net:
         
         #这将lr调为负数，因为应该最大化目标
         #这里就不管globalstep了，否则一次迭代会加2次
-        train_op = tf.train.AdamOptimizer(-self.lr_rate/2, beta1=beta1).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
+        train_op = tf.train.AdamOptimizer(self.lr_rate/2, beta1=beta1).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
         
         return train_op
                                                                                                                                                        
@@ -383,7 +386,7 @@ class GAN_Net:
         #sigmoid
         self.D_sigmoid=tf.nn.sigmoid(self.D_fc1, name='D_sigmoid')
         
-        return self.D_sigmoid
+        return self.D_sigmoid,self.D_fc1
         
         
 
