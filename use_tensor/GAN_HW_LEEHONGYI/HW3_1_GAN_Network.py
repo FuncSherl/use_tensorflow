@@ -120,10 +120,11 @@ class GAN_Net:
     
     def G_loss(self):
         self.G_loss_fir=tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logit, labels=tf.ones_like(self.whole_net))
-        #        tf.log( tf.maximum(self.whole_net, incase_div_zero)  )
+        
+        self.debug=tf.reduce_mean( tf.log( tf.maximum(self.whole_net, incase_div_zero)  ))
+        
         loss_mean = tf.reduce_mean(self.G_loss_fir, name='G_loss_mean')
         tf.summary.scalar('G_loss_mean',loss_mean)
-        
         
         return loss_mean
     
@@ -172,8 +173,9 @@ class GAN_Net:
         '''
         
         noise=self.get_noise()
-        _,_,dloss,gloss,summary=self.sess.run([self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,self.summary_all], feed_dict={  self.noise_pla: noise })
+        deb, _,_,dloss,gloss,summary=self.sess.run([self.debug, self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,self.summary_all], feed_dict={  self.noise_pla: noise })
         print ('the lr_rate is:', self.lr_rate)
+        print ('debug:',deb)
         return summary,dloss,gloss
     
     
@@ -382,7 +384,7 @@ class GAN_Net:
             
             #self.D_fc1 = tf.nn.leaky_relu(self.D_fc1, self.leakyrelurate)
             self.D_para += [D_fc1w, D_fc1b]
-        self.debug=D_fc1b
+        #self.debug=D_fc1b
         #sigmoid
         self.D_sigmoid=tf.nn.sigmoid(self.D_fc1, name='D_sigmoid')
         
