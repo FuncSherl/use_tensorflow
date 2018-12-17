@@ -94,9 +94,13 @@ class GAN_Net:
             
     def D_loss(self):
         self.D_loss_fir=tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_real_logit, labels=tf.ones_like(self.D_net))   #real
+        
+        #下面是原来有问题的loss函数，探究下为什么有问题
         tep_real=tf.reduce_mean(tf.log(tf.maximum(self.D_net,incase_div_zero) )  )#real
         
         self.D_loss_sec=tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logit, labels=tf.zeros_like(self.whole_net))  #fake
+        
+        #下面是原来有问题的loss函数，探究下为什么有问题
         tep_fake=tf.reduce_mean( tf.log( tf.maximum(self.whole_net*(-1)+1,incase_div_zero)  ) ) #fake
         '''
         loss=tf.add_n([self.D_loss_fir,self.D_loss_sec] )
@@ -111,23 +115,26 @@ class GAN_Net:
         tf.summary.scalar('D_WholeNet_loss_mean',sec_loss_mean)
         
         loss_mean=fir_loss_mean+sec_loss_mean
-        self.debug2=-(tep_fake+tep_real)
         
         tf.summary.scalar('D_loss_mean',loss_mean)        
         ############################################################
         
-        return loss_mean
+        #下面是原来有问题的loss函数，探究下为什么有问题
+        self.test_ori_loss_D=-(tep_fake+tep_real)
+        
+        return self.test_ori_loss_D  #loss_mean
         
     
     def G_loss(self):
         self.G_loss_fir=tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logit, labels=tf.ones_like(self.whole_net))
-        
-        self.debug=-tf.reduce_mean( tf.log( tf.maximum(self.whole_net, incase_div_zero)  ))
-        
         loss_mean = tf.reduce_mean(self.G_loss_fir, name='G_loss_mean')
         tf.summary.scalar('G_loss_mean',loss_mean)
         
-        return loss_mean
+        
+        #下面是原来有问题的loss函数，探究下为什么有问题
+        self.test_ori_loss_G=-tf.reduce_mean( tf.log( tf.maximum(self.whole_net, incase_div_zero)  ))
+        
+        return self.test_ori_loss_G  #loss_mean
     
     
     def trainonce_G(self,decay_steps=1000, decay_rate=0.99, beta1=beta1):
@@ -174,9 +181,13 @@ class GAN_Net:
         '''
         
         noise=self.get_noise()
-        deb2,deb, _,_,dloss,gloss,summary=self.sess.run([self.debug2 ,self.debug, self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,self.summary_all], feed_dict={  self.noise_pla: noise })
+        deb_D,deb_G, _,_,dloss,gloss,summary=self.sess.run([self.test_ori_loss_D ,self.test_ori_loss_G, 
+                                                            self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,
+                                                            self.summary_all], 
+                                                           feed_dict={  self.noise_pla: noise })
         print ('the lr_rate is:', self.lr_rate)
-        print ('debug:MyGloss:',deb, '  MyDloss:',deb2)
+        print ('debug:MyGloss:',deb_G, '  MyDloss:',deb_D)
+        if abs(deb_G-gloss)>0.1 or abs(deb_D-dloss)>0.1: exit()
         return summary,dloss,gloss
     
     
