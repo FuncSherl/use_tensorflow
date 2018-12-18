@@ -53,8 +53,8 @@ class GAN_Net:
         self.bias_init=0.0
         
         #3个placeholder， img和noise,training 
-        self.noise_pla=tf.placeholder(tf.float64, [batchsize, noise_size], name='noise_in')
-        self.imgs_pla = tf.placeholder(tf.float64, [batchsize, img_size, img_size, 3], name='imgs_in')
+        self.noise_pla=tf.placeholder(tf.float32, [batchsize, noise_size], name='noise_in')
+        self.imgs_pla = tf.placeholder(tf.float32, [batchsize, img_size, img_size, 3], name='imgs_in')
         self.training=tf.placeholder(tf.bool, name='training_in')
         
         
@@ -200,18 +200,18 @@ class GAN_Net:
         return tep.astype(np.uint8)  
     
     
-    def Run_G(self):
+    def Run_G(self, training=True):
         noise=self.get_noise()
-        inerimg=self.sess.run(self.G_net, feed_dict={self.noise_pla: noise})
+        inerimg=self.sess.run(self.G_net, feed_dict={self.noise_pla: noise, self.training:training})
         return inerimg
     
-    def Run_WholeNet(self):
+    def Run_WholeNet(self, training=True):
         noise=self.get_noise()
-        probs=self.sess.run(self.whole_net, feed_dict={self.noise_pla: noise})
+        probs=self.sess.run(self.whole_net, feed_dict={self.noise_pla: noise, self.training:training})
         return probs
     
-    def Run_D(self):#这里imgs要求是tanh化过的，即归一化到-1~1       
-        probs=self.sess.run(self.D_net)  #, feed_dict={ self.imgs_pla: self.img2tanh(self.tf_inimg) })
+    def Run_D(self, training=True):#这里imgs要求是tanh化过的，即归一化到-1~1       
+        probs=self.sess.run(self.D_net, feed_dict={self.training:training})  #, feed_dict={ self.imgs_pla: self.img2tanh(self.tf_inimg) })
         #越接近真实图像越接近1
         return probs
     
@@ -253,8 +253,8 @@ class GAN_Net:
     def Generator_net(self, noise):
         # fc1
         with tf.variable_scope('G_fc1',  reuse=tf.AUTO_REUSE) as scope:                    
-            G_fc1w = tf.get_variable('weights', [noise_size, 128*16*16], dtype=tf.float64, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            G_fc1b = tf.get_variable('bias', [128*16*16], dtype=tf.float64, initializer=tf.constant_initializer(self.bias_init))
+            G_fc1w = tf.get_variable('weights', [noise_size, 128*16*16], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            G_fc1b = tf.get_variable('bias', [128*16*16], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
         
             G_fc1l = tf.nn.bias_add(tf.matmul(noise, G_fc1w), G_fc1b)
         
@@ -264,7 +264,7 @@ class GAN_Net:
                                         updates_collections=None,
                                         epsilon=1e-5,
                                         scale=True,
-                                        reuse=True,
+                                        #reuse=True,
                                         is_training=self.training,
                                         scope=scope)
             
@@ -280,8 +280,8 @@ class GAN_Net:
         
         #deconv1
         with tf.variable_scope('G_deconv1',  reuse=tf.AUTO_REUSE) as scope:  
-            kernel=tf.get_variable('weights', [3,3, 128, 128], dtype=tf.float64, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [128], dtype=tf.float64, initializer=tf.constant_initializer(self.bias_init))
+            kernel=tf.get_variable('weights', [3,3, 128, 128], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            bias=tf.get_variable('bias', [128], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
             #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
             deconv=tf.nn.conv2d_transpose(self.G_fc1, kernel, output_shape=[batchsize, 32, 32, 128], strides=[1,2,2,1], padding="SAME")
@@ -292,8 +292,8 @@ class GAN_Net:
             
         #conv1
         with tf.variable_scope('G_conv1',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, 128, 128], dtype=tf.float64, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [128], dtype=tf.float64, initializer=tf.constant_initializer(self.bias_init))
+            kernel=tf.get_variable('weights', [4,4, 128, 128], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            bias=tf.get_variable('bias', [128], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             
             conv=tf.nn.conv2d(self.G_deconv1, kernel, strides=[1,1,1,1], padding='SAME')
             self.G_conv1=tf.nn.bias_add(conv, bias)
@@ -304,8 +304,8 @@ class GAN_Net:
             
         #deconv2
         with tf.variable_scope('G_deconv2',  reuse=tf.AUTO_REUSE) as scope:  
-            kernel=tf.get_variable('weights', [3,3, 64, 128], dtype=tf.float64, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [64], dtype=tf.float64, initializer=tf.constant_initializer(self.bias_init))
+            kernel=tf.get_variable('weights', [3,3, 64, 128], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            bias=tf.get_variable('bias', [64], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
             #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
             deconv=tf.nn.conv2d_transpose(self.G_conv1, kernel, output_shape=[batchsize, 64, 64, 64], strides=[1,2,2,1], padding="SAME")
@@ -316,8 +316,8 @@ class GAN_Net:
             
         #conv2
         with tf.variable_scope('G_conv2',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, 64, 64], dtype=tf.float64, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [64], dtype=tf.float64, initializer=tf.constant_initializer(self.bias_init))
+            kernel=tf.get_variable('weights', [4,4, 64, 64], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            bias=tf.get_variable('bias', [64], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             
             conv=tf.nn.conv2d(self.G_deconv2, kernel, strides=[1,1,1,1], padding='SAME')
             self.G_conv2=tf.nn.bias_add(conv, bias)
@@ -328,8 +328,8 @@ class GAN_Net:
             
         #conv3
         with tf.variable_scope('G_conv3',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, 64, 3], dtype=tf.float64, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [3], dtype=tf.float64, initializer=tf.constant_initializer(self.bias_init))
+            kernel=tf.get_variable('weights', [4,4, 64, 3], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            bias=tf.get_variable('bias', [3], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             
             conv=tf.nn.conv2d(self.G_conv2, kernel, strides=[1,1,1,1], padding='SAME')
             self.G_conv3=tf.nn.bias_add(conv, bias)
@@ -347,17 +347,17 @@ class GAN_Net:
     def Discriminator_net(self, imgs):
         #这里输入的imgs应该是tanh后的，位于-1~1之间
         #cast to float 
-        self.imgs_float64=tf.cast(imgs, tf.float64)
+        self.imgs_float32=tf.cast(imgs, tf.float32)
         #conv1
         with tf.variable_scope('D_conv1',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, 3, 32], dtype=tf.float64, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [32], dtype=tf.float64, initializer=tf.constant_initializer(self.bias_init))
+            kernel=tf.get_variable('weights', [4,4, 3, 32], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            bias=tf.get_variable('bias', [32], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
             #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
             #self.deb1=kernel
             #self.deb2=bias
             
-            conv=tf.nn.conv2d(self.imgs_float64, kernel, strides=[1,2,2,1], padding='SAME')
+            conv=tf.nn.conv2d(self.imgs_float32, kernel, strides=[1,2,2,1], padding='SAME')
             self.D_conv1=tf.nn.bias_add(conv, bias)
             
             self.D_para += [kernel, bias]
@@ -365,8 +365,8 @@ class GAN_Net:
             
         #conv2
         with tf.variable_scope('D_conv2',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, 32, 64], dtype=tf.float64, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [64], dtype=tf.float64, initializer=tf.constant_initializer(self.bias_init))
+            kernel=tf.get_variable('weights', [4,4, 32, 64], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            bias=tf.get_variable('bias', [64], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
             #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
             conv=tf.nn.conv2d(self.D_conv1, kernel, strides=[1,2,2,1], padding='SAME')
@@ -377,8 +377,8 @@ class GAN_Net:
             
         #conv3
         with tf.variable_scope('D_conv3',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, 64, 128], dtype=tf.float64, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [128], dtype=tf.float64, initializer=tf.constant_initializer(self.bias_init))
+            kernel=tf.get_variable('weights', [4,4, 64, 128], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            bias=tf.get_variable('bias', [128], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
             #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
             conv=tf.nn.conv2d(self.D_conv2, kernel, strides=[1,2,2,1], padding='SAME')
@@ -389,8 +389,8 @@ class GAN_Net:
             
         #conv4
         with tf.variable_scope('D_conv4',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, 128, 256], dtype=tf.float64, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [256], dtype=tf.float64, initializer=tf.constant_initializer(self.bias_init))
+            kernel=tf.get_variable('weights', [4,4, 128, 256], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            bias=tf.get_variable('bias', [256], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
             #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
             conv=tf.nn.conv2d(self.D_conv3, kernel, strides=[1,2,2,1], padding='SAME')
@@ -404,8 +404,8 @@ class GAN_Net:
         
         # fc1
         with tf.variable_scope('D_fc1',  reuse=tf.AUTO_REUSE) as scope:                    
-            D_fc1w = tf.get_variable('weights', [self.flatten.get_shape()[-1], 1], dtype=tf.float64, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            D_fc1b = tf.get_variable('bias', [1], dtype=tf.float64, initializer=tf.constant_initializer(self.bias_init))
+            D_fc1w = tf.get_variable('weights', [self.flatten.get_shape()[-1], 1], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            D_fc1b = tf.get_variable('bias', [1], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
         
             self.D_fc1 = tf.nn.bias_add(tf.matmul(self.flatten, D_fc1w), D_fc1b)
             
