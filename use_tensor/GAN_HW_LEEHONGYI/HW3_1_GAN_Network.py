@@ -31,7 +31,7 @@ maxstep=160000 #训练多少次
 eval_step=100
 
 decay_steps=8000
-decay_rate=0.9
+decay_rate=1 #0.9
 
 incase_div_zero=1e-10  #这个值大一些可以避免d训得太好，也避免了g梯度
 
@@ -49,8 +49,9 @@ class GAN_Net:
         self.D_para=[]       
         self.dropout=0.5 
         self.leakyrelurate=0.2
-        self.stddev=0.02
+        self.stddev=0.01
         self.bias_init=0.0
+        self.cnt_tep=0
         
         #3个placeholder， img和noise,training 
         self.noise_pla=tf.placeholder(tf.float32, [batchsize, noise_size], name='noise_in')
@@ -82,6 +83,9 @@ class GAN_Net:
         for i in self.G_para: print (i)
         print('\nnext is D:\n')
         for i in self.D_para: print (i)
+        
+        print ('\nnext is tf.GraphKeys.UPDATE_OPS:')
+        print (tf.get_collection(tf.GraphKeys.UPDATE_OPS))
         
         self.summary_all=tf.summary.merge_all()
         init = tf.global_variables_initializer()#初始化tf.Variable,虽然后面会有初始化权重过程，但是最后一层是要根据任务来的,无法finetune，其参数需要随机初始化
@@ -162,7 +166,7 @@ class GAN_Net:
         #这将lr调为负数，因为应该最大化目标
         #这里就不管globalstep了，否则一次迭代会加2次
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-            train_op = tf.train.AdamOptimizer(self.lr_rate/2, beta1=beta1).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
+            train_op = tf.train.AdamOptimizer(self.lr_rate, beta1=beta1).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
         
         return train_op
                                                                                                                                                        
@@ -194,7 +198,8 @@ class GAN_Net:
         
         if abs(deb_G-gloss)>0.1 or abs(deb_D-dloss)>0.1:
             print ('!!!!!!!!!!!!!!!!!!!!!!!!gloss ,dloss:',gloss,dloss,'!!!!!!!!!!!!!!!!!!!!!!!!!!')
-            #exit()
+            self.cnt_tep+=1
+            #if self.cnt_tep>2: exit()
         
         return summary,dloss,gloss
     
@@ -261,7 +266,7 @@ class GAN_Net:
             G_fc1b = tf.get_variable('bias', [128*16*16], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
         
             G_fc1l = tf.nn.bias_add(tf.matmul(noise, G_fc1w), G_fc1b)
-        
+            
             #batchmorm
             G_fc1l=tf.contrib.layers.batch_norm(G_fc1l,
                                         decay=0.9,
@@ -363,8 +368,20 @@ class GAN_Net:
             
             conv=tf.nn.conv2d(self.imgs_float32, kernel, strides=[1,2,2,1], padding='SAME')
             self.D_conv1=tf.nn.bias_add(conv, bias)
-            
             self.D_para += [kernel, bias]
+            
+            #batchmorm
+            self.D_conv1=tf.contrib.layers.batch_norm(self.D_conv1,
+                                        decay=0.9,
+                                        updates_collections=None,
+                                        epsilon=1e-5,
+                                        scale=True,
+                                        #reuse=True,
+                                        is_training=self.training,
+                                        scope=scope)
+            
+            
+            #leaky relu1
             self.D_conv1=tf.nn.leaky_relu(self.D_conv1, self.leakyrelurate)
             
         #conv2
