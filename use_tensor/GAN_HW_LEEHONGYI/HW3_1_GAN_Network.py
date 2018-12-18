@@ -122,7 +122,7 @@ class GAN_Net:
         #下面是原来有问题的loss函数，探究下为什么有问题
         self.test_ori_loss_D=-(tep_fake+tep_real)
         
-        return self.test_ori_loss_D  #loss_mean
+        return loss_mean
         
     
     def G_loss(self):
@@ -134,7 +134,7 @@ class GAN_Net:
         #下面是原来有问题的loss函数，探究下为什么有问题
         self.test_ori_loss_G=-tf.reduce_mean( tf.log( tf.maximum(self.whole_net, incase_div_zero)  ))
         
-        return self.test_ori_loss_G  #loss_mean
+        return loss_mean
     
     
     def trainonce_G(self,decay_steps=1000, decay_rate=0.99, beta1=beta1):
