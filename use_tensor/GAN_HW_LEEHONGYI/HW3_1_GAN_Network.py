@@ -185,13 +185,17 @@ class GAN_Net:
         '''
         
         noise=self.get_noise()
-        deb_D,deb_G, _,_,dloss,gloss,summary=self.sess.run([self.test_ori_loss_D ,self.test_ori_loss_G, 
+        lrr, deb_D,deb_G, _,_,dloss,gloss,summary=self.sess.run([self.lr_rate, self.test_ori_loss_D ,self.test_ori_loss_G, 
                                                             self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,
                                                             self.summary_all], 
                                                            feed_dict={  self.noise_pla: noise , self.training:True})
-        print ('the lr_rate is:', self.lr_rate)
+        print ('the lr_rate is:', lrr)
         print ('debug:MyGloss:',deb_G, '  MyDloss:',deb_D)
-        if abs(deb_G-gloss)>0.1 or abs(deb_D-dloss)>0.1: exit()
+        
+        if abs(deb_G-gloss)>0.1 or abs(deb_D-dloss)>0.1:
+            print ('!!!!!!!!!!!!!!!!!!!!!!!!gloss ,dloss:',gloss,dloss,'!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            #exit()
+        
         return summary,dloss,gloss
     
     
