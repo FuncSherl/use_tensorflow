@@ -30,7 +30,7 @@ beta1=0.5
 maxstep=160000 #训练多少次
 eval_step=100
 
-decay_steps=1000
+decay_steps=8000
 decay_rate=0.9
 
 incase_div_zero=1e-10  #这个值大一些可以避免d训得太好，也避免了g梯度
@@ -137,28 +137,32 @@ class GAN_Net:
         return loss_mean
     
     
-    def trainonce_G(self,decay_steps=1000, decay_rate=0.99, beta1=beta1):
-        #self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+    def trainonce_G(self,decay_steps=8000, decay_rate=0.99, beta1=beta1):
         self.lr_rate = base_lr
+        self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+        
         print ('G: AdamOptimizer to maxmize %d vars..'%(len(self.G_para)))
         
         #这将lr调为负数，因为应该最大化目标
-        optimizer=tf.train.AdamOptimizer(self.lr_rate*2 , beta1=beta1)
-        
-        #for i in optimizer.compute_gradients(self.G_loss_mean, var_list=self.G_para): print (i)
-        
-        train_op =optimizer.minimize(self.G_loss_mean, global_step=self.global_step,var_list=self.G_para)
+        with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
+            optimizer=tf.train.AdamOptimizer(self.lr_rate*2 , beta1=beta1)
+            
+            #for i in optimizer.compute_gradients(self.G_loss_mean, var_list=self.G_para): print (i)
+            
+            train_op =optimizer.minimize(self.G_loss_mean, global_step=self.global_step,var_list=self.G_para)
         
         return train_op
     
-    def trainonce_D(self,decay_steps=1000, decay_rate=0.99, beta1=beta1):
-        #self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+    def trainonce_D(self,decay_steps=8000, decay_rate=0.99, beta1=beta1):
         self.lr_rate = base_lr
+        self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+        
         print ('D: AdamOptimizer to maxmize %d vars..'%(len(self.D_para)))
         
         #这将lr调为负数，因为应该最大化目标
         #这里就不管globalstep了，否则一次迭代会加2次
-        train_op = tf.train.AdamOptimizer(self.lr_rate/2, beta1=beta1).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
+        with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
+            train_op = tf.train.AdamOptimizer(self.lr_rate/2, beta1=beta1).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
         
         return train_op
                                                                                                                                                        
@@ -184,7 +188,7 @@ class GAN_Net:
         deb_D,deb_G, _,_,dloss,gloss,summary=self.sess.run([self.test_ori_loss_D ,self.test_ori_loss_G, 
                                                             self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,
                                                             self.summary_all], 
-                                                           feed_dict={  self.noise_pla: noise })
+                                                           feed_dict={  self.noise_pla: noise , self.training:True})
         print ('the lr_rate is:', self.lr_rate)
         print ('debug:MyGloss:',deb_G, '  MyDloss:',deb_D)
         if abs(deb_G-gloss)>0.1 or abs(deb_D-dloss)>0.1: exit()
@@ -253,7 +257,18 @@ class GAN_Net:
             G_fc1b = tf.get_variable('bias', [128*16*16], dtype=tf.float64, initializer=tf.constant_initializer(self.bias_init))
         
             G_fc1l = tf.nn.bias_add(tf.matmul(noise, G_fc1w), G_fc1b)
-        #reakyrelu0
+        
+            #batchmorm
+            G_fc1l=tf.contrib.layers.batch_norm(G_fc1l,
+                                        decay=0.9,
+                                        updates_collections=None,
+                                        epsilon=1e-5,
+                                        scale=True,
+                                        reuse=True,
+                                        is_training=self.training,
+                                        scope=scope)
+            
+            #reakyrelu0
             self.G_fc1 = tf.nn.leaky_relu(G_fc1l, self.leakyrelurate)
             self.G_para += [G_fc1w, G_fc1b]
         
