@@ -77,7 +77,7 @@ def preprocess_img(image,outlen):
     
     
     
-    image = tf.image.random_flip_left_right(image)
+    #image = tf.image.random_flip_left_right(image)
     
     
     return image

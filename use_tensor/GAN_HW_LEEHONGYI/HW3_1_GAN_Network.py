@@ -266,17 +266,17 @@ class GAN_Net:
             G_fc1b = tf.get_variable('bias', [128*16*16], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
         
             G_fc1l = tf.nn.bias_add(tf.matmul(noise, G_fc1w), G_fc1b)
-            
+            '''
             #batchmorm
             G_fc1l=tf.contrib.layers.batch_norm(G_fc1l,
                                         decay=0.9,
-                                        updates_collections=None,
+                                        #updates_collections=None,
                                         epsilon=1e-5,
                                         scale=True,
                                         #reuse=True,
                                         is_training=self.training,
                                         scope=scope)
-            
+            '''
             #reakyrelu0
             self.G_fc1 = tf.nn.leaky_relu(G_fc1l, self.leakyrelurate)
             self.G_para += [G_fc1w, G_fc1b]
@@ -369,18 +369,18 @@ class GAN_Net:
             conv=tf.nn.conv2d(self.imgs_float32, kernel, strides=[1,2,2,1], padding='SAME')
             self.D_conv1=tf.nn.bias_add(conv, bias)
             self.D_para += [kernel, bias]
-            
+            '''
             #batchmorm
             self.D_conv1=tf.contrib.layers.batch_norm(self.D_conv1,
                                         decay=0.9,
-                                        updates_collections=None,
+                                        #updates_collections=None,
                                         epsilon=1e-5,
                                         scale=True,
                                         #reuse=True,
                                         is_training=self.training,
                                         scope=scope)
             
-            
+            '''
             #leaky relu1
             self.D_conv1=tf.nn.leaky_relu(self.D_conv1, self.leakyrelurate)
             
