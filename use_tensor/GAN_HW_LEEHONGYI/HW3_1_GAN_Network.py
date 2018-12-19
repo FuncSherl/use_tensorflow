@@ -493,7 +493,7 @@ if __name__ == '__main__':
             print ('once prob of real/fake:',real,fake)
             
         
-        print ('Training done!!!-->time used:',(time.time()-begin_t))
+        print ('Training done!!!-->time used:',(time.time()-begin_t),'s = ',(time.time()-begin_t)/60,' min')
 
 
 
