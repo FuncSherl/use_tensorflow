@@ -20,7 +20,7 @@ TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 
 train_size=33431 #训练集规模
-batchsize=32
+batchsize=64
 noise_size=100
 img_size=64  #96
 
@@ -51,7 +51,11 @@ class GAN_Net:
         self.leakyrelurate=0.2
         self.stddev=0.01
         self.bias_init=0.0
+        
+        #for debug
         self.cnt_tep=0
+        self.deb_kep=[0]*3
+        self.deb_kep2=0
         
         #3个placeholder， img和noise,training 
         self.noise_pla=tf.placeholder(tf.float32, [batchsize, noise_size], name='noise_in')
@@ -149,11 +153,11 @@ class GAN_Net:
         
         #这将lr调为负数，因为应该最大化目标
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-            optimizer=tf.train.AdamOptimizer(self.lr_rate*2 , beta1=beta1)
+            self.G_optimizer=tf.train.AdamOptimizer(self.lr_rate*2 , beta1=beta1)
             
             #for i in optimizer.compute_gradients(self.G_loss_mean, var_list=self.G_para): print (i)
             
-            train_op =optimizer.minimize(self.G_loss_mean, global_step=self.global_step,var_list=self.G_para)
+            train_op =self.G_optimizer.minimize(self.G_loss_mean, global_step=self.global_step,var_list=self.G_para)
         
         return train_op
     
@@ -166,7 +170,8 @@ class GAN_Net:
         #这将lr调为负数，因为应该最大化目标
         #这里就不管globalstep了，否则一次迭代会加2次
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-            train_op = tf.train.AdamOptimizer(self.lr_rate, beta1=beta1).minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
+            self.D_optimizer= tf.train.AdamOptimizer(self.lr_rate, beta1=beta1)
+            train_op=self.D_optimizer.minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
         
         return train_op
                                                                                                                                                        
@@ -189,7 +194,7 @@ class GAN_Net:
         '''
         
         noise=self.get_noise()
-        lrr, deb_D,deb_G, _,_,dloss,gloss,summary=self.sess.run([self.lr_rate, self.test_ori_loss_D ,self.test_ori_loss_G, 
+        seeb,seeweight,lrr, deb_D,deb_G, _,_,dloss,gloss,summary=self.sess.run([self.debug2, self.debug, self.lr_rate, self.test_ori_loss_D ,self.test_ori_loss_G, 
                                                             self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,
                                                             self.summary_all], 
                                                            feed_dict={  self.noise_pla: noise , self.training:True})
@@ -200,6 +205,10 @@ class GAN_Net:
             print ('!!!!!!!!!!!!!!!!!!!!!!!!gloss ,dloss:',gloss,dloss,'!!!!!!!!!!!!!!!!!!!!!!!!!!')
             self.cnt_tep+=1
             #if self.cnt_tep>2: exit()
+        print('see gbias:\n',seeweight,seeweight-self.deb_kep)
+        self.deb_kep=seeweight
+        print ('Dbias:',seeb[0:3],seeb[0:3]-self.deb_kep2)
+        self.deb_kep2=seeb[0:3]
         
         return summary,dloss,gloss
     
@@ -209,17 +218,17 @@ class GAN_Net:
         return tep.astype(np.uint8)  
     
     
-    def Run_G(self, training=True):
+    def Run_G(self, training=False):
         noise=self.get_noise()
         inerimg=self.sess.run(self.G_net, feed_dict={self.noise_pla: noise, self.training:training})
         return inerimg
     
-    def Run_WholeNet(self, training=True):
+    def Run_WholeNet(self, training=False):
         noise=self.get_noise()
         probs=self.sess.run(self.whole_net, feed_dict={self.noise_pla: noise, self.training:training})
         return probs
     
-    def Run_D(self, training=True):#这里imgs要求是tanh化过的，即归一化到-1~1       
+    def Run_D(self, training=False):#这里imgs要求是tanh化过的，即归一化到-1~1       
         probs=self.sess.run(self.D_net, feed_dict={self.training:training})  #, feed_dict={ self.imgs_pla: self.img2tanh(self.tf_inimg) })
         #越接近真实图像越接近1
         return probs
@@ -266,21 +275,22 @@ class GAN_Net:
             G_fc1b = tf.get_variable('bias', [128*16*16], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
         
             G_fc1l = tf.nn.bias_add(tf.matmul(noise, G_fc1w), G_fc1b)
-            '''
+            ''''''
             #batchmorm
             G_fc1l=tf.contrib.layers.batch_norm(G_fc1l,
                                         decay=0.9,
-                                        #updates_collections=None,
+                                        updates_collections=None,
                                         epsilon=1e-5,
                                         scale=True,
                                         #reuse=True,
                                         is_training=self.training,
                                         scope=scope)
-            '''
+            
             #reakyrelu0
             self.G_fc1 = tf.nn.leaky_relu(G_fc1l, self.leakyrelurate)
             self.G_para += [G_fc1w, G_fc1b]
-        
+            
+        tf.summary.scalar('G_fir_bias',G_fc1b[10])
         #dropout1
         #self.G_fc1=tf.cond(self.training, lambda: tf.nn.dropout(self.G_fc1, self.dropout), lambda: self.G_fc1)
         
@@ -345,7 +355,8 @@ class GAN_Net:
             
             self.G_para += [kernel, bias]
             #self.G_conv3=tf.nn.leaky_relu(self.G_conv3, self.leakyrelurate)
-            
+            self.debug=bias
+            tf.summary.scalar('G_last_bias[0]',bias[2])
         #tanh
         self.G_tanh= tf.nn.tanh(self.G_conv3, name='G_tanh')
         
@@ -364,7 +375,8 @@ class GAN_Net:
             #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
             #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
             #self.deb1=kernel
-            #self.deb2=bias
+            self.debug2=bias
+            tf.summary.scalar('D_fir_bias[20]',bias[20])
             
             conv=tf.nn.conv2d(self.imgs_float32, kernel, strides=[1,2,2,1], padding='SAME')
             self.D_conv1=tf.nn.bias_add(conv, bias)
@@ -373,7 +385,7 @@ class GAN_Net:
             #batchmorm
             self.D_conv1=tf.contrib.layers.batch_norm(self.D_conv1,
                                         decay=0.9,
-                                        #updates_collections=None,
+                                        updates_collections=None,
                                         epsilon=1e-5,
                                         scale=True,
                                         #reuse=True,
@@ -433,6 +445,7 @@ class GAN_Net:
             #self.D_fc1 = tf.nn.leaky_relu(self.D_fc1, self.leakyrelurate)
             self.D_para += [D_fc1w, D_fc1b]
         #self.debug=D_fc1b
+        tf.summary.scalar('D_last_bias[0]',D_fc1b[0])
         #sigmoid
         self.D_sigmoid=tf.nn.sigmoid(self.D_fc1, name='D_sigmoid')
         
@@ -455,7 +468,7 @@ if __name__ == '__main__':
         begin_t=time.time()
         for i in range(maxstep):            
             if ((i+1)%500==0):#一次测试
-                print ('begining to eval D:')
+                print ('\nbegining to eval D:')
                 real,fake=gan.evla_D_once()
                 print ('mean prob of real/fake:',real,fake)
                 
