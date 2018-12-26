@@ -23,7 +23,7 @@ config.gpu_options.allow_growth = True
 #-----------------------------------------------------------------------------------------
 stdev_init=0.1
 lr=0.001
-max_power=15
+max_power=30
 batchsize=100
 maxiter=100000
 inputshape=[batchsize,1]
