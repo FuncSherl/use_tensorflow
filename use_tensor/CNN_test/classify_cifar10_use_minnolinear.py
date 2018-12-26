@@ -5,6 +5,7 @@ Created on 2018年9月9日
 @author: sherl
 '''
 from tensorflow.examples.tutorials.mnist import input_data
+import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
 import cv2,time,os
@@ -22,11 +23,12 @@ config.gpu_options.allow_growth = True
 #-----------------------------------------------------------------------------------------
 stdev_init=0.1
 lr=0.001
+max_power=15
 batchsize=100
-maxiter=10000
+maxiter=100000
 inputshape=[batchsize,1]
 
-logdir="./logs/test_tailor_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(lr,batchsize, maxiter))
+logdir="./logs/test_tailor_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d_maxpower-%d'%(lr,batchsize, maxiter, max_power))
 if not op.exists(logdir): os.makedirs(logdir)
 ######-------------------------------------------------------------------------------------
 class test_fit_tailor:
@@ -49,7 +51,7 @@ class test_fit_tailor:
     def getdata(self):
         tep=np.random.rand(*inputshape)*8-4
         #print (tep)
-        lab=np.exp(tep)
+        lab=np.log(tep+5)
         return tep,lab
         
     
@@ -61,7 +63,7 @@ class test_fit_tailor:
             
     
     
-    def netstructure(self, x, cnt=10):
+    def netstructure(self, x, cnt=max_power):
         tep=0
         for i in range(cnt):
             tep+=self.one_layer(i, x)
@@ -84,18 +86,41 @@ class test_fit_tailor:
     
     
     ###################################no tensor---------------------
-    def start(self):
-        for i in range(maxiter):
+    def start_test_once(self, cnt):
+        plt.figure()
+        for i in range(100):
             dat,lab=self.getdata()
-            _,loss=self.sess.run([self.train_all,self.loss_all], feed_dict={  self.x_pla: dat , self.lab_pla:lab})
-            print (i,'/',maxiter,' train once,loss:',loss)
+            logit,loss=self.sess.run([self.net,self.loss_all], feed_dict={  self.x_pla: dat , self.lab_pla:lab})
+            plt.grid(True, color = "r")
+            #print (dat.shape, logit.shape)
+            plt.scatter(dat, lab,color='g',s=1,marker='.')#外面的是
+            plt.scatter(dat, logit,color='r',s=1,marker='.')#红色是预测的结果，绿色是原label结果
+            
+        
+        teppath=str(loss)+'_'+str(cnt)+'.png'
+        plt.savefig(op.join(logdir, teppath) )
+        tep=tf.trainable_variables()
+        print ('showing ',str(len(tep)),' vars:')
+        for ind,i in enumerate(self.sess.run(tep)):
+            print (tep[ind].name,i)
+            
+    
+    def start_train_once(self):
+        dat,lab=self.getdata()
+        _,loss=self.sess.run([self.train_all,self.loss_all], feed_dict={  self.x_pla: dat , self.lab_pla:lab})
+        return loss
+        #print (i,'/',maxiter,' train once,loss:',loss)
             
             
 if __name__=='__main__':
     with tf.Session() as sess: 
         gan=test_fit_tailor(sess)
-        gan.start()
+        for i in range(maxiter):
+            loss=gan.start_train_once()
+            print (i,'/',maxiter,' train once,loss:',loss)
             
+            if (i+1)%1000 ==0:
+                gan.start_test_once(i)
             
         
         
