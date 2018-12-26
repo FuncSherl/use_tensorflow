@@ -275,7 +275,7 @@ class GAN_Net:
             G_fc1b = tf.get_variable('bias', [128*16*16], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
         
             G_fc1l = tf.nn.bias_add(tf.matmul(noise, G_fc1w), G_fc1b)
-            ''''''
+            '''
             #batchmorm
             G_fc1l=tf.contrib.layers.batch_norm(G_fc1l,
                                         decay=0.9,
@@ -285,7 +285,7 @@ class GAN_Net:
                                         #reuse=True,
                                         is_training=self.training,
                                         scope=scope)
-            
+            '''
             #reakyrelu0
             self.G_fc1 = tf.nn.leaky_relu(G_fc1l, self.leakyrelurate)
             self.G_para += [G_fc1w, G_fc1b]
