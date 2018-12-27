@@ -55,9 +55,9 @@ class test_fit_tailor:
         return tep,lab
         
     
-    def one_layer(self, cnt, x):
-        with tf.variable_scope('layer'+str(cnt), reuse=tf.AUTO_REUSE) as scope:
-            w = tf.get_variable(  'div',[1] , initializer=tf.truncated_normal_initializer(stddev=stdev_init))
+    def one_layer(self, cnt, x, layername='layer'):
+        with tf.variable_scope(layername, reuse=tf.AUTO_REUSE) as scope:
+            w = tf.get_variable(     'div'+'_'+str(cnt),[1] , initializer=tf.truncated_normal_initializer(stddev=stdev_init))
             other=tf.pow(x, cnt)/math.factorial(cnt)
             return w*other
             
