@@ -25,7 +25,7 @@ stdev_init=0.1
 lr=0.001
 max_power=30
 batchsize=100
-maxiter=100000
+maxiter=10000
 inputshape=[batchsize,1]
 
 logdir="./logs/test_tailor_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d_maxpower-%d'%(lr,batchsize, maxiter, max_power))
@@ -70,7 +70,7 @@ class test_fit_tailor:
         return tep
     
     def loss(self):
-        return tf.abs(tf.reduce_mean(self.lab_pla)-tf.reduce_mean(self.net))
+        return tf.reduce_mean( tf.square(self.lab_pla-self.net) )
     
     def trainonce(self,decay_steps=100, decay_rate=0.99, beta1=0.5):
         self.lr_rate = tf.train.exponential_decay(lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
@@ -97,7 +97,7 @@ class test_fit_tailor:
             plt.scatter(dat, logit,color='r',s=1,marker='.')#红色是预测的结果，绿色是原label结果
             
         
-        teppath=str(loss)+'_'+str(cnt)+'.png'
+        teppath=str(cnt)+'_loss_'+str(loss)+'.png'
         plt.savefig(op.join(logdir, teppath) )
         tep=tf.trainable_variables()
         print ('showing ',str(len(tep)),' vars:')
