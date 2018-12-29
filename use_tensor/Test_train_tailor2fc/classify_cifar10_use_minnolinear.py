@@ -23,7 +23,7 @@ config.gpu_options.allow_growth = True
 #-----------------------------------------------------------------------------------------
 stdev_init=0.1
 lr=0.001
-max_power=5
+max_power=3
 batchsize=100
 maxiter=10000
 inputshape=[batchsize,1]
@@ -51,13 +51,18 @@ class test_fit_tailor:
     def getdata(self):
         tep=np.random.rand(*inputshape)*8-4
         #print (tep)
-        lab=np.log(tep+5)
+        #lab=np.log(tep+5)
+        lab=np.sin(tep*1.2)
         return tep,lab
         
     
     def one_layer(self, cnt, x, layername='layer'):
+        '''
+        cnt:展开到第几次的项
+        x:输入x
+        '''
         with tf.variable_scope(layername, reuse=tf.AUTO_REUSE) as scope:
-            w = tf.get_variable(     'div'+'_'+str(cnt),[1] , initializer=tf.truncated_normal_initializer(stddev=stdev_init))
+            w = tf.get_variable('div'+'_'+str(cnt),[1] , initializer=tf.truncated_normal_initializer(stddev=stdev_init))
             other=tf.pow(x, cnt)/math.factorial(cnt)
             return w*other
             
@@ -65,8 +70,13 @@ class test_fit_tailor:
     
     def netstructure(self, x, cnt=max_power):
         tep=0
+        tep2=0
         for i in range(cnt):
-            tep+=self.one_layer(i, x)
+            tep+=self.one_layer(i, x, 'layer1')
+        ''''''
+        for i in range(cnt):
+            tep2+=self.one_layer(i, tep, 'layer2')
+        
         return tep
     
     def loss(self):
@@ -79,6 +89,7 @@ class test_fit_tailor:
         
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             train_op= tf.train.AdamOptimizer(self.lr_rate, beta1=beta1).minimize(self.loss_all,global_step=self.global_step)   #
+            #train_op= tf.train.GradientDescentOptimizer(self.lr_rate).minimize(self.loss_all,global_step=self.global_step)   #
         return train_op
     
     
