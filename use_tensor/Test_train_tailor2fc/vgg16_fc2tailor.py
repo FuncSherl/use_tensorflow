@@ -23,12 +23,13 @@ decay_rate=0.9
 
 dropout_rate=0.5
 
+weight_dir=r'../locate_feature/vgg16_weights.npz'
 #---------------------------------------------------------------------------------------
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 #利用pipline方式读入数据,由于用同一个网络跑train和test，就先sess.run获取到数据再利用placeholder将数据传入网络
-train_imgs,train_labs=proc_voc.read_tfrecord_batch('./VOC_train_data-2018-11-02',batchsize)
-test_imgs, test_labs=proc_voc.read_tfrecord_batch('./VOC_test_data-2018-11-02',batchsize)
+train_imgs,train_labs=proc_voc.read_tfrecord_batch('../locate_feature/VOC_train_data-2018-11-02',batchsize)
+test_imgs, test_labs=proc_voc.read_tfrecord_batch('../locate_feature/VOC_test_data-2018-11-02',batchsize)
 
 
 class vgg16:
@@ -460,7 +461,7 @@ if __name__ == '__main__':
         logwriter = tf.summary.FileWriter(logdir,   sess.graph)        
         
         #imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
-        vgg = vgg16( r'./vgg16_weights.npz', sess)
+        vgg = vgg16( weight_dir, sess)
         
         all_saver = tf.train.Saver(max_to_keep=2) 
                 
