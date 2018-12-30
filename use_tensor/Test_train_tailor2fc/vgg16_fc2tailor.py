@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from scipy.misc import imread, imresize
 from datetime import datetime
-import time,cv2
+import time,cv2,math
 import os.path as op
 import use_tensor.locate_feature.proc_voc as proc_voc
 
@@ -22,6 +22,7 @@ decay_steps=1000
 decay_rate=0.9
 
 dropout_rate=0.5
+stdev_init=0.1
 
 weight_dir=r'../locate_feature/vgg16_weights.npz'
 #---------------------------------------------------------------------------------------
@@ -406,6 +407,17 @@ class vgg16:
         #dropout1
         self.fc1=tf.cond(self.training, lambda: tf.nn.dropout(self.fc1, self.dropout), lambda: self.fc1)
         
+        print ('fc1 out:',self.fc1)
+        
+        #tailor1
+        self.tailor1=self.tailor_layer(self.fc1, 'tailor1', out_class)
+        
+        #tailor2
+        self.tailor2=self.tailor_layer(self.tailor1, 'tailor2', out_class)
+        self.fc3l=self.tailor2
+        
+        
+        '''
         # fc2
         with tf.name_scope('fc2') as scope:
             fc2w = tf.Variable(tf.truncated_normal([4096, 4096],
@@ -431,8 +443,53 @@ class vgg16:
             self.fc3l = tf.nn.bias_add(tf.matmul(self.fc2, fc3w), fc3b)
             self.fc3 = tf.nn.relu(self.fc3l)
             self.parameters_last += [fc3w, fc3b]    #here we want to finetune,so shouldn't init the weight with model
+        '''
             
+    def tailor_layer(self,x, layername='layer', outnum=1):
+        '''
+        x:input [batchsize, flatten]
+        powercnt:tailor展开多少，到powercnt-1次方
+        '''
+        shape=x.get_shape()
+        ret=tf.Variable(0.0)
+        with tf.variable_scope(layername, reuse=tf.AUTO_REUSE) as scope:
+            i=0
+            print('show shape:',[shape[0],outnum])         
+            w = tf.get_variable('div'+'_'+str(i),[shape[0],outnum], initializer=tf.truncated_normal_initializer(stddev=stdev_init))
+            #other=tf.pow(x, i)/math.factorial(i)
+            self.parameters_last+=[w]
             
+            ret+=w
+            print(ret.get_shape())
+            
+            i=1
+            print('show shape:',[shape[-1]]*i+[outnum])         
+            w = tf.get_variable('div'+'_'+str(i),[shape[-1]]*i+[outnum], initializer=tf.truncated_normal_initializer(stddev=stdev_init))
+            self.parameters_last+=[w]
+            
+            other=tf.matmul(x,w) /math.factorial(i)
+            ret+=other
+            #ret.shape=[batchsize, outnum]
+            
+            i=2        
+            w = tf.get_variable('div'+'_'+str(i),[shape[-1]]*i+[outnum], initializer=tf.truncated_normal_initializer(stddev=stdev_init))
+            self.parameters_last+=[w]
+            
+            tep=tf.matmul(x,w[:,:,0])
+            kep_resu=tf.reduce_sum(tep* x, axis=1, keep_dims=True) /math.factorial(i) #[batchsize , 1]
+            
+            for j in range(1,outnum):
+                tep=tf.matmul(x,w[:,:,j])
+                #print (tep)
+                tep=tf.reduce_sum(tep* x, axis=1, keep_dims=True)/math.factorial(i) #[batchsize , 1]
+                #print (tep)
+                kep_resu=tf.concat([kep_resu, tep], axis=1)
+                
+            print ('after concat:',kep_resu)
+            ret+=kep_resu
+            
+        return ret
+        
 
     def load_weights(self, weight_file, sess):
         weights = np.load(weight_file)
