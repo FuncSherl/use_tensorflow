@@ -59,8 +59,8 @@ class vgg16:
         self.probs = tf.nn.softmax(self.fc3l)
         
         #输出看下类里面的成员
-        for i in self.__dict__:
-            print('dict in vgg16:',i,self.__dict__[i])
+        for i in tf.trainable_variables():
+            print('trainable variables:',i)
         
         #merge 两类train/test summary，注意不可直接merge_all否则出来的evaluate结果是训练集上的
         if len(self.train_summarys): self.merged_train = tf.summary.merge(self.train_summarys)
@@ -92,14 +92,14 @@ class vgg16:
     
         # Use the optimizer to apply the gradients that minimize the loss
         # (and also increment the global step counter) as a single training step.
-        print ('GradientDescentOptimizer1 to minimize %d vars..'%(len(self.parameters)))
-        train_op1 = tf.train.GradientDescentOptimizer(lr_rate).minimize(self.loss, global_step=self.global_step,var_list=self.parameters)
+        print ('GradientDescentOptimizer1 to minimize %d vars..'%(len(tf.trainable_variables())))
+        train_op1 = tf.train.GradientDescentOptimizer(lr_rate).minimize(self.loss, global_step=self.global_step) #,var_list=self.parameters
         
-        print ('GradientDescentOptimizer2 to minimize %d vars..'%(len(self.parameters_last)))
-        train_op2 = tf.train.GradientDescentOptimizer(lr_rate*10).minimize(self.loss, var_list=self.parameters_last)#这里不应有globalstep，否则会再加1？
-        train_op = tf.group(train_op1, train_op2)
+        #print ('GradientDescentOptimizer2 to minimize %d vars..'%(len(self.parameters_last)))
+        #train_op2 = tf.train.GradientDescentOptimizer(lr_rate*10).minimize(self.loss, var_list=self.parameters_last)#这里不应有globalstep，否则会再加1？
+        #train_op = tf.group(train_op1, train_op2)
 
-        return train_op
+        return train_op1
     
     
     def train_once(self, sess):
@@ -391,18 +391,18 @@ class vgg16:
         # fc1
         with tf.name_scope('fc1') as scope:
             shape = int(np.prod(self.pool5.get_shape()[1:]))#除去batch维度，剩下的乘积，用于flatten原来的二维featuremap
+            fc1_outnum=1024
             
             
-            
-            fc1w = tf.Variable(tf.truncated_normal([shape, 4096],
+            fc1w = tf.Variable(tf.truncated_normal([shape, fc1_outnum],
                                                          dtype=tf.float32,
                                                          stddev=1e-1), name='weights')
-            fc1b = tf.Variable(tf.constant(1.0, shape=[4096], dtype=tf.float32),
+            fc1b = tf.Variable(tf.constant(1.0, shape=[fc1_outnum], dtype=tf.float32),
                                  trainable=True, name='biases')
             pool5_flat = tf.reshape(self.pool5, [-1, shape])
             fc1l = tf.nn.bias_add(tf.matmul(pool5_flat, fc1w), fc1b)
             self.fc1 = tf.nn.relu(fc1l)
-            self.parameters += [fc1w, fc1b]
+            #self.parameters += [fc1w, fc1b]
         
         #dropout1
         self.fc1=tf.cond(self.training, lambda: tf.nn.dropout(self.fc1, self.dropout), lambda: self.fc1)
@@ -451,7 +451,7 @@ class vgg16:
         powercnt:tailor展开多少，到powercnt-1次方
         '''
         shape=x.get_shape()
-        ret=tf.Variable(0.0)
+        ret=0
         with tf.variable_scope(layername, reuse=tf.AUTO_REUSE) as scope:
             i=0
             print('show shape:',[shape[0],outnum])         
