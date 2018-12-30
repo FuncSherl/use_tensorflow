@@ -13,7 +13,7 @@ eval_size=5000 #测试集规模
 
 
 out_class=20 #输出类别数目，这里用voc有20类
-batchsize=30
+batchsize=10
 
 base_lr=0.001 #基础学习率
 maxstep=300000 #训练多少次
@@ -524,8 +524,8 @@ if __name__ == '__main__':
                 
         
         #再开始前先测试一次，看下准确率，也将summary加入tf中，免得后面tf.summary.merge_all()没将这个eval_once里面的summary算进去
-        acc,_=vgg.eval_once(sess)
-        print ('eval the test datas:',acc)
+        #acc,_=vgg.eval_once(sess)
+        #print ('eval the test datas:',acc)
         
         begin_t=time.time()
         for i in range(maxstep):            

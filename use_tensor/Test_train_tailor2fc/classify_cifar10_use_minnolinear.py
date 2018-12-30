@@ -17,8 +17,8 @@ import math
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 # 设置GPU按需增长
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
+#config = tf.ConfigProto()
+#config.gpu_options.allow_growth = True
 
 #-----------------------------------------------------------------------------------------
 stdev_init=0.1
