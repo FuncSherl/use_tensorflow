@@ -153,7 +153,7 @@ class GAN_Net:
         
         #这将lr调为负数，因为应该最大化目标
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-            self.G_optimizer=tf.train.AdamOptimizer(self.lr_rate*2 , beta1=beta1)
+            self.G_optimizer=tf.train.AdamOptimizer(self.lr_rate , beta1=beta1)
             
             #for i in optimizer.compute_gradients(self.G_loss_mean, var_list=self.G_para): print (i)
             
@@ -199,15 +199,17 @@ class GAN_Net:
                                                             self.summary_all], 
                                                            feed_dict={  self.noise_pla: noise , self.training:True})
         print ('the lr_rate is:', lrr)
+        '''
         print ('debug:MyGloss:',deb_G, '  MyDloss:',deb_D)
         
         if abs(deb_G-gloss)>0.1 or abs(deb_D-dloss)>0.1:
             print ('!!!!!!!!!!!!!!!!!!!!!!!!gloss ,dloss:',gloss,dloss,'!!!!!!!!!!!!!!!!!!!!!!!!!!')
             self.cnt_tep+=1
             #if self.cnt_tep>2: exit()
-        print('see gbias:\n',seeweight,seeweight-self.deb_kep)
+        '''
+        print('G_last_bias:\n',seeweight,seeweight-self.deb_kep)
         self.deb_kep=seeweight
-        print ('Dbias:',seeb[0:3],seeb[0:3]-self.deb_kep2)
+        print ('D_fir_bias:\n',seeb[0:3],seeb[0:3]-self.deb_kep2)
         self.deb_kep2=seeb[0:3]
         
         return summary,dloss,gloss
@@ -282,7 +284,7 @@ class GAN_Net:
                                         updates_collections=None,
                                         epsilon=1e-5,
                                         scale=True,
-                                        #reuse=True,
+                                        reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
             
@@ -313,7 +315,7 @@ class GAN_Net:
         
         
         self.G_conv1=self.G_deconv1
-        '''
+        ''''''
         #conv1
         with tf.variable_scope('G_conv1',  reuse=tf.AUTO_REUSE) as scope: 
             kernel=tf.get_variable('weights', [4,4, 128, 128], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
@@ -323,35 +325,58 @@ class GAN_Net:
             self.G_conv1=tf.nn.bias_add(conv, bias)
             
             self.G_para += [kernel, bias]
+            
+            #batchmorm
+            self.G_conv1=tf.contrib.layers.batch_norm(self.G_conv1,
+                                        decay=0.9,
+                                        updates_collections=None,
+                                        epsilon=1e-5,
+                                        scale=True,
+                                        reuse=tf.AUTO_REUSE,
+                                        is_training=self.training,
+                                        scope=scope)
         #reakyrelu1
-            self.G_conv1=tf.nn.leaky_relu(self.G_conv1, self.leakyrelurate)
-        '''
+            #self.G_conv1=tf.nn.leaky_relu(self.G_conv1, self.leakyrelurate)
+            self.G_conv1=tf.nn.relu(self.G_conv1)
+        
         #deconv2
         with tf.variable_scope('G_deconv2',  reuse=tf.AUTO_REUSE) as scope:  
-            kernel=tf.get_variable('weights', [4,4, 64, 128], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [64], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+            kernel=tf.get_variable('weights', [4,4, 128, 128], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            bias=tf.get_variable('bias', [128], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
             #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
-            deconv=tf.nn.conv2d_transpose(self.G_conv1, kernel, output_shape=[batchsize, 64, 64, 64], strides=[1,2,2,1], padding="SAME")
+            deconv=tf.nn.conv2d_transpose(self.G_conv1, kernel, output_shape=[batchsize, 64, 64, 128], strides=[1,2,2,1], padding="SAME")
             self.G_deconv2=tf.nn.bias_add(deconv, bias)
             
             self.G_para += [kernel, bias]
             #self.G_deconv2=tf.nn.leaky_relu(self.G_deconv2, self.leakyrelurate)
+            self.G_deconv2=tf.nn.relu(self.G_deconv2)
         
         self.G_conv2=self.G_deconv2
-        '''
+        ''''''
         #conv2
         with tf.variable_scope('G_conv2',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, 64, 64], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            kernel=tf.get_variable('weights', [4,4, 128, 64], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
             bias=tf.get_variable('bias', [64], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             
             conv=tf.nn.conv2d(self.G_deconv2, kernel, strides=[1,1,1,1], padding='SAME')
             self.G_conv2=tf.nn.bias_add(conv, bias)
             
             self.G_para += [kernel, bias]
+            
+            #batchmorm
+            self.G_conv2=tf.contrib.layers.batch_norm(self.G_conv2,
+                                        decay=0.9,
+                                        updates_collections=None,
+                                        epsilon=1e-5,
+                                        scale=True,
+                                        reuse=tf.AUTO_REUSE,
+                                        is_training=self.training,
+                                        scope=scope)
         #reakyrelu2
-            self.G_conv2=tf.nn.leaky_relu(self.G_conv2, self.leakyrelurate)
-        '''
+            #self.G_conv2=tf.nn.leaky_relu(self.G_conv2, self.leakyrelurate)
+            self.G_conv2=tf.nn.relu(self.G_conv2)
+        
         
         #conv3
         with tf.variable_scope('G_conv3',  reuse=tf.AUTO_REUSE) as scope: 
@@ -421,7 +446,7 @@ class GAN_Net:
                                         updates_collections=None,
                                         epsilon=1e-5,
                                         scale=True,
-                                        #reuse=True,
+                                        reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
             
@@ -430,10 +455,10 @@ class GAN_Net:
             self.D_conv2=tf.nn.leaky_relu(self.D_conv2, self.leakyrelurate)
             
         self.D_conv3=self.D_conv2
-        '''
+        ''''''
         #conv3
         with tf.variable_scope('D_conv3',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, 64, 128], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            kernel=tf.get_variable('weights', [4,4, 128, 128], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
             bias=tf.get_variable('bias', [128], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
             #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
@@ -442,7 +467,7 @@ class GAN_Net:
             
             self.D_para += [kernel, bias]
             self.D_conv3=tf.nn.leaky_relu(self.D_conv3, self.leakyrelurate)
-        '''
+        
         #conv4
         with tf.variable_scope('D_conv4',  reuse=tf.AUTO_REUSE) as scope: 
             kernel=tf.get_variable('weights', [4,4, 128, 256], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
@@ -474,7 +499,7 @@ class GAN_Net:
                                         updates_collections=None,
                                         epsilon=1e-5,
                                         scale=True,
-                                        #reuse=True,
+                                        reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
             
