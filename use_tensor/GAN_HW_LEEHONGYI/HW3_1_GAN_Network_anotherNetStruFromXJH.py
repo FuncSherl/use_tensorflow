@@ -702,7 +702,7 @@ if __name__ == '__main__':
             
             #######################
             
-            real,fake=gan.evla_D_once(10)
+            real,fake=gan.evla_D_once(1)
             print ('once prob of real/fake:',real,fake)
             
         
