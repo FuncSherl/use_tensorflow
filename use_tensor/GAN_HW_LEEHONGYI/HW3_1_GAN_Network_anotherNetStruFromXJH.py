@@ -489,7 +489,7 @@ class GAN_Net:
         #cast to float 
         self.imgs_float32=tf.cast(imgs, tf.float32)
         
-        first_d_channel=96
+        first_d_channel=D_first_channel
         
         #conv1
         with tf.variable_scope('D_conv1',  reuse=tf.AUTO_REUSE) as scope: 
