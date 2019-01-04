@@ -20,7 +20,7 @@ TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 
 train_size=33431 #训练集规模
-batchsize=64
+batchsize=32
 noise_size=100
 img_size=96
 
@@ -57,7 +57,7 @@ class GAN_Net:
         
         #for debug
         self.cnt_tep=0
-        self.deb_kep=[0]*3
+        self.deb_kep=0
         self.deb_kep2=0
         
         #3个placeholder， img和noise,training 
@@ -197,12 +197,17 @@ class GAN_Net:
         '''
         
         noise=self.get_noise()
-        seeb,seeweight,lrr, deb_D,deb_G, _,_,dloss,gloss,summary=self.sess.run([self.debug2, self.debug, self.lr_rate, self.test_ori_loss_D ,self.test_ori_loss_G, 
+        train_prob_f,train_prob_t,seeb,seeweight,lrr, deb_D,deb_G, _,_,dloss,gloss,summary=self.sess.run([self.whole_net,self.D_net,
+                                                                                self.debug2, self.debug, 
+                                                                                self.lr_rate, 
+                                                                                self.test_ori_loss_D ,self.test_ori_loss_G, 
                                                             self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,
                                                             self.summary_all], 
                                                            feed_dict={  self.noise_pla: noise , self.training:True})
         print ('the lr_rate is:', lrr)
-        ''''''
+        
+        print ('this train probs:\n', 'true:',np.mean(train_prob_t), '   false:',np.mean(train_prob_f))
+
         print ('debug:\nMyGloss:',deb_G, '  MyDloss:',deb_D)
         '''
         if abs(deb_G-gloss)>0.1 or abs(deb_D-dloss)>0.1:
@@ -229,11 +234,19 @@ class GAN_Net:
         return inerimg
     
     def Run_WholeNet(self, training=False):
+        '''
+        training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
+        '''
         noise=self.get_noise()
         probs=self.sess.run(self.whole_net, feed_dict={self.noise_pla: noise, self.training:training})
         return probs
     
-    def Run_D(self, training=False):#这里imgs要求是tanh化过的，即归一化到-1~1       
+    def Run_D(self, training=False):
+          
+        '''
+        #这里imgs要求是tanh化过的，即归一化到-1~1 
+        training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
+        ''' 
         probs=self.sess.run(self.D_net, feed_dict={self.training:training})  #, feed_dict={ self.imgs_pla: self.img2tanh(self.tf_inimg) })
         #越接近真实图像越接近1
         return probs
@@ -548,7 +561,7 @@ class GAN_Net:
             self.D_conv2=tf.nn.leaky_relu(self.D_conv2, self.leakyrelurate)
             
             
-        self.D_conv3=self.D_conv2
+        #self.D_conv3=self.D_conv2
         
         ''''''
         #conv3
@@ -599,6 +612,9 @@ class GAN_Net:
             
             self.D_conv4=tf.nn.leaky_relu(self.D_conv4, self.leakyrelurate)
             
+            #print ('tensor to last cnn:',self.D_conv4)
+            #self.D_conv4 :  Tensor("D_conv4/LeakyRelu:0", shape=(64, 4, 4, 768), dtype=float32)
+            
         '''
         #flatten
         self.flatten=tf.reshape(self.D_conv4, [batchsize, -1])
@@ -634,6 +650,7 @@ class GAN_Net:
             
             self.D_para += [D_fc2w, D_fc2b]
         '''    
+        
         #conv5
         with tf.variable_scope('D_conv5',  reuse=tf.AUTO_REUSE) as scope: 
             kernel=tf.get_variable('weights', [4,4, first_d_channel*8, 1], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
