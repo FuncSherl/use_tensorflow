@@ -69,10 +69,14 @@ class GAN_Net:
         
         self.whole_net,self.D_fake_logit=self.Discriminator_net(self.Generator_net(self.noise_pla))
         #由于有重复构建网络结构的操作，这里重新清零保持weight的list，这样就能保障每个weight tensor只在list中出现一次
-        self.G_para=[]
-        self.D_para=[]
+
         self.G_net=self.Generator_net(self.noise_pla)
         self.D_net,self.D_real_logit=self.Discriminator_net(  self.img2tanh(self.tf_inimg)  ) #self.imgs_pla
+        
+        #还是应该以tf.trainable_variables()为主
+        t_vars=tf.trainable_variables()
+        self.G_para=[var for var in t_vars if var.name.startswith('G')]
+        self.D_para=[var for var in t_vars if var.name.startswith('D')]
         
         '''
         print ('\nshow all trainable vars:',len(tf.trainable_variables()))
@@ -88,6 +92,7 @@ class GAN_Net:
         
         print ('\nfirst show G params')
         for i in self.G_para: print (i)
+        
         print('\nnext is D:\n')
         for i in self.D_para: print (i)
         
@@ -208,7 +213,7 @@ class GAN_Net:
         
         print ('this train probs:\n', 'true:',np.mean(train_prob_t), '   false:',np.mean(train_prob_f))
 
-        print ('debug:\nMyGloss:',deb_G, '  MyDloss:',deb_D)
+        print ('MyGloss:',deb_G, '  MyDloss:',deb_D)
         '''
         if abs(deb_G-gloss)>0.1 or abs(deb_D-dloss)>0.1:
             print ('!!!!!!!!!!!!!!!!!!!!!!!!gloss ,dloss:',gloss,dloss,'!!!!!!!!!!!!!!!!!!!!!!!!!!')
@@ -304,7 +309,7 @@ class GAN_Net:
                                         updates_collections=None,
                                         #epsilon=1e-5,
                                         #scale=True,
-                                        reuse=tf.AUTO_REUSE,
+                                        #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
         
@@ -338,7 +343,7 @@ class GAN_Net:
                                         updates_collections=None,
                                         #epsilon=1e-5,
                                         #scale=True,
-                                        reuse=tf.AUTO_REUSE,
+                                        #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
         
@@ -391,7 +396,7 @@ class GAN_Net:
                                         updates_collections=None,
                                         #epsilon=1e-5,
                                         #scale=True,
-                                        reuse=tf.AUTO_REUSE,
+                                        #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
             
@@ -442,7 +447,7 @@ class GAN_Net:
                                         updates_collections=None,
                                         #epsilon=1e-5,
                                         #scale=True,
-                                        reuse=tf.AUTO_REUSE,
+                                        #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
             #relu
@@ -483,7 +488,7 @@ class GAN_Net:
                                         updates_collections=None,
                                         #epsilon=1e-5,
                                         #scale=True,
-                                        reuse=tf.AUTO_REUSE,
+                                        #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
             
@@ -554,7 +559,7 @@ class GAN_Net:
                                         updates_collections=None,
                                         #epsilon=1e-5,
                                         #scale=True,
-                                        reuse=tf.AUTO_REUSE,
+                                        #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
 
@@ -581,7 +586,7 @@ class GAN_Net:
                                         updates_collections=None,
                                         #epsilon=1e-5,
                                         #scale=True,
-                                        reuse=tf.AUTO_REUSE,
+                                        #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
             
@@ -606,7 +611,7 @@ class GAN_Net:
                                         updates_collections=None,
                                         #epsilon=1e-5,
                                         #scale=True,
-                                        reuse=tf.AUTO_REUSE,
+                                        #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
             
