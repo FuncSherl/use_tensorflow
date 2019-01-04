@@ -294,7 +294,7 @@ class GAN_Net:
             
             self.G_para += [G_fc1w, G_fc1b]
             
-        tf.summary.scalar('G_fir_bias',G_fc1b[10])
+        tf.summary.scalar('G_fir_bias_10',G_fc1b[10])
         #dropout1
         #self.G_fc1=tf.cond(self.training, lambda: tf.nn.dropout(self.G_fc1, self.dropout), lambda: self.G_fc1)
         

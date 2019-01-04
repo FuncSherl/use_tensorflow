@@ -35,6 +35,9 @@ decay_rate=1 #0.9
 
 incase_div_zero=1e-10  #这个值大一些可以避免d训得太好，也避免了g梯度
 
+G_first_channel=96
+D_first_channel=96
+
 logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -271,7 +274,7 @@ class GAN_Net:
         
     
     def Generator_net(self, noise):
-        first_channel=96
+        first_channel=G_first_channel
         # fc1
         with tf.variable_scope('G_fc1',  reuse=tf.AUTO_REUSE) as scope:                    
             G_fc1w = tf.get_variable('weights', [noise_size, 4*4*first_channel], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
