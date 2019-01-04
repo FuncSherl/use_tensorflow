@@ -22,7 +22,7 @@ TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 train_size=33431 #训练集规模
 batchsize=64
 noise_size=100
-img_size=64  #96
+img_size=96
 
 base_lr=0.0002 #基础学习率
 beta1=0.5
@@ -342,11 +342,11 @@ class GAN_Net:
         
         #deconv2
         with tf.variable_scope('G_deconv2',  reuse=tf.AUTO_REUSE) as scope:  
-            kernel=tf.get_variable('weights', [4,4, 128, 128], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+            kernel=tf.get_variable('weights', [5,5, 128, 128], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
             bias=tf.get_variable('bias', [128], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
             #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
-            deconv=tf.nn.conv2d_transpose(self.G_conv1, kernel, output_shape=[batchsize, 64, 64, 128], strides=[1,2,2,1], padding="SAME")
+            deconv=tf.nn.conv2d_transpose(self.G_conv1, kernel, output_shape=[batchsize, img_size, img_size, 128], strides=[1,3,3,1], padding="SAME")
             self.G_deconv2=tf.nn.bias_add(deconv, bias)
             
             self.G_para += [kernel, bias]

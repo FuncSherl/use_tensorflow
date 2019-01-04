@@ -199,9 +199,9 @@ class GAN_Net:
                                                             self.summary_all], 
                                                            feed_dict={  self.noise_pla: noise , self.training:True})
         print ('the lr_rate is:', lrr)
+        ''''''
+        print ('debug:\nMyGloss:',deb_G, '  MyDloss:',deb_D)
         '''
-        print ('debug:MyGloss:',deb_G, '  MyDloss:',deb_D)
-        
         if abs(deb_G-gloss)>0.1 or abs(deb_D-dloss)>0.1:
             print ('!!!!!!!!!!!!!!!!!!!!!!!!gloss ,dloss:',gloss,dloss,'!!!!!!!!!!!!!!!!!!!!!!!!!!')
             self.cnt_tep+=1
@@ -299,7 +299,7 @@ class GAN_Net:
             self.G_para += [G_fc1w, G_fc1b]
             
         #show inner result
-        tf.summary.scalar('G_fir_bias',G_fc1b[10])
+        tf.summary.scalar('G_fir_bias_10',G_fc1b[10])
         
         #dropout1
         #self.G_fc1=tf.cond(self.training, lambda: tf.nn.dropout(self.G_fc1, self.dropout), lambda: self.G_fc1)
@@ -498,7 +498,7 @@ class GAN_Net:
             
             
             self.debug2=bias
-            tf.summary.scalar('D_fir_bias[20]',bias[20])
+            tf.summary.scalar('D_fir_bias_20',bias[20])
             self.D_para += [kernel, bias]
             
             
