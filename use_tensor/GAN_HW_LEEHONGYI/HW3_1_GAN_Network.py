@@ -277,7 +277,7 @@ class GAN_Net:
             G_fc1b = tf.get_variable('bias', [128*16*16], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
         
             G_fc1l = tf.nn.bias_add(tf.matmul(noise, G_fc1w), G_fc1b)
-            ''''''
+            '''
             #batchmorm
             G_fc1l=tf.contrib.layers.batch_norm(G_fc1l,
                                         #decay=0.9,
@@ -287,7 +287,7 @@ class GAN_Net:
                                         reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
-            
+            '''
             #reakyrelu0
             #self.G_fc1 = tf.nn.leaky_relu(G_fc1l, self.leakyrelurate)
             self.G_fc1 = tf.nn.relu(G_fc1l)
@@ -325,7 +325,7 @@ class GAN_Net:
             self.G_conv1=tf.nn.bias_add(conv, bias)
             
             self.G_para += [kernel, bias]
-            
+            '''
             #batchmorm
             self.G_conv1=tf.contrib.layers.batch_norm(self.G_conv1,
                                         #decay=0.9,
@@ -335,6 +335,7 @@ class GAN_Net:
                                         reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
+            '''
         #reakyrelu1
             #self.G_conv1=tf.nn.leaky_relu(self.G_conv1, self.leakyrelurate)
             self.G_conv1=tf.nn.relu(self.G_conv1)
@@ -363,7 +364,7 @@ class GAN_Net:
             self.G_conv2=tf.nn.bias_add(conv, bias)
             
             self.G_para += [kernel, bias]
-            
+            '''
             #batchmorm
             self.G_conv2=tf.contrib.layers.batch_norm(self.G_conv2,
                                         #decay=0.9,
@@ -373,6 +374,7 @@ class GAN_Net:
                                         reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
+            '''
         #reakyrelu2
             #self.G_conv2=tf.nn.leaky_relu(self.G_conv2, self.leakyrelurate)
             self.G_conv2=tf.nn.relu(self.G_conv2)
@@ -439,7 +441,7 @@ class GAN_Net:
             self.D_conv2=tf.nn.bias_add(conv, bias)
             
             self.D_para += [kernel, bias]
-            
+            '''
             #batchmorm
             self.D_conv2=tf.contrib.layers.batch_norm(self.D_conv2,
                                         #decay=0.9,
@@ -449,7 +451,7 @@ class GAN_Net:
                                         reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
-            
+            '''
             
             
             self.D_conv2=tf.nn.leaky_relu(self.D_conv2, self.leakyrelurate)
@@ -492,7 +494,7 @@ class GAN_Net:
             
             
             self.D_para += [D_fc1w, D_fc1b]
-            
+            '''
             #batchmorm
             self.D_fc1=tf.contrib.layers.batch_norm(self.D_fc1,
                                         #decay=0.9,
@@ -502,8 +504,11 @@ class GAN_Net:
                                         reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
                                         scope=scope)
-            
+            '''
             self.D_fc1 = tf.nn.leaky_relu(self.D_fc1, self.leakyrelurate)
+            
+        #dropout??
+        self.D_fc1=tf.cond(self.training, lambda: tf.nn.dropout(self.D_fc1, self.dropout), lambda: self.D_fc1)
         
         #fc2
         with tf.variable_scope('D_fc2',  reuse=tf.AUTO_REUSE) as scope:                    
