@@ -233,12 +233,12 @@ class GAN_Net:
         return tep.astype(np.uint8)  
     
     
-    def Run_G(self, training=False):
+    def Run_G(self, training=True):
         noise=self.get_noise()
         inerimg=self.sess.run(self.G_net, feed_dict={self.noise_pla: noise, self.training:training})
         return inerimg
     
-    def Run_WholeNet(self, training=False):
+    def Run_WholeNet(self, training=True):
         '''
         training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
         '''
@@ -246,7 +246,7 @@ class GAN_Net:
         probs=self.sess.run(self.whole_net, feed_dict={self.noise_pla: noise, self.training:training})
         return probs
     
-    def Run_D(self, training=False):
+    def Run_D(self, training=True):
           
         '''
         #这里imgs要求是tanh化过的，即归一化到-1~1 
@@ -293,220 +293,222 @@ class GAN_Net:
     
     def Generator_net(self, noise):
         first_channel=G_first_channel
-        # fc1
-        with tf.variable_scope('G_fc1',  reuse=tf.AUTO_REUSE) as scope:                    
-            G_fc1w = tf.get_variable('weights', [noise_size, 4*4*first_channel], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            G_fc1b = tf.get_variable('bias', [4*4*first_channel], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
         
-            G_fc1l = tf.nn.bias_add(tf.matmul(noise, G_fc1w), G_fc1b)
+        with tf.variable_scope('G_Generator_net',  reuse=tf.AUTO_REUSE) as scope: 
+            # fc1
+            with tf.variable_scope('G_fc1',  reuse=tf.AUTO_REUSE) as scope:                    
+                G_fc1w = tf.get_variable('weights', [noise_size, 4*4*first_channel], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                G_fc1b = tf.get_variable('bias', [4*4*first_channel], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             
-            #reshape
-            self.G_fc1=tf.reshape(G_fc1l, [-1, 4, 4, first_channel])
-        
-        #bn1
-        with tf.variable_scope('G_bn1',  reuse=tf.AUTO_REUSE) as scope: 
-            #batchmorm
-            self.G_fc1=tf.contrib.layers.batch_norm(self.G_fc1,
-                                        decay=0.9,
-                                        updates_collections=None,
-                                        epsilon=1e-5,
-                                        #scale=True,
-                                        #reuse=tf.AUTO_REUSE,
-                                        is_training=self.training,
-                                        scope=scope)
-        
-            #relu
-            #self.G_fc1 = tf.nn.leaky_relu(G_fc1l, self.leakyrelurate)
-            self.G_fc1 = tf.nn.relu(self.G_fc1)
+                G_fc1l = tf.nn.bias_add(tf.matmul(noise, G_fc1w), G_fc1b)
+                
+                #reshape
+                self.G_fc1=tf.reshape(G_fc1l, [-1, 4, 4, first_channel])
             
-            self.G_para += [G_fc1w, G_fc1b]
+            #bn1
+            with tf.variable_scope('G_bn1',  reuse=tf.AUTO_REUSE) as scope: 
+                #batchmorm
+                self.G_fc1=tf.contrib.layers.batch_norm(self.G_fc1,
+                                            decay=0.9,
+                                            updates_collections=None,
+                                            epsilon=1e-5,
+                                            #scale=True,
+                                            #reuse=tf.AUTO_REUSE,
+                                            is_training=self.training,
+                                            scope=scope)
             
-        #show inner result
-        tf.summary.scalar('G_fir_bias_10',G_fc1b[10])
-        
-        #dropout1
-        #self.G_fc1=tf.cond(self.training, lambda: tf.nn.dropout(self.G_fc1, self.dropout), lambda: self.G_fc1)
-        
-        
-        #deconv1
-        with tf.variable_scope('G_deconv1',  reuse=tf.AUTO_REUSE) as scope:  
-            kernel=tf.get_variable('weights', [4,4, first_channel*4, first_channel], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [first_channel*4], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
-            #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
-            #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
-            deconv=tf.nn.conv2d_transpose(self.G_fc1, kernel, output_shape=[batchsize, 8, 8, first_channel*4], strides=[1,2,2,1], padding="SAME")
-            self.G_deconv1=tf.nn.bias_add(deconv, bias)
+                #relu
+                #self.G_fc1 = tf.nn.leaky_relu(G_fc1l, self.leakyrelurate)
+                self.G_fc1 = tf.nn.relu(self.G_fc1)
+                
+                self.G_para += [G_fc1w, G_fc1b]
+                
+            #show inner result
+            tf.summary.scalar('G_fir_bias_10',G_fc1b[10])
             
-            self.G_para += [kernel, bias]
+            #dropout1
+            #self.G_fc1=tf.cond(self.training, lambda: tf.nn.dropout(self.G_fc1, self.dropout), lambda: self.G_fc1)
             
-        #bn2
-        with tf.variable_scope('G_bn2',  reuse=tf.AUTO_REUSE) as scope: 
-            #batchmorm
-            self.G_deconv1=tf.contrib.layers.batch_norm(self.G_deconv1,
-                                        decay=0.9,
-                                        updates_collections=None,
-                                        epsilon=1e-5,
-                                        #scale=True,
-                                        #reuse=tf.AUTO_REUSE,
-                                        is_training=self.training,
-                                        scope=scope)
-        
-            #relu
-            #self.G_deconv1 = tf.nn.leaky_relu(self.G_deconv1, self.leakyrelurate)
-            self.G_deconv1 = tf.nn.relu(self.G_deconv1)
             
-        
-        
-        self.G_conv1=self.G_deconv1
-        '''
-        #conv1
-        with tf.variable_scope('G_conv1',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, 128, 128], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [128], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+            #deconv1
+            with tf.variable_scope('G_deconv1',  reuse=tf.AUTO_REUSE) as scope:  
+                kernel=tf.get_variable('weights', [4,4, first_channel*4, first_channel], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                bias=tf.get_variable('bias', [first_channel*4], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+                #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
+                #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
+                deconv=tf.nn.conv2d_transpose(self.G_fc1, kernel, output_shape=[batchsize, 8, 8, first_channel*4], strides=[1,2,2,1], padding="SAME")
+                self.G_deconv1=tf.nn.bias_add(deconv, bias)
+                
+                self.G_para += [kernel, bias]
+                
+            #bn2
+            with tf.variable_scope('G_bn2',  reuse=tf.AUTO_REUSE) as scope: 
+                #batchmorm
+                self.G_deconv1=tf.contrib.layers.batch_norm(self.G_deconv1,
+                                            decay=0.9,
+                                            updates_collections=None,
+                                            epsilon=1e-5,
+                                            #scale=True,
+                                            #reuse=tf.AUTO_REUSE,
+                                            is_training=self.training,
+                                            scope=scope)
             
-            conv=tf.nn.conv2d(self.G_deconv1, kernel, strides=[1,1,1,1], padding='SAME')
-            self.G_conv1=tf.nn.bias_add(conv, bias)
+                #relu
+                #self.G_deconv1 = tf.nn.leaky_relu(self.G_deconv1, self.leakyrelurate)
+                self.G_deconv1 = tf.nn.relu(self.G_deconv1)
+                
             
-            self.G_para += [kernel, bias]
             
-            #batchmorm
-            self.G_conv1=tf.contrib.layers.batch_norm(self.G_conv1,
-                                        decay=0.9,
-                                        updates_collections=None,
-                                        epsilon=1e-5,
-                                        scale=True,
-                                        reuse=tf.AUTO_REUSE,
-                                        is_training=self.training,
-                                        scope=scope)
-        #reakyrelu1
-            #self.G_conv1=tf.nn.leaky_relu(self.G_conv1, self.leakyrelurate)
-            self.G_conv1=tf.nn.relu(self.G_conv1)
-        '''
-        
-        #deconv2
-        with tf.variable_scope('G_deconv2',  reuse=tf.AUTO_REUSE) as scope:  
-            kernel=tf.get_variable('weights', [4,4, first_channel*2, first_channel*4], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [first_channel*2], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
-            #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
-            #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
-            deconv=tf.nn.conv2d_transpose(self.G_conv1, kernel, output_shape=[batchsize, 16, 16, first_channel*2], strides=[1,2,2,1], padding="SAME")
-            self.G_deconv2=tf.nn.bias_add(deconv, bias)
+            self.G_conv1=self.G_deconv1
+            '''
+            #conv1
+            with tf.variable_scope('G_conv1',  reuse=tf.AUTO_REUSE) as scope: 
+                kernel=tf.get_variable('weights', [4,4, 128, 128], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                bias=tf.get_variable('bias', [128], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+                
+                conv=tf.nn.conv2d(self.G_deconv1, kernel, strides=[1,1,1,1], padding='SAME')
+                self.G_conv1=tf.nn.bias_add(conv, bias)
+                
+                self.G_para += [kernel, bias]
+                
+                #batchmorm
+                self.G_conv1=tf.contrib.layers.batch_norm(self.G_conv1,
+                                            decay=0.9,
+                                            updates_collections=None,
+                                            epsilon=1e-5,
+                                            scale=True,
+                                            reuse=tf.AUTO_REUSE,
+                                            is_training=self.training,
+                                            scope=scope)
+            #reakyrelu1
+                #self.G_conv1=tf.nn.leaky_relu(self.G_conv1, self.leakyrelurate)
+                self.G_conv1=tf.nn.relu(self.G_conv1)
+            '''
             
-            self.G_para += [kernel, bias]
+            #deconv2
+            with tf.variable_scope('G_deconv2',  reuse=tf.AUTO_REUSE) as scope:  
+                kernel=tf.get_variable('weights', [4,4, first_channel*2, first_channel*4], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                bias=tf.get_variable('bias', [first_channel*2], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+                #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
+                #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
+                deconv=tf.nn.conv2d_transpose(self.G_conv1, kernel, output_shape=[batchsize, 16, 16, first_channel*2], strides=[1,2,2,1], padding="SAME")
+                self.G_deconv2=tf.nn.bias_add(deconv, bias)
+                
+                self.G_para += [kernel, bias]
+                
+            #bn3
+            with tf.variable_scope('G_bn3',  reuse=tf.AUTO_REUSE) as scope: 
+                #batchmorm
+                self.G_deconv2=tf.contrib.layers.batch_norm(self.G_deconv2,
+                                            decay=0.9,
+                                            updates_collections=None,
+                                            epsilon=1e-5,
+                                            #scale=True,
+                                            #reuse=tf.AUTO_REUSE,
+                                            is_training=self.training,
+                                            scope=scope)
+                
+                #relu
+                #self.G_deconv2=tf.nn.leaky_relu(self.G_deconv2, self.leakyrelurate)
+                self.G_deconv2=tf.nn.relu(self.G_deconv2)
             
-        #bn3
-        with tf.variable_scope('G_bn3',  reuse=tf.AUTO_REUSE) as scope: 
-            #batchmorm
-            self.G_deconv2=tf.contrib.layers.batch_norm(self.G_deconv2,
-                                        decay=0.9,
-                                        updates_collections=None,
-                                        epsilon=1e-5,
-                                        #scale=True,
-                                        #reuse=tf.AUTO_REUSE,
-                                        is_training=self.training,
-                                        scope=scope)
+            self.G_conv2=self.G_deconv2
+            '''
+            #conv2
+            with tf.variable_scope('G_conv2',  reuse=tf.AUTO_REUSE) as scope: 
+                kernel=tf.get_variable('weights', [4,4, 128, 64], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                bias=tf.get_variable('bias', [64], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+                
+                conv=tf.nn.conv2d(self.G_deconv2, kernel, strides=[1,1,1,1], padding='SAME')
+                self.G_conv2=tf.nn.bias_add(conv, bias)
+                
+                self.G_para += [kernel, bias]
+                
+                #batchmorm
+                self.G_conv2=tf.contrib.layers.batch_norm(self.G_conv2,
+                                            decay=0.9,
+                                            updates_collections=None,
+                                            epsilon=1e-5,
+                                            scale=True,
+                                            reuse=tf.AUTO_REUSE,
+                                            is_training=self.training,
+                                            scope=scope)
+            #reakyrelu2
+                #self.G_conv2=tf.nn.leaky_relu(self.G_conv2, self.leakyrelurate)
+                self.G_conv2=tf.nn.relu(self.G_conv2)
+            '''
             
-            #relu
-            #self.G_deconv2=tf.nn.leaky_relu(self.G_deconv2, self.leakyrelurate)
-            self.G_deconv2=tf.nn.relu(self.G_deconv2)
-        
-        self.G_conv2=self.G_deconv2
-        '''
-        #conv2
-        with tf.variable_scope('G_conv2',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, 128, 64], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [64], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+            #deconv3
+            with tf.variable_scope('G_deconv3',  reuse=tf.AUTO_REUSE) as scope:  
+                kernel=tf.get_variable('weights', [4,4, first_channel, first_channel*2], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                bias=tf.get_variable('bias', [first_channel], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+                #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
+                #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
+                deconv=tf.nn.conv2d_transpose(self.G_conv2, kernel, output_shape=[batchsize, 32, 32, first_channel], strides=[1,2,2,1], padding="SAME")
+                self.G_deconv3=tf.nn.bias_add(deconv, bias)
+                
+                self.G_para += [kernel, bias]
+                
+            #bn4
+            with tf.variable_scope('G_bn4',  reuse=tf.AUTO_REUSE) as scope: 
+                #batchmorm
+                self.G_deconv3=tf.contrib.layers.batch_norm(self.G_deconv3,
+                                            decay=0.9,
+                                            updates_collections=None,
+                                            epsilon=1e-5,
+                                            #scale=True,
+                                            #reuse=tf.AUTO_REUSE,
+                                            is_training=self.training,
+                                            scope=scope)
+                #relu
+                #self.G_deconv3=tf.nn.leaky_relu(self.G_deconv3, self.leakyrelurate)
+                self.G_deconv3=tf.nn.relu(self.G_deconv3)
             
-            conv=tf.nn.conv2d(self.G_deconv2, kernel, strides=[1,1,1,1], padding='SAME')
-            self.G_conv2=tf.nn.bias_add(conv, bias)
-            
-            self.G_para += [kernel, bias]
-            
-            #batchmorm
-            self.G_conv2=tf.contrib.layers.batch_norm(self.G_conv2,
-                                        decay=0.9,
-                                        updates_collections=None,
-                                        epsilon=1e-5,
-                                        scale=True,
-                                        reuse=tf.AUTO_REUSE,
-                                        is_training=self.training,
-                                        scope=scope)
-        #reakyrelu2
-            #self.G_conv2=tf.nn.leaky_relu(self.G_conv2, self.leakyrelurate)
-            self.G_conv2=tf.nn.relu(self.G_conv2)
-        '''
-        
-        #deconv3
-        with tf.variable_scope('G_deconv3',  reuse=tf.AUTO_REUSE) as scope:  
-            kernel=tf.get_variable('weights', [4,4, first_channel, first_channel*2], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [first_channel], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
-            #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
-            #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
-            deconv=tf.nn.conv2d_transpose(self.G_conv2, kernel, output_shape=[batchsize, 32, 32, first_channel], strides=[1,2,2,1], padding="SAME")
-            self.G_deconv3=tf.nn.bias_add(deconv, bias)
-            
-            self.G_para += [kernel, bias]
-            
-        #bn4
-        with tf.variable_scope('G_bn4',  reuse=tf.AUTO_REUSE) as scope: 
-            #batchmorm
-            self.G_deconv3=tf.contrib.layers.batch_norm(self.G_deconv3,
-                                        decay=0.9,
-                                        updates_collections=None,
-                                        epsilon=1e-5,
-                                        #scale=True,
-                                        #reuse=tf.AUTO_REUSE,
-                                        is_training=self.training,
-                                        scope=scope)
-            #relu
-            #self.G_deconv3=tf.nn.leaky_relu(self.G_deconv3, self.leakyrelurate)
-            self.G_deconv3=tf.nn.relu(self.G_deconv3)
-        
-        self.G_conv3=self.G_deconv3
-        '''
-        #conv3
-        with tf.variable_scope('G_conv3',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, 64, 3], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [3], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
-            
-            conv=tf.nn.conv2d(self.G_conv2, kernel, strides=[1,1,1,1], padding='SAME')
-            self.G_conv3=tf.nn.bias_add(conv, bias)
-            
-            self.G_para += [kernel, bias]
-            #self.G_conv3=tf.nn.leaky_relu(self.G_conv3, self.leakyrelurate)
-            self.debug=bias
-            tf.summary.scalar('G_last_bias[0]',bias[2])
-        '''
-            
-        #deconv4
-        with tf.variable_scope('G_deconv4',  reuse=tf.AUTO_REUSE) as scope:  
-            kernel=tf.get_variable('weights', [5,5, 3, first_channel], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [3], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
-            #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
-            #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
-            deconv=tf.nn.conv2d_transpose(self.G_conv3, kernel, output_shape=[batchsize, 96, 96, 3], strides=[1,3,3,1], padding="SAME")
-            self.G_deconv4=tf.nn.bias_add(deconv, bias)
-            
-            self.debug=bias
-            self.G_para += [kernel, bias]
-            
-        #bn5
-        with tf.variable_scope('G_bn5',  reuse=tf.AUTO_REUSE) as scope: 
-            #batchmorm
-            self.G_deconv4=tf.contrib.layers.batch_norm(self.G_deconv4,
-                                        decay=0.9,
-                                        updates_collections=None,
-                                        epsilon=1e-5,
-                                        #scale=True,
-                                        #reuse=tf.AUTO_REUSE,
-                                        is_training=self.training,
-                                        scope=scope)
-            
-            #self.G_deconv2=tf.nn.leaky_relu(self.G_deconv2, self.leakyrelurate)
-            self.G_deconv4=tf.nn.relu(self.G_deconv4)
-            
-        #tanh
-        self.G_tanh= tf.nn.tanh(self.G_deconv4, name='G_tanh')
+            self.G_conv3=self.G_deconv3
+            '''
+            #conv3
+            with tf.variable_scope('G_conv3',  reuse=tf.AUTO_REUSE) as scope: 
+                kernel=tf.get_variable('weights', [4,4, 64, 3], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                bias=tf.get_variable('bias', [3], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+                
+                conv=tf.nn.conv2d(self.G_conv2, kernel, strides=[1,1,1,1], padding='SAME')
+                self.G_conv3=tf.nn.bias_add(conv, bias)
+                
+                self.G_para += [kernel, bias]
+                #self.G_conv3=tf.nn.leaky_relu(self.G_conv3, self.leakyrelurate)
+                self.debug=bias
+                tf.summary.scalar('G_last_bias[0]',bias[2])
+            '''
+                
+            #deconv4
+            with tf.variable_scope('G_deconv4',  reuse=tf.AUTO_REUSE) as scope:  
+                kernel=tf.get_variable('weights', [5,5, 3, first_channel], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                bias=tf.get_variable('bias', [3], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+                #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
+                #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
+                deconv=tf.nn.conv2d_transpose(self.G_conv3, kernel, output_shape=[batchsize, 96, 96, 3], strides=[1,3,3,1], padding="SAME")
+                self.G_deconv4=tf.nn.bias_add(deconv, bias)
+                
+                self.debug=bias
+                self.G_para += [kernel, bias]
+                
+            #bn5
+            with tf.variable_scope('G_bn5',  reuse=tf.AUTO_REUSE) as scope: 
+                #batchmorm
+                self.G_deconv4=tf.contrib.layers.batch_norm(self.G_deconv4,
+                                            decay=0.9,
+                                            updates_collections=None,
+                                            epsilon=1e-5,
+                                            #scale=True,
+                                            #reuse=tf.AUTO_REUSE,
+                                            is_training=self.training,
+                                            scope=scope)
+                
+                #self.G_deconv2=tf.nn.leaky_relu(self.G_deconv2, self.leakyrelurate)
+                self.G_deconv4=tf.nn.relu(self.G_deconv4)
+                
+            #tanh
+            self.G_tanh= tf.nn.tanh(self.G_deconv4, name='G_tanh')
         
         return self.G_tanh
             
@@ -518,178 +520,178 @@ class GAN_Net:
         self.imgs_float32=tf.cast(imgs, tf.float32)
         
         first_d_channel=D_first_channel
-        
-        #conv1
-        with tf.variable_scope('D_conv1',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [5,5, 3, first_d_channel], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [first_d_channel], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
-            #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
-            #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
-            #self.deb1=kernel
+        with tf.variable_scope('D_Discriminator_net',  reuse=tf.AUTO_REUSE) as scope:
+            #conv1
+            with tf.variable_scope('D_conv1',  reuse=tf.AUTO_REUSE) as scope: 
+                kernel=tf.get_variable('weights', [5,5, 3, first_d_channel], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                bias=tf.get_variable('bias', [first_d_channel], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+                #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
+                #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
+                #self.deb1=kernel
+                
+                
+                self.debug2=bias
+                tf.summary.scalar('D_fir_bias_20',bias[20])
+                self.D_para += [kernel, bias]
+                
+                
+                conv=tf.nn.conv2d(self.imgs_float32, kernel, strides=[1,3,3,1], padding='SAME')
+                self.D_conv1=tf.nn.bias_add(conv, bias)
+                
+                '''
+                #batchmorm
+                self.D_conv1=tf.contrib.layers.batch_norm(self.D_conv1,
+                                            decay=0.9,
+                                            updates_collections=None,
+                                            epsilon=1e-5,
+                                            #scale=True,
+                                            #reuse=True,
+                                            is_training=self.training,
+                                            scope=scope)
+                
+                '''
+                #leaky relu1
+                self.D_conv1=tf.nn.leaky_relu(self.D_conv1, self.leakyrelurate)
+                
+                
+            #conv2
+            with tf.variable_scope('D_conv2',  reuse=tf.AUTO_REUSE) as scope: 
+                kernel=tf.get_variable('weights', [4,4, first_d_channel, first_d_channel*2], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                bias=tf.get_variable('bias', [first_d_channel*2], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+                #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
+                #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
+                conv=tf.nn.conv2d(self.D_conv1, kernel, strides=[1,2,2,1], padding='SAME')
+                self.D_conv2=tf.nn.bias_add(conv, bias)
+                
+                self.D_para += [kernel, bias]
+                
+            #bn1
+            with tf.variable_scope('D_bn1',  reuse=tf.AUTO_REUSE) as scope: 
+                #batchmorm
+                self.D_conv2=tf.contrib.layers.batch_norm(self.D_conv2,
+                                            decay=0.9,
+                                            updates_collections=None,
+                                            epsilon=1e-5,
+                                            #scale=True,
+                                            #reuse=tf.AUTO_REUSE,
+                                            is_training=self.training,
+                                            scope=scope)
+    
+                self.D_conv2=tf.nn.leaky_relu(self.D_conv2, self.leakyrelurate)
+                
+                
+            #self.D_conv3=self.D_conv2
             
+            ''''''
+            #conv3
+            with tf.variable_scope('D_conv3',  reuse=tf.AUTO_REUSE) as scope: 
+                kernel=tf.get_variable('weights', [4,4, first_d_channel*2, first_d_channel*4], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                bias=tf.get_variable('bias', [first_d_channel*4], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+                #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
+                #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
+                conv=tf.nn.conv2d(self.D_conv2, kernel, strides=[1,2,2,1], padding='SAME')
+                self.D_conv3=tf.nn.bias_add(conv, bias)
+                
+                self.D_para += [kernel, bias]
+                
+            #bn2
+            with tf.variable_scope('D_bn2',  reuse=tf.AUTO_REUSE) as scope: 
+                #batchmorm
+                self.D_conv3=tf.contrib.layers.batch_norm(self.D_conv3,
+                                            decay=0.9,
+                                            updates_collections=None,
+                                            epsilon=1e-5,
+                                            #scale=True,
+                                            #reuse=tf.AUTO_REUSE,
+                                            is_training=self.training,
+                                            scope=scope)
+                
+                self.D_conv3=tf.nn.leaky_relu(self.D_conv3, self.leakyrelurate)
+                
+                
             
-            self.debug2=bias
-            tf.summary.scalar('D_fir_bias_20',bias[20])
-            self.D_para += [kernel, bias]
-            
-            
-            conv=tf.nn.conv2d(self.imgs_float32, kernel, strides=[1,3,3,1], padding='SAME')
-            self.D_conv1=tf.nn.bias_add(conv, bias)
-            
+            #conv4
+            with tf.variable_scope('D_conv4',  reuse=tf.AUTO_REUSE) as scope: 
+                kernel=tf.get_variable('weights', [4,4, first_d_channel*4, first_d_channel*8], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                bias=tf.get_variable('bias', [first_d_channel*8], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+                #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
+                #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
+                conv=tf.nn.conv2d(self.D_conv3, kernel, strides=[1,2,2,1], padding='SAME')
+                self.D_conv4=tf.nn.bias_add(conv, bias)
+                
+                self.D_para += [kernel, bias]
+                
+            #bn3
+            with tf.variable_scope('D_bn3',  reuse=tf.AUTO_REUSE) as scope: 
+                #batchmorm
+                self.D_conv4=tf.contrib.layers.batch_norm(self.D_conv4,
+                                            decay=0.9,
+                                            updates_collections=None,
+                                            epsilon=1e-5,
+                                            #scale=True,
+                                            #reuse=tf.AUTO_REUSE,
+                                            is_training=self.training,
+                                            scope=scope)
+                
+                self.D_conv4=tf.nn.leaky_relu(self.D_conv4, self.leakyrelurate)
+                
+                #print ('tensor to last cnn:',self.D_conv4)
+                #self.D_conv4 :  Tensor("D_conv4/LeakyRelu:0", shape=(64, 4, 4, 768), dtype=float32)
+                
             '''
-            #batchmorm
-            self.D_conv1=tf.contrib.layers.batch_norm(self.D_conv1,
-                                        decay=0.9,
-                                        updates_collections=None,
-                                        epsilon=1e-5,
-                                        #scale=True,
-                                        #reuse=True,
-                                        is_training=self.training,
-                                        scope=scope)
+            #flatten
+            self.flatten=tf.reshape(self.D_conv4, [batchsize, -1])
             
-            '''
-            #leaky relu1
-            self.D_conv1=tf.nn.leaky_relu(self.D_conv1, self.leakyrelurate)
+            # fc1
+            with tf.variable_scope('D_fc1',  reuse=tf.AUTO_REUSE) as scope:                    
+                D_fc1w = tf.get_variable('weights', [self.flatten.get_shape()[-1], 1024], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                D_fc1b = tf.get_variable('bias', [1024], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             
+                self.D_fc1 = tf.nn.bias_add(tf.matmul(self.flatten, D_fc1w), D_fc1b)
+                
+                
+                self.D_para += [D_fc1w, D_fc1b]
+                
+                #batchmorm
+                self.D_fc1=tf.contrib.layers.batch_norm(self.D_fc1,
+                                            decay=0.9,
+                                            updates_collections=None,
+                                            epsilon=1e-5,
+                                            scale=True,
+                                            reuse=tf.AUTO_REUSE,
+                                            is_training=self.training,
+                                            scope=scope)
+                
+                self.D_fc1 = tf.nn.leaky_relu(self.D_fc1, self.leakyrelurate)
             
-        #conv2
-        with tf.variable_scope('D_conv2',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, first_d_channel, first_d_channel*2], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [first_d_channel*2], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
-            #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
-            #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
-            conv=tf.nn.conv2d(self.D_conv1, kernel, strides=[1,2,2,1], padding='SAME')
-            self.D_conv2=tf.nn.bias_add(conv, bias)
+            #fc2
+            with tf.variable_scope('D_fc2',  reuse=tf.AUTO_REUSE) as scope:                    
+                D_fc2w = tf.get_variable('weights', [1024, 1], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                D_fc2b = tf.get_variable('bias', [1], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             
-            self.D_para += [kernel, bias]
+                self.D_fc2 = tf.nn.bias_add(tf.matmul(self.D_fc1, D_fc2w), D_fc2b)
+                
+                self.D_para += [D_fc2w, D_fc2b]
+            '''    
             
-        #bn1
-        with tf.variable_scope('D_bn1',  reuse=tf.AUTO_REUSE) as scope: 
-            #batchmorm
-            self.D_conv2=tf.contrib.layers.batch_norm(self.D_conv2,
-                                        decay=0.9,
-                                        updates_collections=None,
-                                        epsilon=1e-5,
-                                        #scale=True,
-                                        #reuse=tf.AUTO_REUSE,
-                                        is_training=self.training,
-                                        scope=scope)
-
-            self.D_conv2=tf.nn.leaky_relu(self.D_conv2, self.leakyrelurate)
-            
-            
-        #self.D_conv3=self.D_conv2
-        
-        ''''''
-        #conv3
-        with tf.variable_scope('D_conv3',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, first_d_channel*2, first_d_channel*4], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [first_d_channel*4], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
-            #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
-            #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
-            conv=tf.nn.conv2d(self.D_conv2, kernel, strides=[1,2,2,1], padding='SAME')
-            self.D_conv3=tf.nn.bias_add(conv, bias)
-            
-            self.D_para += [kernel, bias]
-            
-        #bn2
-        with tf.variable_scope('D_bn2',  reuse=tf.AUTO_REUSE) as scope: 
-            #batchmorm
-            self.D_conv3=tf.contrib.layers.batch_norm(self.D_conv3,
-                                        decay=0.9,
-                                        updates_collections=None,
-                                        epsilon=1e-5,
-                                        #scale=True,
-                                        #reuse=tf.AUTO_REUSE,
-                                        is_training=self.training,
-                                        scope=scope)
-            
-            self.D_conv3=tf.nn.leaky_relu(self.D_conv3, self.leakyrelurate)
+            #conv5
+            with tf.variable_scope('D_conv5',  reuse=tf.AUTO_REUSE) as scope: 
+                kernel=tf.get_variable('weights', [4,4, first_d_channel*8, 1], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                bias=tf.get_variable('bias', [1], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+                #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
+                #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
+                conv=tf.nn.conv2d(self.D_conv4, kernel, strides=[1,1,1,1], padding='SAME')
+                self.D_conv5=tf.nn.bias_add(conv, bias)
+                
+                self.D_para += [kernel, bias]
+                
+                
+            tf.summary.scalar('D_last_bias',bias[0])
             
             
-        
-        #conv4
-        with tf.variable_scope('D_conv4',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, first_d_channel*4, first_d_channel*8], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [first_d_channel*8], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
-            #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
-            #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
-            conv=tf.nn.conv2d(self.D_conv3, kernel, strides=[1,2,2,1], padding='SAME')
-            self.D_conv4=tf.nn.bias_add(conv, bias)
+            #sigmoid
+            self.D_sigmoid=tf.nn.sigmoid(self.D_conv5, name='D_sigmoid')
             
-            self.D_para += [kernel, bias]
-            
-        #bn3
-        with tf.variable_scope('D_bn3',  reuse=tf.AUTO_REUSE) as scope: 
-            #batchmorm
-            self.D_conv4=tf.contrib.layers.batch_norm(self.D_conv4,
-                                        decay=0.9,
-                                        updates_collections=None,
-                                        epsilon=1e-5,
-                                        #scale=True,
-                                        #reuse=tf.AUTO_REUSE,
-                                        is_training=self.training,
-                                        scope=scope)
-            
-            self.D_conv4=tf.nn.leaky_relu(self.D_conv4, self.leakyrelurate)
-            
-            #print ('tensor to last cnn:',self.D_conv4)
-            #self.D_conv4 :  Tensor("D_conv4/LeakyRelu:0", shape=(64, 4, 4, 768), dtype=float32)
-            
-        '''
-        #flatten
-        self.flatten=tf.reshape(self.D_conv4, [batchsize, -1])
-        
-        # fc1
-        with tf.variable_scope('D_fc1',  reuse=tf.AUTO_REUSE) as scope:                    
-            D_fc1w = tf.get_variable('weights', [self.flatten.get_shape()[-1], 1024], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            D_fc1b = tf.get_variable('bias', [1024], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
-        
-            self.D_fc1 = tf.nn.bias_add(tf.matmul(self.flatten, D_fc1w), D_fc1b)
-            
-            
-            self.D_para += [D_fc1w, D_fc1b]
-            
-            #batchmorm
-            self.D_fc1=tf.contrib.layers.batch_norm(self.D_fc1,
-                                        decay=0.9,
-                                        updates_collections=None,
-                                        epsilon=1e-5,
-                                        scale=True,
-                                        reuse=tf.AUTO_REUSE,
-                                        is_training=self.training,
-                                        scope=scope)
-            
-            self.D_fc1 = tf.nn.leaky_relu(self.D_fc1, self.leakyrelurate)
-        
-        #fc2
-        with tf.variable_scope('D_fc2',  reuse=tf.AUTO_REUSE) as scope:                    
-            D_fc2w = tf.get_variable('weights', [1024, 1], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            D_fc2b = tf.get_variable('bias', [1], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
-        
-            self.D_fc2 = tf.nn.bias_add(tf.matmul(self.D_fc1, D_fc2w), D_fc2b)
-            
-            self.D_para += [D_fc2w, D_fc2b]
-        '''    
-        
-        #conv5
-        with tf.variable_scope('D_conv5',  reuse=tf.AUTO_REUSE) as scope: 
-            kernel=tf.get_variable('weights', [4,4, first_d_channel*8, 1], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-            bias=tf.get_variable('bias', [1], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
-            #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
-            #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
-            conv=tf.nn.conv2d(self.D_conv4, kernel, strides=[1,1,1,1], padding='SAME')
-            self.D_conv5=tf.nn.bias_add(conv, bias)
-            
-            self.D_para += [kernel, bias]
-            
-            
-        tf.summary.scalar('D_last_bias',bias[0])
-        
-        
-        #sigmoid
-        self.D_sigmoid=tf.nn.sigmoid(self.D_conv5, name='D_sigmoid')
-        
         return self.D_sigmoid,self.D_conv5
         
         
