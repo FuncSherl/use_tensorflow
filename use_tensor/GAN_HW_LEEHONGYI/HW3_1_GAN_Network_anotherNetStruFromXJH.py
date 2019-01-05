@@ -302,7 +302,9 @@ class GAN_Net:
             
             #reshape
             self.G_fc1=tf.reshape(G_fc1l, [-1, 4, 4, first_channel])
-            
+        
+        #bn1
+        with tf.variable_scope('G_bn1',  reuse=tf.AUTO_REUSE) as scope: 
             #batchmorm
             self.G_fc1=tf.contrib.layers.batch_norm(self.G_fc1,
                                         decay=0.9,
@@ -337,6 +339,8 @@ class GAN_Net:
             
             self.G_para += [kernel, bias]
             
+        #bn2
+        with tf.variable_scope('G_bn2',  reuse=tf.AUTO_REUSE) as scope: 
             #batchmorm
             self.G_deconv1=tf.contrib.layers.batch_norm(self.G_deconv1,
                                         decay=0.9,
@@ -390,6 +394,8 @@ class GAN_Net:
             
             self.G_para += [kernel, bias]
             
+        #bn3
+        with tf.variable_scope('G_bn3',  reuse=tf.AUTO_REUSE) as scope: 
             #batchmorm
             self.G_deconv2=tf.contrib.layers.batch_norm(self.G_deconv2,
                                         decay=0.9,
@@ -441,6 +447,8 @@ class GAN_Net:
             
             self.G_para += [kernel, bias]
             
+        #bn4
+        with tf.variable_scope('G_bn4',  reuse=tf.AUTO_REUSE) as scope: 
             #batchmorm
             self.G_deconv3=tf.contrib.layers.batch_norm(self.G_deconv3,
                                         decay=0.9,
@@ -482,6 +490,8 @@ class GAN_Net:
             self.debug=bias
             self.G_para += [kernel, bias]
             
+        #bn5
+        with tf.variable_scope('G_bn5',  reuse=tf.AUTO_REUSE) as scope: 
             #batchmorm
             self.G_deconv4=tf.contrib.layers.batch_norm(self.G_deconv4,
                                         decay=0.9,
@@ -532,7 +542,7 @@ class GAN_Net:
                                         decay=0.9,
                                         updates_collections=None,
                                         epsilon=1e-5,
-                                        scale=True,
+                                        #scale=True,
                                         #reuse=True,
                                         is_training=self.training,
                                         scope=scope)
@@ -553,6 +563,8 @@ class GAN_Net:
             
             self.D_para += [kernel, bias]
             
+        #bn1
+        with tf.variable_scope('D_bn1',  reuse=tf.AUTO_REUSE) as scope: 
             #batchmorm
             self.D_conv2=tf.contrib.layers.batch_norm(self.D_conv2,
                                         decay=0.9,
@@ -580,6 +592,8 @@ class GAN_Net:
             
             self.D_para += [kernel, bias]
             
+        #bn2
+        with tf.variable_scope('D_bn2',  reuse=tf.AUTO_REUSE) as scope: 
             #batchmorm
             self.D_conv3=tf.contrib.layers.batch_norm(self.D_conv3,
                                         decay=0.9,
@@ -605,6 +619,8 @@ class GAN_Net:
             
             self.D_para += [kernel, bias]
             
+        #bn3
+        with tf.variable_scope('D_bn3',  reuse=tf.AUTO_REUSE) as scope: 
             #batchmorm
             self.D_conv4=tf.contrib.layers.batch_norm(self.D_conv4,
                                         decay=0.9,
