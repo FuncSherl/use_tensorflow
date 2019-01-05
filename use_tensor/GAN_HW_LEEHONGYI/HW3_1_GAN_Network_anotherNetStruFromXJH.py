@@ -161,7 +161,7 @@ class GAN_Net:
         
         #这将lr调为负数，因为应该最大化目标
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-            self.G_optimizer=tf.train.AdamOptimizer(self.lr_rate , beta1=beta1)
+            self.G_optimizer=tf.train.AdamOptimizer(self.lr_rate * 5 , beta1=beta1)
             
             #for i in optimizer.compute_gradients(self.G_loss_mean, var_list=self.G_para): print (i)
             
@@ -305,9 +305,9 @@ class GAN_Net:
             
             #batchmorm
             self.G_fc1=tf.contrib.layers.batch_norm(self.G_fc1,
-                                        #decay=0.9,
+                                        decay=0.9,
                                         updates_collections=None,
-                                        #epsilon=1e-5,
+                                        epsilon=1e-5,
                                         #scale=True,
                                         #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
@@ -339,9 +339,9 @@ class GAN_Net:
             
             #batchmorm
             self.G_deconv1=tf.contrib.layers.batch_norm(self.G_deconv1,
-                                        #decay=0.9,
+                                        decay=0.9,
                                         updates_collections=None,
-                                        #epsilon=1e-5,
+                                        epsilon=1e-5,
                                         #scale=True,
                                         #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
@@ -392,9 +392,9 @@ class GAN_Net:
             
             #batchmorm
             self.G_deconv2=tf.contrib.layers.batch_norm(self.G_deconv2,
-                                        #decay=0.9,
+                                        decay=0.9,
                                         updates_collections=None,
-                                        #epsilon=1e-5,
+                                        epsilon=1e-5,
                                         #scale=True,
                                         #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
@@ -443,9 +443,9 @@ class GAN_Net:
             
             #batchmorm
             self.G_deconv3=tf.contrib.layers.batch_norm(self.G_deconv3,
-                                        #decay=0.9,
+                                        decay=0.9,
                                         updates_collections=None,
-                                        #epsilon=1e-5,
+                                        epsilon=1e-5,
                                         #scale=True,
                                         #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
@@ -484,9 +484,9 @@ class GAN_Net:
             
             #batchmorm
             self.G_deconv4=tf.contrib.layers.batch_norm(self.G_deconv4,
-                                        #decay=0.9,
+                                        decay=0.9,
                                         updates_collections=None,
-                                        #epsilon=1e-5,
+                                        epsilon=1e-5,
                                         #scale=True,
                                         #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
@@ -555,9 +555,9 @@ class GAN_Net:
             
             #batchmorm
             self.D_conv2=tf.contrib.layers.batch_norm(self.D_conv2,
-                                        #decay=0.9,
+                                        decay=0.9,
                                         updates_collections=None,
-                                        #epsilon=1e-5,
+                                        epsilon=1e-5,
                                         #scale=True,
                                         #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
@@ -582,9 +582,9 @@ class GAN_Net:
             
             #batchmorm
             self.D_conv3=tf.contrib.layers.batch_norm(self.D_conv3,
-                                        #decay=0.9,
+                                        decay=0.9,
                                         updates_collections=None,
-                                        #epsilon=1e-5,
+                                        epsilon=1e-5,
                                         #scale=True,
                                         #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
@@ -607,9 +607,9 @@ class GAN_Net:
             
             #batchmorm
             self.D_conv4=tf.contrib.layers.batch_norm(self.D_conv4,
-                                        #decay=0.9,
+                                        decay=0.9,
                                         updates_collections=None,
-                                        #epsilon=1e-5,
+                                        epsilon=1e-5,
                                         #scale=True,
                                         #reuse=tf.AUTO_REUSE,
                                         is_training=self.training,
