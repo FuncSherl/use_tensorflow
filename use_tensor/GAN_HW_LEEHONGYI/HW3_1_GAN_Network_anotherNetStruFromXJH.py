@@ -35,8 +35,8 @@ decay_rate=1 #0.9
 
 incase_div_zero=1e-10  #这个值大一些可以避免d训得太好，也避免了g梯度
 
-G_first_channel=96
-D_first_channel=96
+G_first_channel=64
+D_first_channel=64
 
 logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -227,6 +227,16 @@ class GAN_Net:
         
         return summary,dloss,gloss
     
+    def mybatchnorm(self, data, scope):
+        return tf.contrib.layers.batch_norm(data,
+                                            decay=0.9,
+                                            updates_collections=None,
+                                            epsilon=1e-5,
+                                            scale=True,
+                                            #reuse=tf.AUTO_REUSE,
+                                            is_training=self.training,
+                                            scope=scope)
+    
     
     def tanh2img(self,tanhd):
         tep= (tanhd+1)*255//2
@@ -297,25 +307,18 @@ class GAN_Net:
         with tf.variable_scope('G_Generator_net',  reuse=tf.AUTO_REUSE) as scope: 
             # fc1
             with tf.variable_scope('G_fc1',  reuse=tf.AUTO_REUSE) as scope:                    
-                G_fc1w = tf.get_variable('weights', [noise_size, 4*4*first_channel], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
-                G_fc1b = tf.get_variable('bias', [4*4*first_channel], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
+                G_fc1w = tf.get_variable('weights', [noise_size, 4*4*first_channel*8], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                G_fc1b = tf.get_variable('bias', [4*4*first_channel*8], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
             
                 G_fc1l = tf.nn.bias_add(tf.matmul(noise, G_fc1w), G_fc1b)
                 
                 #reshape
-                self.G_fc1=tf.reshape(G_fc1l, [-1, 4, 4, first_channel])
+                self.G_fc1=tf.reshape(G_fc1l, [-1, 4, 4, first_channel*8])
             
             #bn1
             with tf.variable_scope('G_bn1',  reuse=tf.AUTO_REUSE) as scope: 
                 #batchmorm
-                self.G_fc1=tf.contrib.layers.batch_norm(self.G_fc1,
-                                            decay=0.9,
-                                            updates_collections=None,
-                                            epsilon=1e-5,
-                                            #scale=True,
-                                            #reuse=tf.AUTO_REUSE,
-                                            is_training=self.training,
-                                            scope=scope)
+                self.G_fc1=self.mybatchnorm(self.G_fc1, scope)
             
                 #relu
                 #self.G_fc1 = tf.nn.leaky_relu(G_fc1l, self.leakyrelurate)
@@ -332,7 +335,7 @@ class GAN_Net:
             
             #deconv1
             with tf.variable_scope('G_deconv1',  reuse=tf.AUTO_REUSE) as scope:  
-                kernel=tf.get_variable('weights', [4,4, first_channel*4, first_channel], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
+                kernel=tf.get_variable('weights', [4,4, first_channel*4, first_channel*8], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=self.stddev))
                 bias=tf.get_variable('bias', [first_channel*4], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
                 #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
                 #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
@@ -344,14 +347,7 @@ class GAN_Net:
             #bn2
             with tf.variable_scope('G_bn2',  reuse=tf.AUTO_REUSE) as scope: 
                 #batchmorm
-                self.G_deconv1=tf.contrib.layers.batch_norm(self.G_deconv1,
-                                            decay=0.9,
-                                            updates_collections=None,
-                                            epsilon=1e-5,
-                                            #scale=True,
-                                            #reuse=tf.AUTO_REUSE,
-                                            is_training=self.training,
-                                            scope=scope)
+                self.G_deconv1=self.mybatchnorm(self.G_deconv1, scope)
             
                 #relu
                 #self.G_deconv1 = tf.nn.leaky_relu(self.G_deconv1, self.leakyrelurate)
@@ -399,14 +395,7 @@ class GAN_Net:
             #bn3
             with tf.variable_scope('G_bn3',  reuse=tf.AUTO_REUSE) as scope: 
                 #batchmorm
-                self.G_deconv2=tf.contrib.layers.batch_norm(self.G_deconv2,
-                                            decay=0.9,
-                                            updates_collections=None,
-                                            epsilon=1e-5,
-                                            #scale=True,
-                                            #reuse=tf.AUTO_REUSE,
-                                            is_training=self.training,
-                                            scope=scope)
+                self.G_deconv2=self.mybatchnorm(self.G_deconv2, scope)
                 
                 #relu
                 #self.G_deconv2=tf.nn.leaky_relu(self.G_deconv2, self.leakyrelurate)
@@ -452,14 +441,8 @@ class GAN_Net:
             #bn4
             with tf.variable_scope('G_bn4',  reuse=tf.AUTO_REUSE) as scope: 
                 #batchmorm
-                self.G_deconv3=tf.contrib.layers.batch_norm(self.G_deconv3,
-                                            decay=0.9,
-                                            updates_collections=None,
-                                            epsilon=1e-5,
-                                            #scale=True,
-                                            #reuse=tf.AUTO_REUSE,
-                                            is_training=self.training,
-                                            scope=scope)
+                self.G_deconv3=self.mybatchnorm(self.G_deconv3, scope)
+                
                 #relu
                 #self.G_deconv3=tf.nn.leaky_relu(self.G_deconv3, self.leakyrelurate)
                 self.G_deconv3=tf.nn.relu(self.G_deconv3)
@@ -491,22 +474,15 @@ class GAN_Net:
                 
                 self.debug=bias
                 self.G_para += [kernel, bias]
-                
+            '''
             #bn5
             with tf.variable_scope('G_bn5',  reuse=tf.AUTO_REUSE) as scope: 
                 #batchmorm
-                self.G_deconv4=tf.contrib.layers.batch_norm(self.G_deconv4,
-                                            decay=0.9,
-                                            updates_collections=None,
-                                            epsilon=1e-5,
-                                            #scale=True,
-                                            #reuse=tf.AUTO_REUSE,
-                                            is_training=self.training,
-                                            scope=scope)
+                self.G_deconv4=self.mybatchnorm(self.G_deconv4, scope)
                 
                 #self.G_deconv2=tf.nn.leaky_relu(self.G_deconv2, self.leakyrelurate)
                 self.G_deconv4=tf.nn.relu(self.G_deconv4)
-                
+            '''
             #tanh
             self.G_tanh= tf.nn.tanh(self.G_deconv4, name='G_tanh')
         
@@ -568,14 +544,7 @@ class GAN_Net:
             #bn1
             with tf.variable_scope('D_bn1',  reuse=tf.AUTO_REUSE) as scope: 
                 #batchmorm
-                self.D_conv2=tf.contrib.layers.batch_norm(self.D_conv2,
-                                            decay=0.9,
-                                            updates_collections=None,
-                                            epsilon=1e-5,
-                                            #scale=True,
-                                            #reuse=tf.AUTO_REUSE,
-                                            is_training=self.training,
-                                            scope=scope)
+                self.D_conv2=self.mybatchnorm(self.D_conv2, scope)
     
                 self.D_conv2=tf.nn.leaky_relu(self.D_conv2, self.leakyrelurate)
                 
@@ -597,14 +566,7 @@ class GAN_Net:
             #bn2
             with tf.variable_scope('D_bn2',  reuse=tf.AUTO_REUSE) as scope: 
                 #batchmorm
-                self.D_conv3=tf.contrib.layers.batch_norm(self.D_conv3,
-                                            decay=0.9,
-                                            updates_collections=None,
-                                            epsilon=1e-5,
-                                            #scale=True,
-                                            #reuse=tf.AUTO_REUSE,
-                                            is_training=self.training,
-                                            scope=scope)
+                self.D_conv3=self.mybatchnorm(self.D_conv3, scope)
                 
                 self.D_conv3=tf.nn.leaky_relu(self.D_conv3, self.leakyrelurate)
                 
@@ -624,14 +586,8 @@ class GAN_Net:
             #bn3
             with tf.variable_scope('D_bn3',  reuse=tf.AUTO_REUSE) as scope: 
                 #batchmorm
-                self.D_conv4=tf.contrib.layers.batch_norm(self.D_conv4,
-                                            decay=0.9,
-                                            updates_collections=None,
-                                            epsilon=1e-5,
-                                            #scale=True,
-                                            #reuse=tf.AUTO_REUSE,
-                                            is_training=self.training,
-                                            scope=scope)
+                self.D_conv4=self.mybatchnorm(self.D_conv4, scope)
+                
                 
                 self.D_conv4=tf.nn.leaky_relu(self.D_conv4, self.leakyrelurate)
                 
