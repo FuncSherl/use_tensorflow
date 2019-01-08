@@ -300,7 +300,7 @@ class GAN_Net:
             
             #每个batch选最好的cnt个合成图片
             #print (probs.shape)
-            tep=np.argsort(probs[:,0])[:cnt]
+            tep=np.argsort(probs[:,0])[-cnt:]
             #print (tep)
             for ind,j in enumerate(tep):
                 st_x= ind*(img_size+cnt) #列
