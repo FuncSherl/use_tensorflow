@@ -284,7 +284,8 @@ class GAN_Net:
         
         #中间用cnt像素的黑色线分隔图片
         bigimg_len=img_size*cnt+(cnt-1)*cnt
-        bigimg_bests=np.zeros([bigimg_len,bigimg_len,3])
+        bigimg_bests=np.zeros([bigimg_len,bigimg_len,3], dtype=np.uint8)
+        bigimg_name='step-'+str(step)+'_cnt-'+str(cnt)+'_batchsize-'+str(batchsize)+'.png'
         
         for i in range(cnt):
             tepimgs,probs=self.Run_G()
@@ -299,12 +300,13 @@ class GAN_Net:
             
             #每个batch选最好的cnt个合成图片
             #print (probs.shape)
-            tep=np.argsort(probs)[:cnt]
+            tep=np.argsort(probs[:,0])[:cnt]
+            #print (tep)
             for ind,j in enumerate(tep):
                 st_x= ind*(img_size+cnt) #列
                 st_y= i*(img_size+cnt) #行
                 bigimg_bests[st_y:st_y+img_size, st_x:st_x+img_size,:]=self.tanh2img(tepimgs[j])
-        bigimg_name='step-'+str(step)+'_cnt-'+str(cnt)+'_batchsize-'+str(batchsize)+'.png'
+        
         bigimg_dir=op.join(bestimgsdir, bigimg_name)
         im = Image.fromarray(bigimg_bests)
         im.save(bigimg_dir)
@@ -498,14 +500,14 @@ class GAN_Net:
                 
                 self.debug=bias
                 self.G_para += [kernel, bias]
-            
+            '''
             #bn5
             with tf.variable_scope('G_bn5',  reuse=tf.AUTO_REUSE) as scope: 
                 #batchmorm
                 self.G_deconv4=self.mybatchnorm(self.G_deconv4, scope)
                 
                 #self.G_deconv2=tf.nn.leaky_relu(self.G_deconv2, self.leakyrelurate)
-            '''    
+                
                 self.G_deconv4=tf.nn.relu(self.G_deconv4)
             '''
             #tanh
