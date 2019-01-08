@@ -39,6 +39,9 @@ G_first_channel=64
 D_first_channel=64
 
 logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
+
+bestimgsdir=op.join(logdir, 'bestimgs')
+if not op.exists(bestimgsdir): os.makedirs(bestimgsdir)
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -243,12 +246,12 @@ class GAN_Net:
         return tep.astype(np.uint8)  
     
     
-    def Run_G(self, training=True):
+    def Run_G(self, training=False):
         noise=self.get_noise()
-        inerimg=self.sess.run(self.G_net, feed_dict={self.noise_pla: noise, self.training:training})
-        return inerimg
+        inerimg, outerprob=self.sess.run([self.G_net, self.whole_net], feed_dict={self.noise_pla: noise, self.training:training})
+        return inerimg, outerprob
     
-    def Run_WholeNet(self, training=True):
+    def Run_WholeNet(self, training=False):
         '''
         training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
         '''
@@ -256,7 +259,7 @@ class GAN_Net:
         probs=self.sess.run(self.whole_net, feed_dict={self.noise_pla: noise, self.training:training})
         return probs
     
-    def Run_D(self, training=True):
+    def Run_D(self, training=False):
           
         '''
         #这里imgs要求是tanh化过的，即归一化到-1~1 
@@ -276,8 +279,16 @@ class GAN_Net:
         desdir=op.join(logdir, str(step))
         if not op.isdir(desdir): os.makedirs(desdir)
         
-        for i in range(4):
-            tepimgs=self.Run_G()
+        #这里cnt不应该大于batchsize(64)
+        cnt=4
+        
+        #中间用cnt像素的黑色线分隔图片
+        bigimg_len=img_size*cnt+(cnt-1)*cnt
+        bigimg_bests=np.zeros([bigimg_len,bigimg_len,3])
+        
+        for i in range(cnt):
+            tepimgs,probs=self.Run_G()
+            #保存原图
             for ind,j in enumerate(tepimgs):  
                 #print (j[0][0][0])
                 j=self.tanh2img(j)      
@@ -285,7 +296,20 @@ class GAN_Net:
                 im = Image.fromarray(j)
                 imgname=str(i)+'_'+str(ind)+".jpg"
                 im.save(op.join(desdir, imgname))
-        print ('eval_G_once,saved imgs to:',desdir)
+            
+            #每个batch选最好的cnt个合成图片
+            print (probs.shape)
+            tep=np.argsort(probs)[:cnt]
+            for ind,j in enumerate(tep):
+                st_x= ind*(img_size+cnt) #列
+                st_y= i*(img_size+cnt) #行
+                bigimg_bests[st_y:st_y+img_size, st_x:st_x+img_size,:]=self.tanh2img(tepimgs[j])
+        bigimg_name='step-'+str(step)+'_cnt-'+str(cnt)+'_batchsize-'+str(batchsize)+'.png'
+        bigimg_dir=op.join(bestimgsdir, bigimg_name)
+        im = Image.fromarray(bigimg_bests)
+        im.save(bigimg_dir)
+            
+        print ('eval_G_once,saved imgs to:',desdir, '\nbestimgs to:',bigimg_dir)
         
     def evla_D_once(self,eval_step=eval_step):
         cnt_real=0
@@ -637,11 +661,14 @@ class GAN_Net:
                 bias=tf.get_variable('bias', [1], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
                 #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
                 #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
-                conv=tf.nn.conv2d(self.D_conv4, kernel, strides=[1,1,1,1], padding='SAME')
-                self.D_conv5=tf.nn.bias_add(conv, bias)
+                conv=tf.nn.conv2d(self.D_conv4, kernel, strides=[1,1,1,1], padding='VALID')
+                self.D_conv5=tf.nn.bias_add(conv, bias) #Tensor("D_Discriminator_net/D_conv5/BiasAdd:0", shape=(64, 1, 1, 1), dtype=float32)
                 
                 self.D_para += [kernel, bias]
                 
+                #这里最好将self.D_conv5由4维转为2维[batchsize,]
+                self.D_conv5=self.D_conv5[:,:,0,0]  #shape=(64,1)
+                #print ('self.D_conv5 ',self.D_conv5)
                 
             tf.summary.scalar('D_last_bias',bias[0])
             
