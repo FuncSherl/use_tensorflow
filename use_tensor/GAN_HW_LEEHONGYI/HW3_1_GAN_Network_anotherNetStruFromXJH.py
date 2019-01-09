@@ -164,7 +164,7 @@ class GAN_Net:
         
         #这将lr调为负数，因为应该最大化目标
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-            self.G_optimizer=tf.train.AdamOptimizer(self.lr_rate * 5 , beta1=beta1)
+            self.G_optimizer=tf.train.AdamOptimizer(self.lr_rate  , beta1=beta1)
             
             #for i in optimizer.compute_gradients(self.G_loss_mean, var_list=self.G_para): print (i)
             
@@ -181,7 +181,7 @@ class GAN_Net:
         #这将lr调为负数，因为应该最大化目标
         #这里就不管globalstep了，否则一次迭代会加2次
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-            self.D_optimizer= tf.train.AdamOptimizer(self.lr_rate, beta1=beta1)
+            self.D_optimizer= tf.train.AdamOptimizer(self.lr_rate *5 , beta1=beta1)
             train_op=self.D_optimizer.minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
         
         return train_op
