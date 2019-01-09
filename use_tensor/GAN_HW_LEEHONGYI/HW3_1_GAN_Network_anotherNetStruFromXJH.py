@@ -40,8 +40,8 @@ D_first_channel=64
 
 logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 
-bestimgsdir=op.join(logdir, 'bestimgs')
-if not op.exists(bestimgsdir): os.makedirs(bestimgsdir)
+bigimgsdir=op.join(logdir, 'randomimgs')
+if not op.exists(bigimgsdir): os.makedirs(bigimgsdir)
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -302,7 +302,7 @@ class GAN_Net:
                 st_y= i*(img_size+cnt) #行
                 bigimg_bests[st_y:st_y+img_size, st_x:st_x+img_size,:]=self.tanh2img(tepimgs[j])
         
-        bigimg_dir=op.join(bestimgsdir, bigimg_name)
+        bigimg_dir=op.join(bigimgsdir, bigimg_name)
         im = Image.fromarray(bigimg_bests)
         im.save(bigimg_dir)
             
