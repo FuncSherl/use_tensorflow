@@ -30,8 +30,8 @@ beta1=0.5
 maxstep=360000 #训练多少次
 eval_step=100
 
-decay_steps=8000
-decay_rate=1 #0.9
+decay_steps=10000
+decay_rate=0.9
 
 incase_div_zero=1e-10  #这个值大一些可以避免d训得太好，也避免了g梯度
 
@@ -157,7 +157,7 @@ class GAN_Net:
     
     
     def trainonce_G(self,decay_steps=8000, decay_rate=0.99, beta1=beta1):
-        self.lr_rate = base_lr
+        #self.lr_rate = base_lr
         self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         
         print ('G: AdamOptimizer to maxmize %d vars..'%(len(self.G_para)))
@@ -173,7 +173,7 @@ class GAN_Net:
         return train_op
     
     def trainonce_D(self,decay_steps=8000, decay_rate=0.99, beta1=beta1):
-        self.lr_rate = base_lr
+        #self.lr_rate = base_lr
         self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         
         print ('D: AdamOptimizer to maxmize %d vars..'%(len(self.D_para)))
