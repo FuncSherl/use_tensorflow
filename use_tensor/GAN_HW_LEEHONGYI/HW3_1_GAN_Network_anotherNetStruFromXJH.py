@@ -205,7 +205,7 @@ class GAN_Net:
         '''
         
         noise=self.get_noise()
-        train_prob_f,train_prob_t,seeb,seeweight,lrr, deb_D,deb_G, _,_,dloss,gloss,summary=self.sess.run([self.whole_net,self.D_net,
+        train_prob_f,train_prob_t,debugout2,debugout1,lrr, deb_D,deb_G, _,_,dloss,gloss,summary=self.sess.run([self.whole_net,self.D_net,
                                                                                 self.debug2, self.debug, 
                                                                                 self.lr_rate, 
                                                                                 self.test_ori_loss_D ,self.test_ori_loss_G, 
@@ -213,20 +213,13 @@ class GAN_Net:
                                                             self.summary_all], 
                                                            feed_dict={  self.noise_pla: noise , self.training:True})
         print ('the lr_rate is:', lrr)
-        
         print ('this train probs:\n', 'true:',np.mean(train_prob_t), '   false:',np.mean(train_prob_f))
-
         print ('MyGloss:',deb_G, '  MyDloss:',deb_D)
-        '''
-        if abs(deb_G-gloss)>0.1 or abs(deb_D-dloss)>0.1:
-            print ('!!!!!!!!!!!!!!!!!!!!!!!!gloss ,dloss:',gloss,dloss,'!!!!!!!!!!!!!!!!!!!!!!!!!!')
-            self.cnt_tep+=1
-            #if self.cnt_tep>2: exit()
-        '''
-        print('G_last_bias:\n',seeweight,seeweight-self.deb_kep)
-        self.deb_kep=seeweight
-        print ('D_fir_bias:\n',seeb[0:3],seeb[0:3]-self.deb_kep2)
-        self.deb_kep2=seeb[0:3]
+
+        print('D_first kernel[0,0,:,0]:\n',debugout2,debugout2-self.deb_kep)
+        self.deb_kep=debugout2
+        print ('G_last kernel[0,0,:,0]:\n',debugout1,debugout1-self.deb_kep2)
+        self.deb_kep2=debugout1
         
         return summary,dloss,gloss
     
@@ -339,6 +332,8 @@ class GAN_Net:
                 if withbias:
                     G_fc1b = tf.get_variable('bias', [4*4*first_channel*8], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
                     self.G_fc1 = tf.nn.bias_add(self.G_fc1, G_fc1b)
+                    #show inner result
+                    tf.summary.scalar('G_fir_bias_10',G_fc1b[10])
                 
                 #reshape
                 self.G_fc1=tf.reshape(self.G_fc1, [-1, 4, 4, first_channel*8])
@@ -356,9 +351,6 @@ class GAN_Net:
                 #self.G_para += [G_fc1w, G_fc1b]
                 
             #######################################################################################################################################    
-            #show inner result
-            tf.summary.scalar('G_fir_bias_10',G_fc1b[10])
-            
             #dropout1
             #self.G_fc1=tf.cond(self.training, lambda: tf.nn.dropout(self.G_fc1, self.dropout), lambda: self.G_fc1)
             
@@ -517,8 +509,8 @@ class GAN_Net:
                 if withbias:
                     bias=tf.get_variable('bias', [3], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))               
                     self.G_deconv4=tf.nn.bias_add(self.G_deconv4, bias)
-                
-                self.debug=bias
+                    
+                self.debug=kernel[0,0,:,0]
                 #self.G_para += [kernel, bias]
                 
             '''   
@@ -559,11 +551,12 @@ class GAN_Net:
                 if withbias:
                     bias=tf.get_variable('bias', [first_d_channel], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))
                     self.D_conv1=tf.nn.bias_add(self.D_conv1, bias)
+                    tf.summary.scalar('D_fir_bias_20',bias[20])
                 #self.D_para += [kernel, bias]
                 
             #######################################################################################################################
-            self.debug2=bias
-            tf.summary.scalar('D_fir_bias_20',bias[20])                
+            self.debug2=kernel[0,0,:,0]
+                            
         
             ###############################################################################################################################
             #bn1 lrelu
@@ -687,15 +680,12 @@ class GAN_Net:
                 if withbias:
                     bias=tf.get_variable('bias', [1], dtype=tf.float32, initializer=tf.constant_initializer(self.bias_init))                
                     self.D_conv5=tf.nn.bias_add(self.D_conv5, bias) #Tensor("D_Discriminator_net/D_conv5/BiasAdd:0", shape=(64, 1, 1, 1), dtype=float32)
-                
+                    tf.summary.scalar('D_last_bias',bias[0])
                 #self.D_para += [kernel, bias]
                 
                 #这里最好将self.D_conv5由4维转为2维[batchsize,]
                 self.D_conv5=self.D_conv5[:,:,0,0]  #shape=(64,1)
                 #print ('self.D_conv5 ',self.D_conv5)
-            
-            #######################################################################################################################################
-            tf.summary.scalar('D_last_bias',bias[0])
             
             #######################################################################################################################################
             #sigmoid
