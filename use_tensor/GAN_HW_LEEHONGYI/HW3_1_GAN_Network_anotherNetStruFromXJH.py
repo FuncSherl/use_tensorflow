@@ -78,6 +78,7 @@ class GAN_Net:
         
         #还是应该以tf.trainable_variables()为主
         t_vars=tf.trainable_variables()
+        print ("trainable vars cnt:",len(t_vars))
         self.G_para=[var for var in t_vars if var.name.startswith('G')]
         self.D_para=[var for var in t_vars if var.name.startswith('D')]
         
@@ -94,10 +95,10 @@ class GAN_Net:
         self.train_G=self.trainonce_G(decay_steps, decay_rate)
         
         print ('\nfirst show G params')
-        for i in self.G_para: print (i)
+        for ind,i in enumerate(self.G_para): print (ind,i)
         
         print('\nnext is D:\n')
-        for i in self.D_para: print (i)
+        for ind,i in enumerate(self.D_para): print (ind,i)
         
         print ('\nnext is tf.GraphKeys.UPDATE_OPS:')
         print (tf.get_collection(tf.GraphKeys.UPDATE_OPS))
