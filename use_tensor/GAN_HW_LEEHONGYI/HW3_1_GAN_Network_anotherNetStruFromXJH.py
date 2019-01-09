@@ -69,7 +69,7 @@ class GAN_Net:
         self.training=tf.placeholder(tf.bool, name='training_in')
         
         
-        
+        #将g和d连起来看做一个网络，即给d输入fake imgs
         self.whole_net,self.D_fake_logit=self.Discriminator_net(self.Generator_net(self.noise_pla))
         #由于有重复构建网络结构的操作，这里重新清零保持weight的list，这样就能保障每个weight tensor只在list中出现一次
 
