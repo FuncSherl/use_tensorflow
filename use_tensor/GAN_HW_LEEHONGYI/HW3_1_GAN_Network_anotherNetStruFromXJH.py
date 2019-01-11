@@ -539,7 +539,7 @@ class GAN_Net:
                 self.debug=kernel[0,0,:,0]
                 #self.G_para += [kernel, bias]
                 
-            '''  ''' 
+            '''   
             #############################################################################################################################################
             #bn5
             with tf.variable_scope('G_bn5',  reuse=tf.AUTO_REUSE) as scope: 
@@ -549,7 +549,7 @@ class GAN_Net:
                 #self.G_deconv2=tf.nn.leaky_relu(self.G_deconv2, self.leakyrelurate)
                 
                 #self.G_deconv4=tf.nn.relu(self.G_deconv4)
-            
+            '''
                 
             #####################################################################################################################################
             #tanh
