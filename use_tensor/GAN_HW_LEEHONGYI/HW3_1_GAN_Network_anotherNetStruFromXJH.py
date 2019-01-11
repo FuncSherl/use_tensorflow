@@ -31,7 +31,7 @@ maxstep=360000 #训练多少次
 eval_step=100
 
 decay_steps=10000
-decay_rate=0.9
+decay_rate=1
 
 incase_div_zero=1e-10  #这个值大一些可以避免d训得太好，也避免了g梯度
 
@@ -193,19 +193,38 @@ class GAN_Net:
     #tensor 范围外   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     def train_once_all(self):
         #print ('deb1',self.sess.run(self.debug))                   
+        
+        #debug2 d_fir  debug:g_last
+        
+        noise=self.get_noise()
+        
+        #train d first
+        train_prob_t,debugout2,debugout1,lrr, deb_D, _,dloss=self.sess.run([self.D_net,
+                                                                                self.debug2, self.debug, 
+                                                                                self.lr_rate, 
+                                                                                self.test_ori_loss_D , #测试自己的loss函数
+                                                                                self.train_D, self.D_loss_mean], 
+                                                                                         feed_dict={  self.noise_pla: noise , self.training:True})
+        
+        print ('trained D:')
+        print('D_first kernel[0,0,:,0]:',debugout2)
+        print ('G_last kernel[0,0,:,0]:',debugout1)
+        
+        train_prob_f,debugout2,debugout1,deb_G, _,gloss,summary=self.sess.run([self.whole_net,
+                                                                                self.debug2, self.debug,                                                 
+                                                                                self.test_ori_loss_G, 
+                                                                                self.train_G, self.G_loss_mean,
+                                                                                self.summary_all], 
+                                                                                     feed_dict={  self.noise_pla: noise , self.training:True})
+        
+        print ('trained G:')
+        print('D_first kernel[0,0,:,0]:\n',debugout2,debugout2-self.deb_kep)
+        self.deb_kep=debugout2
+        print ('G_last kernel[0,0,:,0]:\n',debugout1,debugout1-self.deb_kep2)
+        self.deb_kep2=debugout1
+        
         '''
-        noise=self.get_noise()
-        _,dloss=self.sess.run([self.train_D, self.D_loss_mean], feed_dict={  self.noise_pla: noise })  #self.imgs_pla: self.img2tanh(self.tf_inimg),
-        #print ('deb2',self.sess.run(self.debug)) 
-        
-        
-        noise=self.get_noise()
-        _,summary,gloss=self.sess.run([self.train_G,  self.summary_all, self.G_loss_mean], feed_dict={  self.noise_pla: noise })   #self.imgs_pla: self.img2tanh(self.tf_inimg),
-        #print ('deb3',self.sess.run(self.debug)) 
-        #print ("debug:",debug[0])  
-        '''
-        
-        noise=self.get_noise()
+        #原版训练，有问题
         train_prob_f,train_prob_t,debugout2,debugout1,lrr, deb_D,deb_G, _,_,dloss,gloss,summary=self.sess.run([self.whole_net,self.D_net,
                                                                                 self.debug2, self.debug, 
                                                                                 self.lr_rate, 
@@ -213,25 +232,29 @@ class GAN_Net:
                                                             self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,
                                                             self.summary_all], 
                                                            feed_dict={  self.noise_pla: noise , self.training:True})
+        '''
+        
+        
         print ('the lr_rate is:', lrr)
         print ('this train probs:\n', 'true:',np.mean(train_prob_t), '   false:',np.mean(train_prob_f))
-        print ('MyGloss:',deb_G, '  MyDloss:',deb_D)
+        #print ('MyGloss:',deb_G, '  MyDloss:',deb_D)
 
-        print('D_first kernel[0,0,:,0]:\n',debugout2,debugout2-self.deb_kep)
-        self.deb_kep=debugout2
-        print ('G_last kernel[0,0,:,0]:\n',debugout1,debugout1-self.deb_kep2)
-        self.deb_kep2=debugout1
-        
         return summary,dloss,gloss
     
     def mybatchnorm(self, data, scope):
         return tf.contrib.layers.batch_norm(data,
-                                            decay=0.9,
-                                            updates_collections=None,
-                                            epsilon=1e-5,
-                                            scale=True,
-                                            #reuse=tf.AUTO_REUSE,
-                                            is_training=self.training,
+                                            center=True, #如果为True，有beta偏移量；如果为False，无beta偏移量
+                                            decay=0.9,#衰减系数,即有一个moving_mean和一个当前batch的mean，更新moving_mean=moving_mean*decay+(1-decay)*mean
+                                            #合适的衰减系数值接近1.0,特别是含多个9的值：0.999,0.99,0.9。如果训练集表现很好而验证/测试集表现得不好，选择小的系数（推荐使用0.9）
+                                            #updates_collections=None,
+                                            epsilon=1e-5, #防止除0
+                                            scale=True, #如果为True，则乘以gamma。如果为False，gamma则不使用。当下一层是线性的时（例如nn.relu），由于缩放可以由下一层完成,可不要
+                                            #reuse=tf.AUTO_REUSE,  #reuse的默认选项是None,此时会继承父scope的reuse标志
+                                            #param_initializers=None, # beta, gamma, moving mean and moving variance的优化初始化
+                                            #activation_fn=None, #用于激活，默认为线性激活函数
+                                            #param_regularizers=None,# beta and gamma正则化优化
+                                            #data_format=DATA_FORMAT_NHWC,
+                                            is_training=self.training, # 图层是否处于训练模式。
                                             scope=scope)
     
     
