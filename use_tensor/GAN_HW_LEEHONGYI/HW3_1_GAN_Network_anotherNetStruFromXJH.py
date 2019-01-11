@@ -240,12 +240,12 @@ class GAN_Net:
         return tep.astype(np.uint8)  
     
     
-    def Run_G(self, training=False):
+    def Run_G(self, training=True):
         noise=self.get_noise()
         inerimg, outerprob=self.sess.run([self.G_net, self.whole_net], feed_dict={self.noise_pla: noise, self.training:training})
         return inerimg, outerprob
     
-    def Run_WholeNet(self, training=False):
+    def Run_WholeNet(self, training=True):
         '''
         training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
         '''
@@ -253,7 +253,7 @@ class GAN_Net:
         probs=self.sess.run(self.whole_net, feed_dict={self.noise_pla: noise, self.training:training})
         return probs
     
-    def Run_D(self, training=False):
+    def Run_D(self, training=True):
           
         '''
         #这里imgs要求是tanh化过的，即归一化到-1~1 
