@@ -9,7 +9,7 @@ import cv2,os,random
 from datetime import datetime
 import os.path as op
 from PIL import Image
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
