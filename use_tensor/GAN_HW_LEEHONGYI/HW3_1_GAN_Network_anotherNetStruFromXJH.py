@@ -89,9 +89,9 @@ class GAN_Net:
         '''
         
         
-        self.D_loss_mean=self.D_loss()
+        self.D_loss_mean,self.D_real_loss_mean, self.D_fake_loss_mean=self.D_loss()
         self.G_loss_mean=self.G_loss()
-        self.train_D=self.trainonce_D(decay_steps, decay_rate)
+        self.train_D, self.train_D_real, self.train_D_fake=self.trainonce_D(decay_steps, decay_rate)
         self.train_G=self.trainonce_G(decay_steps, decay_rate)
         
         print ('\nfirst show G params')
@@ -142,7 +142,7 @@ class GAN_Net:
         #下面是原来有问题的loss函数，探究下为什么有问题
         self.test_ori_loss_D=-(tep_fake+tep_real)
         
-        return loss_mean
+        return loss_mean,real_loss_mean,fake_loss_mean
         
     
     def G_loss(self):
@@ -184,8 +184,9 @@ class GAN_Net:
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             self.D_optimizer= tf.train.AdamOptimizer(self.lr_rate *5 , beta1=beta1)
             train_op=self.D_optimizer.minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
-        
-        return train_op
+            train_op_real=self.D_optimizer.minimize(self.D_real_loss_mean, var_list=self.D_para) 
+            train_op_fake=self.D_optimizer.minimize(self.D_fake_loss_mean, var_list=self.D_para) 
+        return train_op,train_op_real,train_op_fake
                                                                                                                                                        
     
     
@@ -199,11 +200,11 @@ class GAN_Net:
         noise=self.get_noise()
         
         #train d first
-        train_prob_t,debugout2,debugout1,lrr, deb_D, _,dloss=self.sess.run([self.D_net,
+        train_prob_t,debugout2,debugout1,lrr, deb_D, _,_,dloss=self.sess.run([self.D_net,
                                                                                 self.debug2, self.debug, 
                                                                                 self.lr_rate, 
                                                                                 self.test_ori_loss_D , #测试自己的loss函数
-                                                                                self.train_D, self.D_loss_mean], 
+                                                                                self.train_D_real, self.train_D_fake, self.D_loss_mean], 
                                                                                          feed_dict={  self.noise_pla: noise , self.training:True})
         
         print ('trained D:')
