@@ -122,8 +122,9 @@ def test_showtfimgs(tfdir='./'+outname_ori):
     with tf.Session() as sess:
         while True:
             images=sess.run(tep)
-            plt.imshow(images[0])
-            plt.show()
+            cv2.imshow('test',images[0])
+            cv2.waitKey(0)
+            #plt.show()
 
 def gen_data_all():
     ori=read_imglist(oridatadir)
