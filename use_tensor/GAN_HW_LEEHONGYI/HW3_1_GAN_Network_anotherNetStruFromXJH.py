@@ -308,7 +308,7 @@ class GAN_Net:
         for i in range(cnt):
             tepimgs,probs=self.Run_G()
             #保存原图
-            for ind,j in enumerate(tepimgs):  
+            for ind,j in enumerate(tepimgs[:cnt*3]):  
                 #print (j[0][0][0])
                 j=self.tanh2img(j)      
                 #print (j[0][0][0])        
