@@ -9,7 +9,7 @@ import cv2,os,random
 from datetime import datetime
 import os.path as op
 from PIL import Image
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
@@ -122,9 +122,9 @@ def test_showtfimgs(tfdir='./'+outname_ori):
     with tf.Session() as sess:
         while True:
             images=sess.run(tep)
-            cv2.imshow('test',images[0])
-            cv2.waitKey(0)
-            #plt.show()
+            plt.imshow(images[0])
+            #cv2.waitKey(0)
+            plt.show()
 
 def gen_data_all():
     ori=read_imglist(oridatadir)
