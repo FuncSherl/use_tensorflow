@@ -198,7 +198,15 @@ class GAN_Net:
         #debug2 d_fir  debug:g_last
         
         noise=self.get_noise()
-        
+        '''
+        #train d first
+        train_prob_t,debugout2,debugout1,lrr, deb_D, _,_,dloss=self.sess.run([self.D_net,
+                                                                                self.debug2, self.debug, 
+                                                                                self.lr_rate, 
+                                                                                self.test_ori_loss_D , #测试自己的loss函数
+                                                                                self.train_D_real, self.train_D_fake, self.D_loss_mean], 
+                                                                                         feed_dict={  self.noise_pla: noise , self.training:True})
+        '''
         #train d first
         train_prob_t,debugout2,debugout1,lrr, deb_D, _,_,dloss=self.sess.run([self.D_net,
                                                                                 self.debug2, self.debug, 
