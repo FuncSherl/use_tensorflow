@@ -27,8 +27,8 @@ img_size=96
 base_lr=0.0002 #基础学习率
 beta1=0.5
 
-maxstep=360000 #训练多少次
-eval_step=100
+maxstep=3600000 #训练多少次
+eval_step=int (train_size/batchsize)
 
 decay_steps=10000
 decay_rate=1
