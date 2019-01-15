@@ -109,7 +109,8 @@ class GAN_Net:
         
         
     def img2tanh(self,img):
-        return img*2/255-1
+        img=tf.cast(img,tf.float32)
+        return img*2.0/255-1
     
             
     def D_loss(self):
