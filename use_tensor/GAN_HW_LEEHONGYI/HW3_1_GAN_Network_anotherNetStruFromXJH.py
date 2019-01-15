@@ -27,7 +27,7 @@ img_size=96
 base_lr=0.0002 #基础学习率
 beta1=0.5
 
-maxstep=3600000 #训练多少次
+maxstep=160000 #训练多少次
 eval_step=int (train_size/batchsize)
 
 decay_steps=10000
@@ -209,16 +209,16 @@ class GAN_Net:
                                                                                          feed_dict={  self.noise_pla: noise , self.training:True})
         '''
         #train d first
-        train_prob_t,debugout2,debugout1,lrr, deb_D, _,_,dloss=self.sess.run([self.D_net,
+        train_prob_t,debugout2,debugout1,lrr, deb_D, _,dloss=self.sess.run([self.D_net,
                                                                                 self.debug2, self.debug, 
                                                                                 self.lr_rate, 
                                                                                 self.test_ori_loss_D , #测试自己的loss函数
-                                                                                self.train_D_real, self.train_D_fake, self.D_loss_mean], 
+                                                                                self.train_D, self.D_loss_mean], 
                                                                                          feed_dict={  self.noise_pla: noise , self.training:True})
         
         print ('trained D:')
-        print('D_first kernel[0,0,:,0]:',debugout2)
-        print ('G_last kernel[0,0,:,0]:',debugout1)
+        print('D_first kernel[0,0,:,0]:\n',debugout2)
+        print ('G_last kernel[0,0,:,0]:\n',debugout1)
         
         train_prob_f,debugout2,debugout1,deb_G, _,gloss,summary=self.sess.run([self.whole_net,
                                                                                 self.debug2, self.debug,                                                 
@@ -246,7 +246,7 @@ class GAN_Net:
         
         
         print ('the lr_rate is:', lrr)
-        print ('this train probs:\n', 'true:',np.mean(train_prob_t), '   false:',np.mean(train_prob_f))
+        print ('this train probs:', 'true:',np.mean(train_prob_t), '   false:',np.mean(train_prob_f))
         #print ('MyGloss:',deb_G, '  MyDloss:',deb_D)
 
         return summary,dloss,gloss
@@ -776,12 +776,14 @@ if __name__ == '__main__':
             logwriter.add_summary(sum_log, i)
             #print ('write summary done!')
             
-            print ('train once-->gloss:',gloss,'  dloss:',dloss,'  time:',time.time()-stt)
-            
             #######################
             
             real,fake=gan.evla_D_once(1)
             print ('once prob of real/fake:',real,fake)
+            
+            print ('train once-->gloss:',gloss,'  dloss:',dloss)
+            
+            print ('time used:',time.time()-stt,' ',1.0/(time.time()-stt),' iters/s')
             
         
         print ('Training done!!!-->time used:',(time.time()-begin_t),'s = ',(time.time()-begin_t)/60,' min')
