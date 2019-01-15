@@ -183,7 +183,7 @@ class GAN_Net:
         #这将lr调为负数，因为应该最大化目标
         #这里就不管globalstep了，否则一次迭代会加2次
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-            self.D_optimizer= tf.train.AdamOptimizer(self.lr_rate *5 , beta1=beta1)
+            self.D_optimizer= tf.train.AdamOptimizer(self.lr_rate  , beta1=beta1)
             train_op=self.D_optimizer.minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
             train_op_real=self.D_optimizer.minimize(self.D_real_loss_mean, var_list=self.D_para) 
             train_op_fake=self.D_optimizer.minimize(self.D_fake_loss_mean, var_list=self.D_para) 
@@ -325,7 +325,7 @@ class GAN_Net:
                 imgname=str(i)+'_'+str(ind)+".jpg"
                 im.save(op.join(desdir, imgname))
             
-            #每个batch选最好的cnt个合成图片
+            #每个batch选随机的cnt个合成图片
             #print (probs.shape)
             tep=list(range(batchsize))
             random.shuffle(tep) #随机取cnt个图
