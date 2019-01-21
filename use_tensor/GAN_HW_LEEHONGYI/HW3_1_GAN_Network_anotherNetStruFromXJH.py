@@ -27,11 +27,11 @@ img_size=96
 base_lr=0.0002 #基础学习率
 beta1=0.5
 
-maxstep=160000 #训练多少次
+maxstep=1600000 #训练多少次
 eval_step=int (train_size/batchsize)
 
 decay_steps=10000
-decay_rate=1
+decay_rate=0.99
 
 incase_div_zero=1e-10  #这个值大一些可以避免d训得太好，也避免了g梯度
 
