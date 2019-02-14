@@ -36,6 +36,8 @@ decay_rate=1 #0.9
 incase_div_zero=1e-10  #这个值大一些可以避免d训得太好，也避免了g梯度
 
 logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
+bigimgsdir=op.join(logdir, 'randomimgs')
+if not op.exists(bigimgsdir): os.makedirs(bigimgsdir)
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -246,16 +248,41 @@ class GAN_Net:
         desdir=op.join(logdir, str(step))
         if not op.isdir(desdir): os.makedirs(desdir)
         
-        for i in range(4):
+        #这里cnt不应该大于batchsize(64)
+        cnt=4
+        
+        #中间用cnt像素的黑色线分隔图片
+        bigimg_len=img_size*cnt+(cnt-1)*cnt
+        bigimg_bests=np.zeros([bigimg_len,bigimg_len,3], dtype=np.uint8)
+        bigimg_name='step-'+str(step)+'_cnt-'+str(cnt)+'_batchsize-'+str(batchsize)+'.png'
+        
+        for i in range(cnt):
             tepimgs=self.Run_G()
-            for ind,j in enumerate(tepimgs):  
+            #保存原图
+            for ind,j in enumerate(tepimgs[:cnt*3]):  
                 #print (j[0][0][0])
                 j=self.tanh2img(j)      
                 #print (j[0][0][0])        
                 im = Image.fromarray(j)
                 imgname=str(i)+'_'+str(ind)+".jpg"
                 im.save(op.join(desdir, imgname))
-        print ('eval_G_once,saved imgs to:',desdir)
+            
+            #每个batch选随机的cnt个合成图片
+            #print (probs.shape)
+            tep=list(range(batchsize))
+            random.shuffle(tep) #随机取cnt个图
+            tep=tep[:cnt]  #np.argsort(probs[:,0])[-cnt:]
+            #print (tep)
+            for ind,j in enumerate(tep):
+                st_x= ind*(img_size+cnt) #列
+                st_y= i*(img_size+cnt) #行
+                bigimg_bests[st_y:st_y+img_size, st_x:st_x+img_size,:]=self.tanh2img(tepimgs[j])
+        
+        bigimg_dir=op.join(bigimgsdir, bigimg_name)
+        im = Image.fromarray(bigimg_bests)
+        im.save(bigimg_dir)
+            
+        print ('eval_G_once,saved imgs to:',desdir, '\nbestimgs to:',bigimg_dir)
         
     def evla_D_once(self,eval_step=eval_step):
         cnt_real=0
