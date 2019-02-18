@@ -5,6 +5,7 @@ import os.path as op
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'
+
 videodir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/original_high_fps_videos'
 extratdir_train=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos/train'
 extratdir_test=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos/test'
