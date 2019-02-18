@@ -18,11 +18,10 @@ def video2frame(videop, outpath):
     videorate = videoCapture.get(cv2.CAP_PROP_FPS)
     allcnt = videoCapture.get(cv2.CAP_PROP_FRAME_COUNT)  # 总帧数
     
-    cnt=0
     batcnt=0
     success, frame = videoCapture.read()  # 读取第一帧  
     print (frame.shape,'rate:',videorate,' framescnt:',allcnt)
-    while success and cnt <allcnt-1:  
+    while success and batcnt <allcnt-1:  
         # frame = frame[0:1536,1200:1800]#截取画面  
         #videoCapture.set(cv2.CAP_PROP_POS_FRAMES, cnt)
                   
