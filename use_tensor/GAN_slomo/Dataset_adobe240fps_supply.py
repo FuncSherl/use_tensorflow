@@ -8,8 +8,8 @@ Created on 2018年12月10日
 import cv2,os,random
 from datetime import datetime
 import os.path as op
-from PIL import Image
-import matplotlib.pyplot as plt
+#from PIL import Image
+#import matplotlib.pyplot as plt
 import numpy as np
 #import tensorflow as tf
 from data import create_dataset as cdata
