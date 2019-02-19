@@ -59,7 +59,7 @@ def txt2frames(txtpath, extratdir):
             os.makedirs(outpath, exist_ok=True)
             resu=video2frame(movpath, outpath)
             cnt+=resu
-        print (txtpath,'done:',cnt,' frames')
+        print (txtpath,'done:',cnt,' frames\n')
             
 if __name__ == '__main__':
     txt2frames(train_txt ,extratdir_train)

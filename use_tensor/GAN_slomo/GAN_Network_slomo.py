@@ -11,7 +11,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-import HW3_1_gen_anime_tfrecord as anime_data
+import use_tensor.GAN_slomo.Dataset_adobe240fps_supply as datainput
 
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
