@@ -37,11 +37,27 @@ eval_step=int (test_size/batchsize)
 decay_steps=10000
 decay_rate=0.99
 
-incase_div_zero=1e-10  #这个值大一些可以避免d训得太好，也避免了g梯度
+#incase_div_zero=1e-10  #这个值大一些可以避免d训得太好，也避免了g梯度
 
 G_first_channel=12  #不是G的输入channel，而是g的输入经过一次卷积后的输出channel
-D_first_channel=12
+D_first_channel=18
 
+#G中unet的层数
+G_unet_layercnt=5
+G_filter_len=3
+G_withbias=True
+
+
+#两个D的用的D_block的层数，即缩小几回
+D_1_layercnt=5
+D_1_filterlen=3
+D_1_withbias=True
+
+D_2_layercnt=5
+D_2_filterlen=3
+D_2_withbias=True
+
+#一次输入网络多少图片，这里设定为3帧，利用前后帧预测中间
 G_group_img_num=3
 img_channel=datasupply.img_channel  #3
 
@@ -69,7 +85,12 @@ class GAN_Net:
         self.imgs_pla = tf.placeholder(tf.float32, [batchsize, img_size_h, img_size_w, G_group_img_num*img_channel], name='imgs_in')
         self.training=tf.placeholder(tf.bool, name='training_in')
         
+        frame0and2=tf.concat([self.imgs_pla[:,:,:,0:3], self.imgs_pla[:,:,:,6:]], 3)
+        print ('after concat:',frame0and2)
+        self.G_net=self.Generator_net(frame0and2)
         
+        
+        self.D_linear_net=self.Discriminator_net_linear()
         
         
         
@@ -81,6 +102,7 @@ class GAN_Net:
 
         self.G_net=self.Generator_net(self.noise_pla)
         self.D_net,self.D_real_logit=self.Discriminator_net(  self.img2tanh(self.tf_inimg)  ) #self.imgs_pla
+        
         
         #还是应该以tf.trainable_variables()为主
         t_vars=tf.trainable_variables()
@@ -348,9 +370,9 @@ class GAN_Net:
         return cnt_real/eval_step, cnt_fake/eval_step
         
     
-    def Generator_net(self, inputdata, withbias=True):
+    def Generator_net(self, inputdata, withbias=G_withbias, filterlen=G_filter_len):
         with tf.variable_scope("G_Net",  reuse=tf.AUTO_REUSE) as scope:
-            tepimg=my_unet(inputdata,  layercnt=5, channel_init=G_first_channel, filterlen=3, withbias=withbias)
+            tepimg=my_unet(inputdata,  layercnt=G_unet_layercnt,  filterlen=filterlen, withbias=withbias)
             #####################################################################################################################################
             #tanh
             self.G_tanh= tf.nn.tanh(tepimg, name='G_tanh')
@@ -359,24 +381,44 @@ class GAN_Net:
             
                 
     
-    def Discriminator_net_linear(self, imgs_3, withbias=True):
+    def Discriminator_net_linear(self, imgs_3, withbias=D_1_withbias, filterlen=D_1_filterlen):
         '''
         :用于判定视频帧连续性的D
         imgs_3:9 channel input imgs[batchsize, h, w, 9]
         '''
         #这里输入的imgs应该是tanh后的，位于-1~1之间
         #cast to float 
-        self.imgs_float32=tf.cast(imgs, tf.float32)
+        self.imgs_float32=tf.cast(imgs_3, tf.float32)
+        
+        layer_cnt=D_1_layercnt
+        inputshape=imgs_3.get_shape().as_list()
+        initchannel=inputshape[-1]
+        
             
         with tf.variable_scope("D_1_Net",  reuse=tf.AUTO_REUSE) as scope:
+            tep=my_conv(self.imgs_float32, filterlen+int(layer_cnt/2), initchannel*2, scope+'_start', stride=2, withbias=withbias)
+    
+            #tep=my_batchnorm( tep,self.training, scope)   #第一层不要bn试试
+            tep=my_lrelu(tep, scope)
+            
+            for i in range(layer_cnt):
+                tep=my_D_block(tep, initchannel*( 2**(i+2)), scope+'_Dblock'+str(i), filterlen=filterlen+int( (layer_cnt-i)/2 ), \
+                               withbias=withbias, training=self.training)
             #######################################################################################################################################
+            #fc
+            tep=my_fc(tep, 1024, scope+'_fc1',  withbias=withbias)
+            tep=my_lrelu(tep, scope)
+            
+            tep=my_fc(tep, 1, scope+'_fc2',  withbias=withbias)
+            
             #sigmoid
-            self.D_1_sigmoid=tf.nn.sigmoid(self.D_conv5, name='D_1_sigmoid')
+            self.D_1_sigmoid=tf.nn.sigmoid(tep, name='D_1_sigmoid')
+            print (self.D_1_sigmoid)
             
         return self.D_1_sigmoid
     
     
-    def Discriminator_net_clear(self, imgs, withbias=True):
+    def Discriminator_net_clear(self, imgs, withbias=D_2_withbias, filterlen=D_2_filterlen):
         '''
         :用于判定生成视频帧的真实性的D
         imgs:input imgs [batchsize, h, w, 3]
@@ -384,11 +426,30 @@ class GAN_Net:
         #这里输入的imgs应该是tanh后的，位于-1~1之间
         #cast to float 
         self.imgs_float32=tf.cast(imgs, tf.float32)
+        
+        layer_cnt=D_2_layercnt
+        inputshape=imgs.get_shape().as_list()
+        initchannel=inputshape[-1]
             
         with tf.variable_scope("D_2_Net",  reuse=tf.AUTO_REUSE) as scope:
+            tep=my_conv(self.imgs_float32, filterlen+int(layer_cnt/2), initchannel*2, scope+'_start', stride=2, withbias=withbias)
+    
+            #tep=my_batchnorm( tep,self.training, scope)   #第一层不要bn试试
+            tep=my_lrelu(tep, scope)
+            
+            for i in range(layer_cnt):
+                tep=my_D_block(tep, initchannel*( 2**(i+2)), scope+'_Dblock'+str(i), filterlen=filterlen+int( (layer_cnt-i)/2 ), \
+                               withbias=withbias, training=self.training)
             #######################################################################################################################################
+            #fc
+            tep=my_fc(tep, 1024, scope+'_fc1',  withbias=withbias)
+            tep=my_lrelu(tep, scope)
+            
+            tep=my_fc(tep, 1, scope+'_fc2',  withbias=withbias)
+            
+            
             #sigmoid
-            self.D_2_sigmoid=tf.nn.sigmoid(self.D_conv5, name='D_2_sigmoid')
+            self.D_2_sigmoid=tf.nn.sigmoid(tep, name='D_2_sigmoid')
             
         return self.D_2_sigmoid
         

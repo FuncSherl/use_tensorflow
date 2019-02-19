@@ -18,7 +18,7 @@ datatype=tf.float32
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-def my_batchnorm(self, data,training, scopename):
+def my_batchnorm( data,training, scopename):
     return tf.contrib.layers.batch_norm(data,
                                         center=True, #如果为True，有beta偏移量；如果为False，无beta偏移量
                                         decay=0.9,#衰减系数,即有一个moving_mean和一个当前batch的mean，更新moving_mean=moving_mean*decay+(1-decay)*mean
@@ -78,6 +78,22 @@ def my_lrelu(inputdata, scopename):
         return tf.nn.leaky_relu(inputdata, leakyrelurate)
 
     
+def my_fc(inputdata,  outchannel,   scopename,  reuse=tf.AUTO_REUSE, withbias=True):
+    inputshape=inputdata.get_shape().as_list()
+    #flatten
+    tep=tf.reshape(inputdata, [inputshape[0], -1])
+    
+    #fc
+    with tf.variable_scope(scopename,  reuse=reuse) as scope: 
+        weight = tf.get_variable('weights', [tep.get_shape()[-1], outchannel], dtype=datatype, \
+                                 initializer=tf.random_normal_initializer(stddev=stddev))
+        tep=tf.matmul(tep, weight)
+        if withbias:
+            bias = tf.get_variable('bias', [outchannel], dtype=datatype, initializer=tf.constant_initializer(bias_init))
+            tep = tf.nn.bias_add(tep, bias)
+        return tep
+    
+    
 def unet_up(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=True):
     '''
     Upsampling --> Leaky ReLU --> Convolution + Leaky ReLU
@@ -104,28 +120,39 @@ def unet_down(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=T
     
     return tep
     
-def my_unet(inputdata, layercnt=5, channel_init=12, filterlen=3, withbias=True):
+def my_unet(inputdata, layercnt=5,  filterlen=3, withbias=True):
     '''
     layercnt:下降和上升各有几层,原则上应该是一对一
     '''
     
     inputshape=inputdata.get_shape().as_list()
-    tep=my_conv(inputdata, 3, channel_init, scopename='unet_down_start', stride=1,  withbias=withbias)
+    channel_init=inputshape[-1]
+    
+    tep=my_conv(inputdata, 3, channel_init*2, scopename='unet_down_start', stride=1,  withbias=withbias)
     tep=my_lrelu(tep, 'unet_down_start')
     
-    print (tep)
+    #print (tep)
     for i in range(layercnt):
-        tep=unet_down(tep, channel_init*( 2**(i+1)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), withbias=withbias)
-        print (tep)
+        tep=unet_down(tep, channel_init*( 2**(i+2)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), withbias=withbias)
+        #print (tep)
     
     for i in reversed(range(layercnt)):
-        tep=unet_up(tep, channel_init*( 2**(i)), 'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  withbias=withbias)
-        print (tep)
+        tep=unet_up(tep, channel_init*( 2**(i+1)), 'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  withbias=withbias)
+        #print (tep)
         
-    tep=my_conv(tep, 3, 3, scopename='unet_up_end', stride=1, withbias=withbias)
+    tep=my_conv(tep, filterlen, 3, scopename='unet_up_end', stride=1, withbias=withbias)
     tep=tf.image.resize_images(tep, [inputshape[1],inputshape[2]], method=tf.image.ResizeMethod.BILINEAR)
-    print (tep)
+    #print (tep)
     return tep
+
+
+def my_D_block(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=True, training=True):
+    tep=my_conv(inputdata, filterlen, outchannel, scopename+'_conv1', stride=stride, withbias=withbias)
+    
+    tep=my_batchnorm( tep,training, scopename)
+    tep=my_lrelu(tep, scopename)
+    return tep
+    
 
 
 
