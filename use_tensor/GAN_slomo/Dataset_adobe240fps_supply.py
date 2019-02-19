@@ -11,8 +11,8 @@ import os.path as op
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
-from use_tensor.GAN_slomo.data import create_dataset as cdata
+#import tensorflow as tf
+from data import create_dataset as cdata
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 train_dir= list( map(lambda x:op.join(cdata.extratdir_train, x) ,os.listdir(cdata.extratdir_train)) )
@@ -21,7 +21,7 @@ test_dir=list( map(lambda x:op.join(cdata.extratdir_test, x) ,os.listdir(cdata.e
 target_imgh=360
 target_imgw=640
 #print (len(train_dir))
-
+img_channel=3
 #train和test中的frame总数
 test_frames_sum=8508
 train_frames_sum=112064
@@ -31,9 +31,9 @@ train_frames_sum=112064
 def get_train_batchdata(batchsize=10, num_each=3):
     '''
     notice batchsize not bigger than len(train_dir)
-    return_shape [batchsize, num_each, img_h, img_w, 3]
+    return_shape [batchsize,  img_h, img_w, 3*num_each]
     '''
-    ret=np.zeros([batchsize, num_each, target_imgh, target_imgw,3])
+    ret=np.zeros([batchsize,  target_imgh, target_imgw,img_channel*num_each])
     mv_list=random.sample(train_dir, batchsize)
     for ind,i in enumerate(mv_list):
         tep=os.listdir(i)
@@ -43,20 +43,20 @@ def get_train_batchdata(batchsize=10, num_each=3):
             frame=cv2.imread(op.join(i, tep[selectind+j]))
             #print (frame.shape)
             frame=cv2.resize(frame, (target_imgw, target_imgh))
-            '''
-            cv2.imshow('test',frame)
+            ret[ind, :, :, img_channel*j:img_channel*j+img_channel]=frame
+            ''''''
+            cv2.imshow('test',ret[ind,:,:,img_channel*j:img_channel*j+img_channel])
             cv2.waitKey(0) 
-            '''
-            ret[ind, j, :]=frame
+        
     return ret
 
 
 def get_test_batchdata(batchsize=10, num_each=3):
     '''
     notice batchsize not bigger than len(train_dir)
-    return_shape [batchsize, num_each, img_h, img_w, 3]
+    return_shape [batchsize,  img_h, img_w, 3*num_each]
     '''
-    ret=np.zeros([batchsize, num_each, target_imgh, target_imgw,3])
+    ret=np.zeros([batchsize, target_imgh, target_imgw,img_channel*num_each])
     mv_list=random.sample(test_dir, batchsize)
     for ind,i in enumerate(mv_list):
         tep=os.listdir(i)
@@ -66,11 +66,11 @@ def get_test_batchdata(batchsize=10, num_each=3):
             frame=cv2.imread(op.join(i, tep[selectind+j]))
             #print (frame.shape)
             frame=cv2.resize(frame, (target_imgw, target_imgh))
+            ret[ind, :, :, img_channel*j:img_channel*j+img_channel]=frame
             '''
-            cv2.imshow('test',frame)
-            cv2.waitKey(0) 
+            cv2.imshow('test',ret[ind,:,:,img_channel*j:img_channel*j+img_channel])
+            cv2.waitKey(0)
             '''
-            ret[ind, j, :]=frame
     return ret
         
     
