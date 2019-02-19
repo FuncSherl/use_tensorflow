@@ -44,10 +44,12 @@ def get_train_batchdata(batchsize=10, num_each=3):
             #print (frame.shape)
             frame=cv2.resize(frame, (target_imgw, target_imgh))
             ret[ind, :, :, img_channel*j:img_channel*j+img_channel]=frame
-            ''''''
-            cv2.imshow('test',ret[ind,:,:,img_channel*j:img_channel*j+img_channel])
+            '''
+            print (ret[ind,0,0,img_channel*j:img_channel*j+img_channel])
+            print (frame[0,0,:])
+            cv2.imshow('test',ret[ind, :, :, img_channel*j:img_channel*j+img_channel].astype(np.uint8))
             cv2.waitKey(0) 
-        
+            '''
     return ret
 
 
