@@ -22,6 +22,10 @@ target_imgh=360
 target_imgw=640
 #print (len(train_dir))
 
+#train和test中的frame总数
+test_frames_sum=8508
+train_frames_sum=112064
+
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def get_train_batchdata(batchsize=10, num_each=3):
@@ -45,6 +49,29 @@ def get_train_batchdata(batchsize=10, num_each=3):
             '''
             ret[ind, j, :]=frame
     return ret
+
+
+def get_test_batchdata(batchsize=10, num_each=3):
+    '''
+    notice batchsize not bigger than len(train_dir)
+    return_shape [batchsize, num_each, img_h, img_w, 3]
+    '''
+    ret=np.zeros([batchsize, num_each, target_imgh, target_imgw,3])
+    mv_list=random.sample(test_dir, batchsize)
+    for ind,i in enumerate(mv_list):
+        tep=os.listdir(i)
+        tep.sort()
+        selectind=random.randint(0,len(tep)-num_each)
+        for j in range(num_each):
+            frame=cv2.imread(op.join(i, tep[selectind+j]))
+            #print (frame.shape)
+            frame=cv2.resize(frame, (target_imgw, target_imgh))
+            '''
+            cv2.imshow('test',frame)
+            cv2.waitKey(0) 
+            '''
+            ret[ind, j, :]=frame
+    return ret
         
     
     
@@ -52,7 +79,8 @@ def get_train_batchdata(batchsize=10, num_each=3):
 
 
 if __name__ == '__main__':
-    get_train_batchdata(10,3)
+    res=get_train_batchdata(10,3)
+    print (res.shape)
     
     
     
