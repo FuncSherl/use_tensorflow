@@ -7,7 +7,7 @@ import os.path as op
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'
 
-pc_id=False
+pc_id=True
 
 if pc_id: videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
 else: videodir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/original_high_fps_videos' #
