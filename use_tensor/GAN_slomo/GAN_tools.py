@@ -78,51 +78,53 @@ def my_lrelu(inputdata, scopename):
         return tf.nn.leaky_relu(inputdata, leakyrelurate)
 
     
-def unet_up(inputdata, outchannel, scopename,stride=2, filterlen=3):
+def unet_up(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=True):
     '''
     Upsampling --> Leaky ReLU --> Convolution + Leaky ReLU
     '''
-    tep=my_deconv(inputdata, filterlen, outchannel, scopename+'_deconv1', stride)
+    tep=my_deconv(inputdata, filterlen, outchannel, scopename+'_deconv1', stride, withbias=withbias)
     
     #tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=1)
     tep=my_lrelu(tep, scopename)
     
-    tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=1)
+    tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=1, withbias=withbias)
     tep=my_lrelu(tep, scopename)
     
     return tep
 
-def unet_down(inputdata, outchannel, scopename,stride=2, filterlen=3):
+def unet_down(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=True):
     '''
     downsampling --> Convlution + Leaky ReLU --> Convolution + Leaky ReLU
     '''
-    tep=my_conv(inputdata, filterlen, outchannel, scopename+'_conv1', stride=stride)
+    tep=my_conv(inputdata, filterlen, outchannel, scopename+'_conv1', stride=stride, withbias=withbias)
     tep=my_lrelu(tep, scopename)
     
-    tep=my_conv(tep, filterlen, outchannel, scopename+'_conv2', stride=1)
+    tep=my_conv(tep, filterlen, outchannel, scopename+'_conv2', stride=1, withbias=withbias)
     tep=my_lrelu(tep, scopename)
     
     return tep
     
-def my_unet(inputdata, layercnt=5, channel_init=12):
+def my_unet(inputdata, layercnt=5, channel_init=12, filterlen=3, withbias=True):
     '''
     layercnt:下降和上升各有几层,原则上应该是一对一
     '''
+    
     inputshape=inputdata.get_shape().as_list()
-    tep=my_conv(inputdata, 3, channel_init, scopename='unet_down_start', stride=1)
+    tep=my_conv(inputdata, 3, channel_init, scopename='unet_down_start', stride=1,  withbias=withbias)
     tep=my_lrelu(tep, 'unet_down_start')
     
     print (tep)
     for i in range(layercnt):
-        tep=unet_down(tep, channel_init*( 2**(i+1)), 'unet_down_'+str(i))
+        tep=unet_down(tep, channel_init*( 2**(i+1)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), withbias=withbias)
         print (tep)
     
     for i in reversed(range(layercnt)):
-        tep=unet_up(tep, channel_init*( 2**(i)), 'unet_up_'+str(i))
+        tep=unet_up(tep, channel_init*( 2**(i)), 'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  withbias=withbias)
         print (tep)
         
-    tep=my_conv(tep, 3, 3, scopename='unet_up_end', stride=1)
+    tep=my_conv(tep, 3, 3, scopename='unet_up_end', stride=1, withbias=withbias)
     tep=tf.image.resize_images(tep, [inputshape[1],inputshape[2]], method=tf.image.ResizeMethod.BILINEAR)
+    print (tep)
     return tep
 
 

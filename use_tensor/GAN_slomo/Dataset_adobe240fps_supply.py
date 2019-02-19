@@ -28,12 +28,12 @@ train_frames_sum=112064
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-def get_train_batchdata(batchsize=10, num_each=3):
+def get_train_batchdata(batchsize=20, num_each=3):
     '''
     notice batchsize not bigger than len(train_dir)
     return_shape [batchsize,  img_h, img_w, img_channel*num_each]
     '''
-    ret=np.zeros([batchsize,  target_imgh, target_imgw,img_channel*num_each])
+    ret=np.zeros([batchsize,  target_imgh, target_imgw,img_channel*num_each], dtype=np.float32)
     mv_list=random.sample(train_dir, batchsize)
     for ind,i in enumerate(mv_list):
         tep=os.listdir(i)
