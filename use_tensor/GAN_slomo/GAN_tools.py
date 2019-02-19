@@ -6,7 +6,17 @@ Created on 2019年2月19日
 '''
 import tensorflow as tf
 
-def mybatchnorm(self, data,training, scope):
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+dropout=0.5 
+leakyrelurate=0.2
+stddev=0.01
+bias_init=0.0
+
+batchsize=32
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+def my_batchnorm(self, data,training, scope):
         return tf.contrib.layers.batch_norm(data,
                                             center=True, #如果为True，有beta偏移量；如果为False，无beta偏移量
                                             decay=0.9,#衰减系数,即有一个moving_mean和一个当前batch的mean，更新moving_mean=moving_mean*decay+(1-decay)*mean
@@ -22,3 +32,22 @@ def mybatchnorm(self, data,training, scope):
                                             is_training=training, # 图层是否处于训练模式。
                                             scope=scope)
         
+def my_deconv(inputdata, socpename,reuse=tf.AUTO_REUSE, withbias=True):
+    with tf.variable_scope(socpename,  reuse=reuse) as scope:  
+            kernel=tf.get_variable('weights', [4,4, 128, 128], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=stddev))
+            
+            #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
+            #而tf.nn.conv2d_transpose中的filter参数，是[filter_height, filter_width, out_channels，in_channels]的形式
+            deconv=tf.nn.conv2d_transpose(inputdata, kernel, output_shape=[batchsize, 32, 32, 128], strides=[1,2,2,1], padding="SAME")
+            
+            if withbias:
+                bias=tf.get_variable('bias', [128], dtype=tf.float32, initializer=tf.constant_initializer(bias_init))
+                ret=tf.nn.bias_add(deconv, bias)
+                
+                
+                
+                
+                
+                
+                
+                

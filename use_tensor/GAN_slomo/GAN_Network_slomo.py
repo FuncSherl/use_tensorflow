@@ -21,7 +21,7 @@ TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 
 train_size=33431 #训练集规模
-batchsize=64
+
 noise_size=100
 img_size=96
 
