@@ -21,7 +21,7 @@ test_dir=list( map(lambda x:op.join(cdata.extratdir_test, x) ,os.listdir(cdata.e
 target_imgh=360
 target_imgw=640
 #print (len(train_dir))
-img_channel=3
+img_channel=3 #图像为3 channel
 #train和test中的frame总数
 test_frames_sum=8508
 train_frames_sum=112064
@@ -31,7 +31,7 @@ train_frames_sum=112064
 def get_train_batchdata(batchsize=10, num_each=3):
     '''
     notice batchsize not bigger than len(train_dir)
-    return_shape [batchsize,  img_h, img_w, 3*num_each]
+    return_shape [batchsize,  img_h, img_w, img_channel*num_each]
     '''
     ret=np.zeros([batchsize,  target_imgh, target_imgw,img_channel*num_each])
     mv_list=random.sample(train_dir, batchsize)
@@ -56,7 +56,7 @@ def get_train_batchdata(batchsize=10, num_each=3):
 def get_test_batchdata(batchsize=10, num_each=3):
     '''
     notice batchsize not bigger than len(train_dir)
-    return_shape [batchsize,  img_h, img_w, 3*num_each]
+    return_shape [batchsize,  img_h, img_w, img_channel*num_each]
     '''
     ret=np.zeros([batchsize, target_imgh, target_imgw,img_channel*num_each])
     mv_list=random.sample(test_dir, batchsize)
