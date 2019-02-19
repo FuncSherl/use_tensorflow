@@ -11,7 +11,8 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-import use_tensor.GAN_slomo.Dataset_adobe240fps_supply as datainput
+import Dataset_adobe240fps_supply as datainput
+import GAN_tools as mytools
 
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
