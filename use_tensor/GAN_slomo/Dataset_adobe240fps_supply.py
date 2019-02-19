@@ -39,11 +39,12 @@ def get_train_batchdata(batchsize=10, num_each=3):
             frame=cv2.imread(op.join(i, tep[selectind+j]))
             #print (frame.shape)
             frame=cv2.resize(frame, (target_imgw, target_imgh))
-            ''''''
+            '''
             cv2.imshow('test',frame)
             cv2.waitKey(0) 
-            
+            '''
             ret[ind, j, :]=frame
+    return ret
         
     
     
