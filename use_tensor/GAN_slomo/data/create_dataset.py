@@ -7,17 +7,19 @@ import os.path as op
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'
 
-pc_id=False
+pc_id=2
 
-if pc_id: videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
-else: videodir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/original_high_fps_videos' #
+if pc_id==0: videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
+elif pc_id==1: videodir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/original_high_fps_videos' #
+elif pc_id==2: videodir=r'./original_high_fps_videos'
 
-if pc_id: extratdir_train=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\extracted_videos/train' 
-else:extratdir_train=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos/train' #
-
-if pc_id: extratdir_test=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\extracted_videos/test' 
-else: extratdir_test=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos/test' #
-
+if pc_id==0: extratdir_train=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\extracted_videos/train' 
+elif pc_id==1:extratdir_train=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos/train' #
+elif pc_id==2:extratdir_train=r'./extracted_videos/train'
+    
+if pc_id==0: extratdir_test=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\extracted_videos/test' 
+elif pc_id==1: extratdir_test=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos/test' #
+elif pc_id==2: extratdir_test=r'./extracted_videos/test'
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def video2frame(videop, outpath):
