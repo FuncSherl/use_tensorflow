@@ -17,8 +17,8 @@ elif pc_id==1: videodir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/original
 elif pc_id==2: videodir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/original_high_fps_videos'
 
 if pc_id==0: extratdir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\extracted_videos' 
-elif pc_id==1:extratdir_train=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos' #
-elif pc_id==2:extratdir_train=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/extracted_videos'
+elif pc_id==1:extratdir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos' #
+elif pc_id==2:extratdir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/extracted_videos'
 
 extratdir_train=op.join(extratdir, 'train')
 extratdir_test=op.join(extratdir, 'test')
