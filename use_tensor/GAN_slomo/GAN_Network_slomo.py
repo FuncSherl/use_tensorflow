@@ -150,11 +150,11 @@ class GAN_Net:
         tep= (tanhd+1)*255//2
         return tep.astype(np.uint8)  
     
-    def getbatch_train_imgs(self):
+    def getbatch_train_imgs(self, batchsize=batchsize):
         tepimg=datasupply.get_train_batchdata(batchsize, G_group_img_num)
         return self.img2tanh(tepimg)
     
-    def getbatch_test_imgs(self):
+    def getbatch_test_imgs(self, batchsize=10):
         tepimg=datasupply.get_test_batchdata(batchsize, G_group_img_num)
         return self.img2tanh(tepimg)
     
@@ -222,85 +222,33 @@ class GAN_Net:
     def train_once_all(self):
         tepimgs=self.getbatch_train_imgs()
         
-        lrrate,_,D1_T_prob, D1_F_prob, D2_T_prob, D2_F_prob, D1_loss, D2_loss, D_loss_sum_all =self.sess.run([self.lr_rate, self.train_D , \
+        lrrate,_,D1_T_prob, D1_F_prob, D2_T_prob, D2_F_prob, D1_loss, D2_loss, D_loss_sum_all,_ , G_loss_D1, G_loss_D2, G_loss_sum_all, summary =\
+                                       self.sess.run([self.lr_rate, self.train_D , \
                                                       self.D_linear_net_T, self.D_linear_net_F,\
                                                       self.D_clear_net_T, self.D_clear_net_F,  \
-                                                      self.D_linear_net_loss_sum, self.D_clear_net_loss_sum, self.D_loss_all], \
-                                                                            feed_dict={  self.imgs_pla:tepimgs , self.training:True})
-        print ('trained D:')
+                                                      self.D_linear_net_loss_sum, self.D_clear_net_loss_sum, self.D_loss_all,\
+                                                      self.train_G, self.G_loss_mean_D1, self.G_loss_mean_D2, self.G_loss_all,\
+                                                      self.summary_all]          , \
+                                                    feed_dict={  self.imgs_pla:tepimgs , self.training:True})
+        print ('trained once:')
         print ('lr:',lrrate)
-        print ('D1(D_linear) prob T/F --> ',D1_T_prob,'/', D1_F_prob)
+        print ('D1(D_linear) prob T/F --> ',np.mean(D1_T_prob),'/',np.mean( D1_F_prob))
         print ('D1 loss_all:',D1_loss)
-        print ('D2(D_clear) prob T/F --> ',D2_T_prob,'/', D2_F_prob)
+        print ('D2(D_clear) prob T/F --> ',np.mean(D2_T_prob),'/', np.mean(D2_F_prob))
         print ('D2 loss_all:',D2_loss)
+        print ('D_loss_sum_all:',D_loss_sum_all)
+        print ('G_loss_D1:',G_loss_D1)
+        print ('G_loss_D2:',G_loss_D2)
+        print ('G_loss_sum_all:',G_loss_sum_all)
         
-        
-        
-        
-        
-        
-        #print ('deb1',self.sess.run(self.debug))                   
-        
-        #debug2 d_fir  debug:g_last
-        
-        noise=self.get_noise()
-        '''
-        #train d first
-        train_prob_t,debugout2,debugout1,lrr, deb_D, _,_,dloss=self.sess.run([self.D_net,
-                                                                                self.debug2, self.debug, 
-                                                                                self.lr_rate, 
-                                                                                self.test_ori_loss_D , #测试自己的loss函数
-                                                                                self.train_D_real, self.train_D_fake, self.D_loss_mean], 
-                                                                                         feed_dict={  self.noise_pla: noise , self.training:True})
-        '''
-        #train d first
-        train_prob_t,debugout2,debugout1,lrr, deb_D, _,dloss=self.sess.run([self.D_net,
-                                                                                self.debug2, self.debug, 
-                                                                                self.lr_rate, 
-                                                                                self.test_ori_loss_D , #测试自己的loss函数
-                                                                                self.train_D, self.D_loss_mean], 
-                                                                                         feed_dict={  self.noise_pla: noise , self.training:True})
-        
-        print ('trained D:')
-        print('D_first kernel[0,0,:,0]:\n',debugout2)
-        print ('G_last kernel[0,0,:,0]:\n',debugout1)
-        
-        train_prob_f,debugout2,debugout1,deb_G, _,gloss,summary=self.sess.run([self.whole_net,
-                                                                                self.debug2, self.debug,                                                 
-                                                                                self.test_ori_loss_G, 
-                                                                                self.train_G, self.G_loss_mean,
-                                                                                self.summary_all], 
-                                                                                     feed_dict={  self.noise_pla: noise , self.training:True})
-        
-        print ('trained G:')
-        print('D_first kernel[0,0,:,0]:\n',debugout2,debugout2-self.deb_kep)
-        self.deb_kep=debugout2
-        print ('G_last kernel[0,0,:,0]:\n',debugout1,debugout1-self.deb_kep2)
-        self.deb_kep2=debugout1
-        
-        '''
-        #原版训练，有问题
-        train_prob_f,train_prob_t,debugout2,debugout1,lrr, deb_D,deb_G, _,_,dloss,gloss,summary=self.sess.run([self.whole_net,self.D_net,
-                                                                                self.debug2, self.debug, 
-                                                                                self.lr_rate, 
-                                                                                self.test_ori_loss_D ,self.test_ori_loss_G, 
-                                                            self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,
-                                                            self.summary_all], 
-                                                           feed_dict={  self.noise_pla: noise , self.training:True})
-        '''
-        
-        
-        print ('the lr_rate is:', lrr)
-        print ('this train probs:', 'true:',np.mean(train_prob_t), '   false:',np.mean(train_prob_f))
-        #print ('MyGloss:',deb_G, '  MyDloss:',deb_D)
-
-        return summary,dloss,gloss    
+        return summary   
        
     
     def Run_G(self, training=False):
-        noise=self.get_noise()
-        inerimg, outerprob=self.sess.run([self.G_net, self.whole_net], feed_dict={self.noise_pla: noise, self.training:training})
-        return inerimg, outerprob
+        tepimgs=self.getbatch_test_imgs()
+        inerimg, D1_prob, D2_prob=self.sess.run([self.G_net, self.D_linear_net_F, self.D_clear_net_F], feed_dict={self.imgs_pla:tepimgs, self.training:training})
+        
+        return tepimgs, inerimg, D1_prob, D2_prob
     
     def Run_WholeNet(self, training=False):
         '''
@@ -326,15 +274,15 @@ class GAN_Net:
         if not op.isdir(desdir): os.makedirs(desdir)
         
         #这里cnt不应该大于batchsize(64)
-        cnt=4
+        cnt=6
         
         #中间用cnt像素的黑色线分隔图片
-        bigimg_len=img_size*cnt+(cnt-1)*cnt
+        bigimg_len=[ img_size_h*cnt+(cnt-1)*cnt, img_size_w*4+(cnt-1)*cnt]  #     img_size*cnt+(cnt-1)*cnt
         bigimg_bests=np.zeros([bigimg_len[0],bigimg_len[1],3], dtype=np.uint8)
         bigimg_name='step-'+str(step)+'_cnt-'+str(cnt)+'_batchsize-'+str(batchsize)+'.png'
         
         for i in range(cnt):
-            tepimgs,probs=self.Run_G()
+            tepimgs, inerimg, D1_prob, D2_prob=self.Run_G()
             #保存原图
             for ind,j in enumerate(tepimgs[:cnt*3]):  
                 #print (j[0][0][0])
@@ -502,7 +450,7 @@ if __name__ == '__main__':
             stt=time.time()
             print ('\n%d/%d  start train_once...'%(i,maxstep))
             #lost,sum_log=vgg.train_once(sess) #这里每次训练都run一个summary出来
-            sum_log,dloss,gloss=gan.train_once_all()
+            sum_log=gan.train_once_all()
             #写入日志
             logwriter.add_summary(sum_log, i)
             #print ('write summary done!')
@@ -512,9 +460,7 @@ if __name__ == '__main__':
             real,fake=gan.evla_D_once(1)
             print ('once prob of real/fake:',real,fake)
             
-            print ('train once-->gloss:',gloss,'  dloss:',dloss)
-            
-            print ('time used:',time.time()-stt,' to be ',1.0/(time.time()-stt),' iters/s')
+            print ('time used:',time.time()-stt,' to be ',1.0/(time.time()-stt),' iters/s', ' left time:',(time.time()-stt)*(maxstep-i))
             
         
         print ('Training done!!!-->time used:',(time.time()-begin_t),'s = ',(time.time()-begin_t)/60,' min')
