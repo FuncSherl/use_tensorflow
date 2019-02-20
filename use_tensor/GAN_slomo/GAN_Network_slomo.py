@@ -32,7 +32,6 @@ base_lr=0.0002 #基础学习率
 beta1=0.5
 
 maxstep=160000 #训练多少次
-eval_step=int (test_size/batchsize)
 
 decay_steps=10000
 decay_rate=0.99
@@ -60,6 +59,7 @@ D_2_withbias=True
 #一次输入网络多少图片，这里设定为3帧，利用前后帧预测中间
 G_group_img_num=3
 img_channel=datasupply.img_channel  #3
+eval_step=int (test_size/batchsize/G_group_img_num)
 
 logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 
