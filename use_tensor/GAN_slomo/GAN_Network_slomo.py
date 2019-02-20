@@ -12,7 +12,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from GAN_tools import *
-import Dataset_adobe240fps_supply as datasupply
+from data import create_dataset as cdata
+
 
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -20,12 +21,12 @@ import Dataset_adobe240fps_supply as datasupply
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 
-train_size=datasupply.train_frames_sum #训练集规模 ：112064 
-test_size=datasupply.test_frames_sum   #测试集规模：8508
+train_size=112064 
+test_size=8508
 batchsize=20
 
-img_size_w=datasupply.target_imgw  #640
-img_size_h=datasupply.target_imgh   #360
+img_size_w=640
+img_size_h=360
 img_size=[img_size_h, img_size_w]
 
 base_lr=0.0002 #基础学习率
@@ -58,7 +59,7 @@ D_2_withbias=True
 
 #一次输入网络多少图片，这里设定为3帧，利用前后帧预测中间
 G_group_img_num=3
-img_channel=datasupply.img_channel  #3
+img_channel=3
 eval_step=int (test_size/batchsize/G_group_img_num)
 
 logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
@@ -66,6 +67,8 @@ logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,b
 bigimgsdir=op.join(logdir, 'randomimgs')
 if not op.exists(bigimgsdir): os.makedirs(bigimgsdir)
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+pipline_data_train=cdata.get_pipline_data_train(img_size, batchsize)
+pipline_data_test=cdata.get_pipline_data_test(img_size, batchsize)
 
 
 class GAN_Net:
@@ -151,12 +154,12 @@ class GAN_Net:
         tep= (tanhd+1)*255//2
         return tep.astype(np.uint8)  
     
-    def getbatch_train_imgs(self, batchsize=batchsize):
-        tepimg=datasupply.get_train_batchdata(batchsize, G_group_img_num)
+    def getbatch_train_imgs(self):
+        tepimg=self.sess.run(pipline_data_train)
         return self.img2tanh(tepimg)
     
-    def getbatch_test_imgs(self, batchsize=batchsize):
-        tepimg=datasupply.get_test_batchdata(batchsize, G_group_img_num)
+    def getbatch_test_imgs(self):
+        tepimg=self.sess.run(pipline_data_test)
         return self.img2tanh(tepimg)
     
     def D_loss_TandF_logits(self, logits_t, logits_f, summaryname='default'):

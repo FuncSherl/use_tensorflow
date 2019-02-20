@@ -174,6 +174,12 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=24):
 
     return image_batch
 
+def get_pipline_data_train(imgsize, batchsize):
+    return read_tfrecord_batch(tfrec_dir_train, imgsize, batchsize)
+
+def get_pipline_data_test(imgsize, batchsize):
+    return read_tfrecord_batch(tfrec_dir_test, imgsize, batchsize)
+
 def test_showtfimgs(tfdir):
     tep=read_tfrecord_batch(tfdir)
     with tf.Session() as sess:
