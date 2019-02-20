@@ -1,3 +1,5 @@
 /logs/
 /data/original_high_fps_videos
 /data/extracted_videos
+*.out
+*.log
