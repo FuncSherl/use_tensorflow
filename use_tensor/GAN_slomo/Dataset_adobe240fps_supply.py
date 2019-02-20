@@ -58,8 +58,12 @@ def get_test_batchdata(batchsize=10, num_each=3):
     notice batchsize not bigger than len(train_dir)
     return_shape [batchsize,  img_h, img_w, img_channel*num_each]
     '''
+    mv_list=[]
     ret=np.zeros([batchsize, target_imgh, target_imgw,img_channel*num_each])
-    mv_list=random.sample(test_dir, batchsize)
+    while batchsize>len(test_dir):
+        batchsize-=len(test_dir)
+        mv_list+=test_dir
+    mv_list+=random.sample(test_dir, batchsize)
     for ind,i in enumerate(mv_list):
         tep=os.listdir(i)
         tep.sort()

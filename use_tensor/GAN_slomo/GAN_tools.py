@@ -128,7 +128,7 @@ def my_unet(inputdata, layercnt=5,  filterlen=3, withbias=True):
     inputshape=inputdata.get_shape().as_list()
     channel_init=inputshape[-1]
     
-    tep=my_conv(inputdata, 3, channel_init*2, scopename='unet_down_start', stride=1,  withbias=withbias)
+    tep=my_conv(inputdata, filterlen+int(layercnt/2), channel_init*2, scopename='unet_down_start', stride=1,  withbias=withbias)
     tep=my_lrelu(tep, 'unet_down_start')
     
     #print (tep)

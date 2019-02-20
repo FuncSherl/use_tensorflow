@@ -111,17 +111,17 @@ class GAN_Net:
         #下面是G的loss
         self.G_loss_mean_D1=self.G_loss_F_logits(self.D_linear_net_F_logit, 'G_loss_D1')
         self.G_loss_mean_D2=self.G_loss_F_logits(self.D_clear_net_F_logit, 'G_loss_D2')
-        self.G_loss_all=self.G_loss_mean_D1 + self.G_loss_mean_D2
-        
-        #训练使用
-        self.train_D=self.train_op_D(decay_steps, decay_rate)
-        self.train_G=self.train_op_G(decay_steps, decay_rate)        
+        self.G_loss_all=self.G_loss_mean_D1 + self.G_loss_mean_D2      
         
         #还是应该以tf.trainable_variables()为主
         t_vars=tf.trainable_variables()
         print ("trainable vars cnt:",len(t_vars))
         self.G_para=[var for var in t_vars if var.name.startswith('G')]
         self.D_para=[var for var in t_vars if var.name.startswith('D')]
+        
+        #训练使用
+        self.train_D=self.train_op_D(decay_steps, decay_rate)
+        self.train_G=self.train_op_G(decay_steps, decay_rate)  
         
         '''
         print ('\nshow all trainable vars:',len(tf.trainable_variables()))
@@ -154,7 +154,7 @@ class GAN_Net:
         tepimg=datasupply.get_train_batchdata(batchsize, G_group_img_num)
         return self.img2tanh(tepimg)
     
-    def getbatch_test_imgs(self, batchsize=10):
+    def getbatch_test_imgs(self, batchsize=batchsize):
         tepimg=datasupply.get_test_batchdata(batchsize, G_group_img_num)
         return self.img2tanh(tepimg)
     
@@ -250,23 +250,23 @@ class GAN_Net:
         
         return tepimgs, inerimg, D1_prob, D2_prob
     
-    def Run_WholeNet(self, training=False):
+    def Run_D_T(self, training=False):
         '''
         training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
         '''
-        noise=self.get_noise()
-        probs=self.sess.run(self.whole_net, feed_dict={self.noise_pla: noise, self.training:training})
-        return probs
+        tepimgs=self.getbatch_test_imgs()
+        D1_probs,D2_probs=self.sess.run([self.D_linear_net_T,self.D_clear_net_T], feed_dict={self.imgs_pla:tepimgs, self.training:training})
+        return D1_probs,D2_probs
     
-    def Run_D(self, training=False):
+    def Run_D_F(self, training=False):
           
         '''
         #这里imgs要求是tanh化过的，即归一化到-1~1 
         training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
         ''' 
-        probs=self.sess.run(self.D_net, feed_dict={self.training:training})  #, feed_dict={ self.imgs_pla: self.img2tanh(self.tf_inimg) })
-        #越接近真实图像越接近1
-        return probs
+        tepimgs=self.getbatch_test_imgs()
+        D1_probs,D2_probs=self.sess.run([self.D_linear_net_F,self.D_clear_net_F], feed_dict={self.imgs_pla:tepimgs, self.training:training})
+        return D1_probs,D2_probs
     
     
     def eval_G_once(self, step=0):
@@ -277,50 +277,62 @@ class GAN_Net:
         cnt=6
         
         #中间用cnt像素的黑色线分隔图片
-        bigimg_len=[ img_size_h*cnt+(cnt-1)*cnt, img_size_w*4+(cnt-1)*cnt]  #     img_size*cnt+(cnt-1)*cnt
-        bigimg_bests=np.zeros([bigimg_len[0],bigimg_len[1],3], dtype=np.uint8)
-        bigimg_name='step-'+str(step)+'_cnt-'+str(cnt)+'_batchsize-'+str(batchsize)+'.png'
+        bigimg_len=[ img_size_h*cnt+(cnt-1)*cnt, img_size_w*(G_group_img_num+1)+(G_group_img_num)*cnt]  #     img_size*cnt+(cnt-1)*cnt
+        bigimg_bests=np.zeros([bigimg_len[0],bigimg_len[1],img_channel], dtype=np.uint8)
         
         for i in range(cnt):
             tepimgs, inerimg, D1_prob, D2_prob=self.Run_G()
+            inerimg=self.tanh2img(inerimg)
             #保存原图
-            for ind,j in enumerate(tepimgs[:cnt*3]):  
+            for ind,j in enumerate(tepimgs[:cnt]):  
                 #print (j[0][0][0])
-                j=self.tanh2img(j)      
-                #print (j[0][0][0])        
-                im = Image.fromarray(j)
-                imgname=str(i)+'_'+str(ind)+".jpg"
-                im.save(op.join(desdir, imgname))
-            
+                j=self.tanh2img(j) 
+                imgname=str(i)+'_'+str(ind)
+                dirinstep=op.join(desdir, imgname)
+                
+                for ki in range(G_group_img_num):      
+                    im = j[:,:, ki*img_channel:(ki+1)*img_channel]
+                    os.makedirs(dirinstep, exist_ok=True)
+                    cv2.imwrite(op.join(dirinstep, str(ki)+'.jpg'), im)
+                
+                cv2.imwrite(op.join(dirinstep, 'fake_D1_'+str(D1_prob[ind])+'_D2_'+str(D2_prob[ind])+'.jpg'  ),inerimg[ind])
             #每个batch选随机的cnt个合成图片
             #print (probs.shape)
             tep=list(range(batchsize))
-            random.shuffle(tep) #随机取cnt个图
-            tep=tep[:cnt]  #np.argsort(probs[:,0])[-cnt:]
+            tep=random.sample(tep, 1) #随机取1个图
             #print (tep)
-            for ind,j in enumerate(tep):
-                st_x= ind*(img_size+cnt) #列
-                st_y= i*(img_size+cnt) #行
-                bigimg_bests[st_y:st_y+img_size, st_x:st_x+img_size,:]=self.tanh2img(tepimgs[j])
+            #every line is frame1,2,3,fake img
+            for ki in range(G_group_img_num):
+                st_x= ki*(img_size_w+cnt) #列
+                st_y= i*(img_size_h+cnt) #行
+                bigimg_bests[st_y:st_y+img_size_h, st_x:st_x+img_size_w,:]=self.tanh2img(tepimgs[tep, :,:, ki*img_channel:(ki+1)*img_channel])
+            st_x= G_group_img_num*(img_size_w+cnt) #列
+            st_y= i*(img_size_h+cnt) #行
+            bigimg_bests[st_y:st_y+img_size_h, st_x:st_x+img_size_w,:]=inerimg[tep]
         
+        bigimg_name='step-'+str(step)+'_cnt-'+str(cnt)+'_batchsize-'+str(batchsize)+'.png'
         bigimg_dir=op.join(bigimgsdir, bigimg_name)
-        im = Image.fromarray(bigimg_bests)
-        im.save(bigimg_dir)
+        
+        cv2.imwrite(bigimg_dir, bigimg_bests)
             
         print ('eval_G_once,saved imgs to:',desdir, '\nbestimgs to:',bigimg_dir)
         
     def evla_D_once(self,eval_step=eval_step):
-        cnt_real=0
-        cnt_fake=0
+        cnt_real1=0
+        cnt_real2=0
+        cnt_fake1=0
+        cnt_fake2=0
         for i in range(eval_step):
-            probs=self.Run_WholeNet()
+            prob1,prob2=self.Run_D_F()
             #print ('show prob shape:',probs.shape)  #[32,1]
-            cnt_fake+=np.mean(probs)
+            cnt_fake1+=np.mean(prob1)
+            cnt_fake2+=np.mean(prob2)
         
         for i in range(eval_step):
-            probs=self.Run_D()
-            cnt_real+=np.mean(probs)
-        return cnt_real/eval_step, cnt_fake/eval_step
+            prob1,prob2=self.Run_D_T()
+            cnt_real1+=np.mean(prob1)
+            cnt_real2+=np.mean(prob2)
+        return [cnt_real1/eval_step,cnt_real2/eval_step], [cnt_fake1/eval_step, cnt_fake2/eval_step]
         
     
     def Generator_net(self, inputdata, withbias=G_withbias, filterlen=G_filter_len):
@@ -431,13 +443,15 @@ if __name__ == '__main__':
                 
                 #自己构建summary
                 tsummary = tf.Summary()
-                tsummary.value.add(tag='mean prob of real', simple_value=real)
-                tsummary.value.add(tag='mean prob of fake', simple_value=fake)
+                tsummary.value.add(tag='mean prob of real1', simple_value=real[0])
+                tsummary.value.add(tag='mean prob of fake1', simple_value=fake[0])
+                tsummary.value.add(tag='mean prob of real2', simple_value=real[1])
+                tsummary.value.add(tag='mean prob of fake2', simple_value=fake[1])
                 #tsummary.value.add(tag='test epoch loss:', simple_value=tloss)
                 #写入日志
                 logwriter.add_summary(tsummary, i)
                 
-            if i==0 or (i+1)%1000==0:#保存一波图片
+            if i==0 or (i+1)%1500==0:#保存一波图片
                 gan.eval_G_once(i)
                 
                 
