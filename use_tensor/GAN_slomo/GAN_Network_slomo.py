@@ -85,24 +85,37 @@ class GAN_Net:
         self.imgs_pla = tf.placeholder(tf.float32, [batchsize, img_size_h, img_size_w, G_group_img_num*img_channel], name='imgs_in')
         self.training=tf.placeholder(tf.bool, name='training_in')
         
-        frame0and2=tf.concat([self.imgs_pla[:,:,:,0:3], self.imgs_pla[:,:,:,6:]], 3)
-        print ('after concat:',frame0and2)
+        self.frame0=self.imgs_pla[:,:,:,:3]
+        self.frame1=self.imgs_pla[:,:,:,3:6]
+        self.frame2=self.imgs_pla[:,:,:,6:]
+        
+        frame0and2=tf.concat([self.frame0, self.frame2], 3)
+        #print ('after concat:',frame0and2)
         self.G_net=self.Generator_net(frame0and2)
         
+        #D_1的输出 
+        frame0_False_2=tf.concat([self.frame0, self.G_net,self.frame2], 3)
+        self.D_linear_net_F, self.D_linear_net_F_logit=self.Discriminator_net_linear(frame0_False_2)
+        self.D_linear_net_T, self.D_linear_net_T_logit=self.Discriminator_net_linear(self.imgs_pla)
+        self.D_linear_net_loss_sum, self.D_linear_net_loss_T, self.D_linear_net_loss_F=self.D_loss_TandF_logits(self.D_linear_net_T_logit, \
+                                                                                                                self.D_linear_net_F_logit, "D_linear_net")
         
-        self.D_linear_net=self.Discriminator_net_linear()
+        #D_2的输出
+        self.D_clear_net_F, self.D_clear_net_F_logit=self.Discriminator_net_clear(self.G_net)
+        self.D_clear_net_T, self.D_clear_net_T_logit=self.Discriminator_net_clear(self.frame1)
+        self.D_clear_net_loss_sum, self.D_clear_net_loss_T, self.D_clear_net_loss_F=self.D_loss_TandF_logits(self.D_clear_net_T_logit, \
+                                                                                                                self.D_clear_net_F_logit, "D_clear_net")
+        #这里对两个D的loss没有特殊处理，只是简单相加
+        self.D_loss_all=self.D_clear_net_loss_sum + self.D_linear_net_loss_sum
         
+        #下面是G的loss
+        self.G_loss_mean_D1=self.G_loss_F_logits(self.D_linear_net_F_logit, 'G_loss_D1')
+        self.G_loss_mean_D2=self.G_loss_F_logits(self.D_clear_net_F_logit, 'G_loss_D2')
+        self.G_loss_all=self.G_loss_mean_D1 + self.G_loss_mean_D2
         
-        
-        
-        
-        #将g和d连起来看做一个网络，即给d输入fake imgs
-        self.whole_net,self.D_fake_logit=self.Discriminator_net(self.Generator_net(self.noise_pla))
-        #由于有重复构建网络结构的操作，这里重新清零保持weight的list，这样就能保障每个weight tensor只在list中出现一次
-
-        self.G_net=self.Generator_net(self.noise_pla)
-        self.D_net,self.D_real_logit=self.Discriminator_net(  self.img2tanh(self.tf_inimg)  ) #self.imgs_pla
-        
+        #训练使用
+        self.train_D=self.train_op_D(decay_steps, decay_rate)
+        self.train_G=self.train_op_G(decay_steps, decay_rate)        
         
         #还是应该以tf.trainable_variables()为主
         t_vars=tf.trainable_variables()
@@ -115,13 +128,6 @@ class GAN_Net:
         for i in tf.trainable_variables():
             print (i)
         '''
-        
-        
-        self.D_loss_mean,self.D_real_loss_mean, self.D_fake_loss_mean=self.D_loss()
-        self.G_loss_mean=self.G_loss()
-        self.train_D, self.train_D_real, self.train_D_fake=self.trainonce_D(decay_steps, decay_rate)
-        self.train_G=self.trainonce_G(decay_steps, decay_rate)
-        
         print ('\nfirst show G params')
         for ind,i in enumerate(self.G_para): print (ind,i)
         
@@ -132,7 +138,7 @@ class GAN_Net:
         print (tf.get_collection(tf.GraphKeys.UPDATE_OPS))
         
         self.summary_all=tf.summary.merge_all()
-        init = tf.global_variables_initializer()#初始化tf.Variable,虽然后面会有初始化权重过程，但是最后一层是要根据任务来的,无法finetune，其参数需要随机初始化
+        init = tf.global_variables_initializer()#初始化tf.Variable
         self.sess.run(init)
         
         
@@ -152,81 +158,61 @@ class GAN_Net:
         tepimg=datasupply.get_test_batchdata(batchsize, G_group_img_num)
         return self.img2tanh(tepimg)
     
-    def D_loss(self):
-        self.D_loss_fir=tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_real_logit, labels=tf.ones_like(self.D_net))   #real
+    def D_loss_TandF_logits(self, logits_t, logits_f, summaryname='default'):
+        self.D_loss_fir=tf.nn.sigmoid_cross_entropy_with_logits(logits=logits_t, labels=tf.ones_like(logits_t))   #real
         
-        #下面是原来有问题的loss函数，探究下为什么有问题
-        tep_real=tf.reduce_mean(tf.log(tf.maximum(self.D_net,incase_div_zero) )  )#real
         
-        self.D_loss_sec=tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logit, labels=tf.zeros_like(self.whole_net))  #fake
+        self.D_loss_sec=tf.nn.sigmoid_cross_entropy_with_logits(logits=logits_f, labels=tf.zeros_like(logits_f))  #fake
         
-        #下面是原来有问题的loss函数，探究下为什么有问题
-        tep_fake=tf.reduce_mean( tf.log( tf.maximum(self.whole_net*(-1)+1,incase_div_zero)  ) ) #fake
-        '''
-        loss=tf.add_n([self.D_loss_fir,self.D_loss_sec] )
-        #print ('loss shape:',loss.get_shape())
-        loss_mean = tf.reduce_mean(loss, name='D_loss_mean')
-        '''
-        
+       
         #testing target
         real_loss_mean=tf.reduce_mean(self.D_loss_fir)
         fake_loss_mean=tf.reduce_mean(self.D_loss_sec)
-        tf.summary.scalar('D_DNET_loss_mean',real_loss_mean)
-        tf.summary.scalar('D_WholeNet_loss_mean',fake_loss_mean)
+        tf.summary.scalar(summaryname+'_real_loss_mean',real_loss_mean)
+        tf.summary.scalar(summaryname+'_fake_loss_mean',fake_loss_mean)
         
         loss_mean=real_loss_mean+fake_loss_mean
         
-        tf.summary.scalar('D_loss_mean',loss_mean)        
+        tf.summary.scalar(summaryname+'_sum_loss_mean',loss_mean)        
         ############################################################
-        
-        #下面是原来有问题的loss函数，探究下为什么有问题
-        self.test_ori_loss_D=-(tep_fake+tep_real)
         
         return loss_mean,real_loss_mean,fake_loss_mean
         
     
-    def G_loss(self):
-        self.G_loss_fir=tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logit, labels=tf.ones_like(self.whole_net))
-        loss_mean = tf.reduce_mean(self.G_loss_fir, name='G_loss_mean')
-        tf.summary.scalar('G_loss_mean',loss_mean)
-        
-        
-        #下面是原来有问题的loss函数，探究下为什么有问题
-        self.test_ori_loss_G=-tf.reduce_mean( tf.log( tf.maximum(self.whole_net, incase_div_zero)  ))
+    def G_loss_F_logits(self, logits, summaryname='default'):
+        self.G_loss_fir=tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=tf.ones_like(logits))
+        loss_mean = tf.reduce_mean(self.G_loss_fir)
+        tf.summary.scalar(summaryname+'_loss_mean',loss_mean)
         
         return loss_mean
     
     
-    def trainonce_G(self,decay_steps=8000, decay_rate=0.99, beta1=beta1):
+    def train_op_G(self,decay_steps=8000, decay_rate=0.99, beta1=beta1):
         #self.lr_rate = base_lr
         self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         
         print ('G: AdamOptimizer to maxmize %d vars..'%(len(self.G_para)))
         
-        #这将lr调为负数，因为应该最大化目标
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             self.G_optimizer=tf.train.AdamOptimizer(self.lr_rate  , beta1=beta1)
             
             #for i in optimizer.compute_gradients(self.G_loss_mean, var_list=self.G_para): print (i)
             
-            train_op =self.G_optimizer.minimize(self.G_loss_mean, global_step=self.global_step,var_list=self.G_para)
+            train_op =self.G_optimizer.minimize(self.G_loss_all, global_step=self.global_step,var_list=self.G_para)
         
         return train_op
     
-    def trainonce_D(self,decay_steps=8000, decay_rate=0.99, beta1=beta1):
+    def train_op_D(self,decay_steps=8000, decay_rate=0.99, beta1=beta1):
         #self.lr_rate = base_lr
         self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         
         print ('D: AdamOptimizer to maxmize %d vars..'%(len(self.D_para)))
         
-        #这将lr调为负数，因为应该最大化目标
         #这里就不管globalstep了，否则一次迭代会加2次
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             self.D_optimizer= tf.train.AdamOptimizer(self.lr_rate  , beta1=beta1)
-            train_op=self.D_optimizer.minimize(self.D_loss_mean, var_list=self.D_para)   #global_step=self.global_step,
-            train_op_real=self.D_optimizer.minimize(self.D_real_loss_mean, var_list=self.D_para) 
-            train_op_fake=self.D_optimizer.minimize(self.D_fake_loss_mean, var_list=self.D_para) 
-        return train_op,train_op_real,train_op_fake
+            train_op=self.D_optimizer.minimize(self.D_loss_all, var_list=self.D_para)   #global_step=self.global_step,
+        return train_op
                                                                                                                                                        
     
     
@@ -234,6 +220,25 @@ class GAN_Net:
     #tensor 范围外   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     
     def train_once_all(self):
+        tepimgs=self.getbatch_train_imgs()
+        
+        lrrate,_,D1_T_prob, D1_F_prob, D2_T_prob, D2_F_prob, D1_loss, D2_loss, D_loss_sum_all =self.sess.run([self.lr_rate, self.train_D , \
+                                                      self.D_linear_net_T, self.D_linear_net_F,\
+                                                      self.D_clear_net_T, self.D_clear_net_F,  \
+                                                      self.D_linear_net_loss_sum, self.D_clear_net_loss_sum, self.D_loss_all], \
+                                                                            feed_dict={  self.imgs_pla:tepimgs , self.training:True})
+        print ('trained D:')
+        print ('lr:',lrrate)
+        print ('D1(D_linear) prob T/F --> ',D1_T_prob,'/', D1_F_prob)
+        print ('D1 loss_all:',D1_loss)
+        print ('D2(D_clear) prob T/F --> ',D2_T_prob,'/', D2_F_prob)
+        print ('D2 loss_all:',D2_loss)
+        
+        
+        
+        
+        
+        
         #print ('deb1',self.sess.run(self.debug))                   
         
         #debug2 d_fir  debug:g_last
@@ -395,7 +400,8 @@ class GAN_Net:
         initchannel=inputshape[-1]
         
             
-        with tf.variable_scope("D_1_Net",  reuse=tf.AUTO_REUSE) as scope:
+        with tf.variable_scope("D_1_Net",  reuse=tf.AUTO_REUSE) as scopevar:
+            scope=scopevar.name
             tep=my_conv(self.imgs_float32, filterlen+int(layer_cnt/2), initchannel*2, scope+'_start', stride=2, withbias=withbias)
     
             #tep=my_batchnorm( tep,self.training, scope)   #第一层不要bn试试
@@ -415,7 +421,7 @@ class GAN_Net:
             self.D_1_sigmoid=tf.nn.sigmoid(tep, name='D_1_sigmoid')
             print (self.D_1_sigmoid)
             
-        return self.D_1_sigmoid
+        return self.D_1_sigmoid, tep
     
     
     def Discriminator_net_clear(self, imgs, withbias=D_2_withbias, filterlen=D_2_filterlen):
@@ -431,7 +437,8 @@ class GAN_Net:
         inputshape=imgs.get_shape().as_list()
         initchannel=inputshape[-1]
             
-        with tf.variable_scope("D_2_Net",  reuse=tf.AUTO_REUSE) as scope:
+        with tf.variable_scope("D_2_Net",  reuse=tf.AUTO_REUSE) as scopevar:
+            scope=scopevar.name
             tep=my_conv(self.imgs_float32, filterlen+int(layer_cnt/2), initchannel*2, scope+'_start', stride=2, withbias=withbias)
     
             #tep=my_batchnorm( tep,self.training, scope)   #第一层不要bn试试
@@ -451,7 +458,7 @@ class GAN_Net:
             #sigmoid
             self.D_2_sigmoid=tf.nn.sigmoid(tep, name='D_2_sigmoid')
             
-        return self.D_2_sigmoid
+        return self.D_2_sigmoid, tep
         
         
 
