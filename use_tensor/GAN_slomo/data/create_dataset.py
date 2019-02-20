@@ -137,7 +137,7 @@ def preprocess_img(image,outlen):
     #image = tf.image.random_flip_left_right(image)
     return image
 
-def read_tfrecord_batch(tfdir, imgsize, batchsize=32):
+def read_tfrecord_batch(tfdir, imgsize, batchsize=24):
     '''
     imgsize:[new_height, new_width]
     '''
@@ -179,7 +179,7 @@ def test_showtfimgs(tfdir):
     with tf.Session() as sess:
         while True:
             images=sess.run(tep)
-            plt.imshow(images[0,:,:,:3])
+            plt.imshow(images[0,:,:,3:6])
             #cv2.waitKey(0)
             plt.show()
 
@@ -191,7 +191,7 @@ def gen_tfrecords():
 if __name__ == '__main__':
     #txt2frames(train_txt ,extratdir_train)
     #txt2frames(test_txt, extratdir_test)
-    gen_tfrecords()
+    #gen_tfrecords()
     test_showtfimgs(tfrec_dir_train)
             
             
