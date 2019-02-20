@@ -1,13 +1,15 @@
 import cv2
-import os
+import os,random
+import numpy as np
 import os.path as op
+import tensorflow as tf
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'
 
-pc_id=2
+pc_id=1
 
 if pc_id==0: videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
 elif pc_id==1: videodir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/original_high_fps_videos' #
@@ -20,6 +22,13 @@ elif pc_id==2:extratdir_train=r'/media/ms/document/xvhao/use_tensorflow/use_tens
 if pc_id==0: extratdir_test=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\extracted_videos/test' 
 elif pc_id==1: extratdir_test=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos/test' #
 elif pc_id==2: extratdir_test=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/extracted_videos/test'
+
+if pc_id==0: tfrec_dir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\tfrecords' 
+elif pc_id==1: tfrec_dir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/tfrecords' #
+elif pc_id==2: tfrec_dir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/tfrecords'
+
+tfrec_dir_train=op.join(tfrec_dir, 'train')
+tfrec_dir_test=op.join(tfrec_dir, 'test')
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 '''
 def get_trainframe_dirs():
@@ -71,10 +80,108 @@ def txt2frames(txtpath, extratdir):
             resu=video2frame(movpath, outpath)
             cnt+=resu
         print (txtpath,'done:',cnt,' frames\n')
+        
+def frames2tfrec(frame_dir, tfrecdir, group_num=3, imgs_perfile=4000):
+    '''
+    framedir:a root dir, contains many dirs which is one for a video
+    group_num:3frame is a group
+    '''
+    if not op.isdir(tfrecdir): os.makedirs(tfrecdir)
+    
+    cnt_num=0
+    videodirs=os.listdir(frame_dir)
+    for dirind,i in enumerate(videodirs):
+        tepath=op.join(frame_dir, i) #path in video
+        framelist=os.listdir(tepath)
+        framelist.sort()
+        for j in range(len(framelist)-group_num):
+            print (dirind,'/',len(videodirs),'  ',j,'/',len(framelist), cnt_num)
+            imgdata=[]
+            #print (imgdata.dtype, type(imgdata))
+            for tepj in range(j,j+group_num):
+                rimg=cv2.imread(op.join(tepath, framelist[tepj]))
+                imgdata.append(rimg)
+            groupdata=np.concatenate(imgdata,axis=2)
+            size=groupdata.shape  #(720, 1280, 9)
+            groupdata_raw=groupdata.tobytes()#将图片转化为二进制格式
             
+            #print (size)
+            if cnt_num%imgs_perfile==0:
+                ftrecordfilename = (op.split(tfrecdir)[-1].strip()+".tfrecords_%.4d" % int(cnt_num/imgs_perfile))
+                writer= tf.python_io.TFRecordWriter(op.join(tfrecdir,ftrecordfilename))
+            
+            example = tf.train.Example(
+            features=tf.train.Features(feature={
+            #'label': tf.train.Feature(int64_list=tf.train.Int64List(value=[label])),
+            'data': tf.train.Feature(bytes_list=tf.train.BytesList(value=[groupdata_raw])),
+            'width':tf.train.Feature(int64_list=tf.train.Int64List(value=[size[1]])),
+            'height':tf.train.Feature(int64_list=tf.train.Int64List(value=[size[0]]))
+            })) 
+            writer.write(example.SerializeToString())  #序列化为字符串
+            cnt_num+=1
+            
+    writer.close()
+    print ('for all: write to ',tfrecdir,'->',cnt_num,' groups done!!')
+    return cnt_num
+
+def preprocess_img(image,outlen):
+    #这里将图片
+    ''''''
+    image=tf.image.resize_images(image, tuple(outlen))
+    image=tf.cast(image, dtype=tf.float32)
+    
+    #image = tf.image.resize_image_with_crop_or_pad(image, 230, 230)
+    #image = tf.random_crop(image, [outlen, outlen, 3])
+
+    #image = tf.image.random_flip_left_right(image)
+    return image
+
+def read_tfrecord_batch(tfdir, imgsize, batchsize=32):
+    '''
+    imgsize:[new_height, new_width]
+    '''
+    tep=os.listdir(tfdir)
+    random.shuffle(tep)
+    tep=list(map(lambda x:op.join(tfdir, x), tep))
+    print (tep)
+    dataset = tf.data.TFRecordDataset(tep).repeat()
+    
+    
+    def parse(one_element):
+        feats = tf.parse_single_example(one_element, features={'data':tf.FixedLenFeature([], tf.string), 
+                                                           #'label':tf.FixedLenFeature([],tf.int64), 
+                                                           'width':tf.FixedLenFeature([], tf.int64),
+                                                           'height':tf.FixedLenFeature([], tf.int64)})
+        image = tf.decode_raw(feats['data'], tf.uint8)
+        #label = tf.cast(feats['label'],tf.int32)
+        width = tf.cast(feats['width'], tf.int32)
+        height= tf.cast(feats['height'], tf.int32)
+        
+        image=tf.reshape(image,[height,width,-1])
+        image=preprocess_img(image, imgsize)
+        
+        return image
+    
+    dataset=dataset.map(parse,num_parallel_calls=4)#注意把值回赋给dataset
+    
+    dataset=dataset.batch(batchsize).shuffle(batchsize*10)
+    #print("dataset.output_shapes",dataset.output_shapes)
+    
+    iterator = dataset.make_one_shot_iterator()
+
+    image_batch = iterator.get_next()
+
+    return image_batch
+
+def gen_tfrecords():
+    frames2tfrec(extratdir_train, tfrec_dir_train)
+    frames2tfrec(extratdir_test, tfrec_dir_test)
+    
+    
 if __name__ == '__main__':
-    txt2frames(train_txt ,extratdir_train)
-    txt2frames(test_txt, extratdir_test)
+    #txt2frames(train_txt ,extratdir_train)
+    #txt2frames(test_txt, extratdir_test)
+    gen_tfrecords()
             
             
             
