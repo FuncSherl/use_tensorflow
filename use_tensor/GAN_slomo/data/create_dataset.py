@@ -94,14 +94,20 @@ def frames2tfrec(frame_dir, tfrecdir, group_num=3, imgs_perfile=3000, img_shape_
         tepath=op.join(frame_dir, i) #path in video
         framelist=os.listdir(tepath)
         framelist.sort()
-        for j in range(len(framelist)-group_num):
+        
+        imgdata=[]
+        for j in range(len(framelist)):
             print (dirind,'/',len(videodirs),'  ',j,'/',len(framelist), cnt_num)
-            imgdata=[]
+            
+            rimg=cv2.imread(op.join(tepath, framelist[j]))
+            rimg=cv2.resize(rimg, tuple(img_shape_required))
+            imgdata.append(rimg)
+            
+            if len(imgdata)>group_num: imgdata.pop(0)
+            elif len(imgdata)<group_num: continue
+                
             #print (imgdata.dtype, type(imgdata))
-            for tepj in range(j,j+group_num):
-                rimg=cv2.imread(op.join(tepath, framelist[tepj]))
-                rimg=cv2.resize(rimg, tuple(img_shape_required))
-                imgdata.append(rimg)
+            
             groupdata=np.concatenate(imgdata,axis=2)
             size=groupdata.shape  #(720, 1280, 9)
             groupdata_raw=groupdata.tobytes()#将图片转化为二进制格式
