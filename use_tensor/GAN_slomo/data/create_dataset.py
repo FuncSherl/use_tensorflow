@@ -86,7 +86,7 @@ def frames2tfrec(frame_dir, tfrecdir, group_num=3, imgs_perfile=3000, img_shape_
     framedir:a root dir, contains many dirs which is one for a video
     group_num:3frame is a group
     '''
-    if not op.isdir(tfrecdir): os.makedirs(tfrecdir)
+    os.makedirs(tfrecdir, exist_ok=True)
     
     cnt_num=0
     videodirs=os.listdir(frame_dir)
