@@ -38,8 +38,8 @@ decay_rate=0.99
 
 #incase_div_zero=1e-10  #这个值大一些可以避免d训得太好，也避免了g梯度
 
-G_first_channel=12  #不是G的输入channel，而是g的输入经过一次卷积后的输出channel
-D_first_channel=18
+#G_first_channel=12  #不是G的输入channel，而是g的输入经过一次卷积后的输出channel
+#D_first_channel=18
 
 #G中unet的层数
 G_unet_layercnt=5
