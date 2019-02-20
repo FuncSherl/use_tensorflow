@@ -66,8 +66,7 @@ logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,b
 bigimgsdir=op.join(logdir, 'randomimgs')
 if not op.exists(bigimgsdir): os.makedirs(bigimgsdir)
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-pipline_data_train=cdata.get_pipline_data_train(img_size, batchsize)
-pipline_data_test=cdata.get_pipline_data_test(img_size, batchsize)
+
 
 
 class GAN_Net:
@@ -82,6 +81,10 @@ class GAN_Net:
         self.cnt_tep=0
         self.deb_kep=0
         self.deb_kep2=0
+        
+        #for data input
+        self.pipline_data_train=cdata.get_pipline_data_train(img_size, batchsize)
+        self.pipline_data_test=cdata.get_pipline_data_test(img_size, batchsize)
         
         #3个placeholder， img和noise,training 
         self.imgs_pla = tf.placeholder(tf.float32, [batchsize, img_size_h, img_size_w, G_group_img_num*img_channel], name='imgs_in')
@@ -154,11 +157,11 @@ class GAN_Net:
         return tep.astype(np.uint8)  
     
     def getbatch_train_imgs(self):
-        tepimg=self.sess.run(pipline_data_train)
+        tepimg=self.sess.run(self.pipline_data_train)
         return self.img2tanh(tepimg)
     
     def getbatch_test_imgs(self):
-        tepimg=self.sess.run(pipline_data_test)
+        tepimg=self.sess.run(self.pipline_data_test)
         return self.img2tanh(tepimg)
     
     def D_loss_TandF_logits(self, logits_t, logits_f, summaryname='default'):
