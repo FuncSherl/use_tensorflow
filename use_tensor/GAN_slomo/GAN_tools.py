@@ -5,7 +5,6 @@ Created on 2019年2月19日
 @author: sherl
 '''
 import tensorflow as tf
-import GAN_Network_slomo as Gslomo
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 dropout=0.5 
@@ -156,7 +155,7 @@ def my_D_block(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=
 
 
 if __name__ == '__main__':
-    imgs_pla = tf.placeholder(datatype, [32, Gslomo.img_size_h, Gslomo.img_size_w, Gslomo.img_channel*2], name='imgs_in')
+    imgs_pla = tf.placeholder(datatype, [32, 360, 720, 3*2], name='imgs_in')
     
     with tf.variable_scope("G_Net",  reuse=tf.AUTO_REUSE) as scope:
         tep=my_unet(imgs_pla)
