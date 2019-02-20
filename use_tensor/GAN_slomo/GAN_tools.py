@@ -6,7 +6,6 @@ Created on 2019年2月19日
 '''
 import tensorflow as tf
 import Dataset_adobe240fps_supply as datasupply
-from use_tensor.GAN_slomo.Dataset_adobe240fps_supply import img_channel
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 dropout=0.5 
