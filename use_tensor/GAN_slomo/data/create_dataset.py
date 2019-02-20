@@ -81,7 +81,7 @@ def txt2frames(txtpath, extratdir):
             cnt+=resu
         print (txtpath,'done:',cnt,' frames\n')
         
-def frames2tfrec(frame_dir, tfrecdir, group_num=3, imgs_perfile=4000):
+def frames2tfrec(frame_dir, tfrecdir, group_num=3, imgs_perfile=3000, img_shape_required=[640, 360]):#使用cv2.resize时，参数输入是 宽×高 ，与以往操作不同
     '''
     framedir:a root dir, contains many dirs which is one for a video
     group_num:3frame is a group
@@ -100,12 +100,13 @@ def frames2tfrec(frame_dir, tfrecdir, group_num=3, imgs_perfile=4000):
             #print (imgdata.dtype, type(imgdata))
             for tepj in range(j,j+group_num):
                 rimg=cv2.imread(op.join(tepath, framelist[tepj]))
+                rimg=cv2.resize(rimg, tuple(img_shape_required))
                 imgdata.append(rimg)
             groupdata=np.concatenate(imgdata,axis=2)
             size=groupdata.shape  #(720, 1280, 9)
             groupdata_raw=groupdata.tobytes()#将图片转化为二进制格式
             
-            #print (size)
+            print (size)
             if cnt_num%imgs_perfile==0:
                 ftrecordfilename = (op.split(tfrecdir)[-1].strip()+".tfrecords_%.4d" % int(cnt_num/imgs_perfile))
                 writer= tf.python_io.TFRecordWriter(op.join(tfrecdir,ftrecordfilename))
