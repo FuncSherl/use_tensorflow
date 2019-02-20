@@ -3,6 +3,7 @@ import os,random
 import numpy as np
 import os.path as op
 import tensorflow as tf
+import matplotlib.pyplot as plt
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -15,13 +16,12 @@ if pc_id==0: videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High
 elif pc_id==1: videodir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/original_high_fps_videos' #
 elif pc_id==2: videodir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/original_high_fps_videos'
 
-if pc_id==0: extratdir_train=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\extracted_videos/train' 
-elif pc_id==1:extratdir_train=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos/train' #
-elif pc_id==2:extratdir_train=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/extracted_videos/train'
-    
-if pc_id==0: extratdir_test=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\extracted_videos/test' 
-elif pc_id==1: extratdir_test=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos/test' #
-elif pc_id==2: extratdir_test=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/extracted_videos/test'
+if pc_id==0: extratdir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\extracted_videos' 
+elif pc_id==1:extratdir_train=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos' #
+elif pc_id==2:extratdir_train=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/extracted_videos'
+
+extratdir_train=op.join(extratdir, 'train')
+extratdir_test=op.join(extratdir, 'test')
 
 if pc_id==0: tfrec_dir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\tfrecords' 
 elif pc_id==1: tfrec_dir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/tfrecords' #
@@ -174,6 +174,15 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=32):
 
     return image_batch
 
+def test_showtfimgs(tfdir):
+    tep=read_tfrecord_batch(tfdir)
+    with tf.Session() as sess:
+        while True:
+            images=sess.run(tep)
+            plt.imshow(images[0,:,:,:3])
+            #cv2.waitKey(0)
+            plt.show()
+
 def gen_tfrecords():
     frames2tfrec(extratdir_train, tfrec_dir_train)
     frames2tfrec(extratdir_test, tfrec_dir_test)
@@ -183,6 +192,7 @@ if __name__ == '__main__':
     #txt2frames(train_txt ,extratdir_train)
     #txt2frames(test_txt, extratdir_test)
     gen_tfrecords()
+    test_showtfimgs(tfrec_dir_train)
             
             
             
