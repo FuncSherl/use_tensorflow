@@ -20,7 +20,6 @@ from data import create_dataset as cdata
 
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
-
 train_size=112064 
 test_size=8508
 batchsize=20
@@ -88,11 +87,11 @@ class GAN_Net:
         self.imgs_pla = tf.placeholder(tf.float32, [batchsize, img_size_h, img_size_w, G_group_img_num*img_channel], name='imgs_in')
         self.training=tf.placeholder(tf.bool, name='training_in')
         
-        self.frame0=self.imgs_pla[:,:,:,:3]
-        self.frame1=self.imgs_pla[:,:,:,3:6]
-        self.frame2=self.imgs_pla[:,:,:,6:]
+        self.frame0=self.imgs_pla[:,:,:,:img_channel]
+        self.frame1=self.imgs_pla[:,:,:,img_channel:img_channel*2]
+        self.frame2=self.imgs_pla[:,:,:,img_channel*2:]
         
-        frame0and2=tf.concat([self.frame0, self.frame2], 3)
+        frame0and2=tf.concat([self.frame0, self.frame2], 3) #在第三维度连接起来
         #print ('after concat:',frame0and2)
         self.G_net=self.Generator_net(frame0and2)
         
@@ -278,7 +277,7 @@ class GAN_Net:
         if not op.isdir(desdir): os.makedirs(desdir)
         
         #这里cnt不应该大于batchsize(64)
-        cnt=6
+        cnt=10
         
         #中间用cnt像素的黑色线分隔图片
         bigimg_len=[ img_size_h*cnt+(cnt-1)*cnt, img_size_w*(G_group_img_num+1)+(G_group_img_num)*cnt]  #     img_size*cnt+(cnt-1)*cnt
@@ -288,7 +287,7 @@ class GAN_Net:
             tepimgs, inerimg, D1_prob, D2_prob=self.Run_G()
             inerimg=self.tanh2img(inerimg)
             #保存原图
-            for ind,j in enumerate(tepimgs[:cnt]):  
+            for ind,j in enumerate(tepimgs[:int(cnt/3) ]):  
                 #print (j[0][0][0])
                 j=self.tanh2img(j) 
                 imgname=str(i)+'_'+str(ind)
