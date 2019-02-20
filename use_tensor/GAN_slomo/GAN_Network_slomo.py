@@ -99,12 +99,13 @@ class GAN_Net:
         self.D_linear_net_T, self.D_linear_net_T_logit=self.Discriminator_net_linear(self.imgs_pla)
         self.D_linear_net_loss_sum, self.D_linear_net_loss_T, self.D_linear_net_loss_F=self.D_loss_TandF_logits(self.D_linear_net_T_logit, \
                                                                                                                 self.D_linear_net_F_logit, "D_linear_net")
-        
+        print ('D form finished..')
         #D_2的输出
         self.D_clear_net_F, self.D_clear_net_F_logit=self.Discriminator_net_clear(self.G_net)
         self.D_clear_net_T, self.D_clear_net_T_logit=self.Discriminator_net_clear(self.frame1)
         self.D_clear_net_loss_sum, self.D_clear_net_loss_T, self.D_clear_net_loss_F=self.D_loss_TandF_logits(self.D_clear_net_T_logit, \
                                                                                                                 self.D_clear_net_F_logit, "D_clear_net")
+        print ('G form finished..')
         #这里对两个D的loss没有特殊处理，只是简单相加
         self.D_loss_all=self.D_clear_net_loss_sum + self.D_linear_net_loss_sum
         
@@ -362,14 +363,16 @@ class GAN_Net:
             
         with tf.variable_scope("D_1_Net",  reuse=tf.AUTO_REUSE) as scopevar:
             scope=scopevar.name
-            tep=my_conv(self.imgs_float32, filterlen+int(layer_cnt/2), initchannel*2, scope+'_start', stride=2, withbias=withbias)
+            tep=my_conv(self.imgs_float32, filterlen+int(layer_cnt/2), initchannel*2, scope+'_start', stride=3, withbias=withbias)
     
             #tep=my_batchnorm( tep,self.training, scope)   #第一层不要bn试试
             tep=my_lrelu(tep, scope)
             
             for i in range(layer_cnt):
-                tep=my_D_block(tep, initchannel*( 2**(i+2)), scope+'_Dblock'+str(i), filterlen=filterlen+int( (layer_cnt-i)/2 ), \
+                stridetep=2+int( (layer_cnt-i)/4 )
+                tep=my_D_block(tep, initchannel*( 2**(i+2)), scope+'_Dblock'+str(i),  stride=stridetep, filterlen=filterlen+int( (layer_cnt-i)/2 ), \
                                withbias=withbias, training=self.training)
+                print (tep)
             #######################################################################################################################################
             #fc
             tep=my_fc(tep, 1024, scope+'_fc1',  withbias=withbias)
@@ -399,14 +402,16 @@ class GAN_Net:
             
         with tf.variable_scope("D_2_Net",  reuse=tf.AUTO_REUSE) as scopevar:
             scope=scopevar.name
-            tep=my_conv(self.imgs_float32, filterlen+int(layer_cnt/2), initchannel*2, scope+'_start', stride=2, withbias=withbias)
+            tep=my_conv(self.imgs_float32, filterlen+int(layer_cnt/2), initchannel*2, scope+'_start', stride=3, withbias=withbias)
     
             #tep=my_batchnorm( tep,self.training, scope)   #第一层不要bn试试
             tep=my_lrelu(tep, scope)
             
             for i in range(layer_cnt):
-                tep=my_D_block(tep, initchannel*( 2**(i+2)), scope+'_Dblock'+str(i), filterlen=filterlen+int( (layer_cnt-i)/2 ), \
+                stridetep=2+int( (layer_cnt-i)/4 )
+                tep=my_D_block(tep, initchannel*( 2**(i+2)), scope+'_Dblock'+str(i),stride=stridetep, filterlen=filterlen+int( (layer_cnt-i)/2 ), \
                                withbias=withbias, training=self.training)
+                print (tep)
             #######################################################################################################################################
             #fc
             tep=my_fc(tep, 1024, scope+'_fc1',  withbias=withbias)
