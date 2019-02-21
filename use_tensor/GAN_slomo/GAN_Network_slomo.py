@@ -22,7 +22,7 @@ TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 train_size=112064 
 test_size=8508
-batchsize=20
+batchsize=12
 
 img_size_w=640
 img_size_h=360

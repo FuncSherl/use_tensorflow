@@ -171,7 +171,7 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12):
     
     dataset=dataset.map(parse,num_parallel_calls=4)#注意把值回赋给dataset
     
-    dataset=dataset.batch(batchsize).shuffle(batchsize*10)
+    dataset=dataset.batch(batchsize).shuffle(batchsize*6)
     #print("dataset.output_shapes",dataset.output_shapes)
     
     iterator = dataset.make_one_shot_iterator()
