@@ -4,7 +4,6 @@ import numpy as np
 import os.path as op
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from use_tensor.draw_circle.test_draw_circle import batchsize
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
