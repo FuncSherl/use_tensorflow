@@ -4,6 +4,7 @@ import numpy as np
 import os.path as op
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from use_tensor.draw_circle.test_draw_circle import batchsize
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -143,7 +144,7 @@ def preprocess_img(image,outlen):
     #image = tf.image.random_flip_left_right(image)
     return image
 
-def read_tfrecord_batch(tfdir, imgsize, batchsize=24):
+def read_tfrecord_batch(tfdir, imgsize, batchsize=12):
     '''
     imgsize:[new_height, new_width]
     '''
@@ -186,14 +187,18 @@ def get_pipline_data_train(imgsize, batchsize):
 def get_pipline_data_test(imgsize, batchsize):
     return read_tfrecord_batch(tfrec_dir_test, imgsize, batchsize)
 
-def test_showtfimgs(tfdir):
-    tep=read_tfrecord_batch(tfdir)
+def test_showtfimgs(tfdir, batchsize):
+    tep=read_tfrecord_batch(tfdir, [360, 640], batchsize)
     with tf.Session() as sess:
         while True:
             images=sess.run(tep)
-            plt.imshow(images[0,:,:,3:6])
-            #cv2.waitKey(0)
-            plt.show()
+            cv2.imshow('test',images[0,:,:,:3].astype(np.uint8))
+            cv2.waitKey(0)
+            cv2.imshow('test',images[0,:,:,3:6].astype(np.uint8))
+            cv2.waitKey(0)
+            cv2.imshow('test',images[0,:,:,6:].astype(np.uint8))
+            cv2.waitKey(0)
+            #plt.show()
 
 def gen_tfrecords():
     frames2tfrec(extratdir_train, tfrec_dir_train)
@@ -203,8 +208,8 @@ def gen_tfrecords():
 if __name__ == '__main__':
     #txt2frames(train_txt ,extratdir_train)
     #txt2frames(test_txt, extratdir_test)
-    gen_tfrecords()
-    test_showtfimgs(tfrec_dir_train)
+    #gen_tfrecords()
+    test_showtfimgs(tfrec_dir_train, 5)
             
             
             
