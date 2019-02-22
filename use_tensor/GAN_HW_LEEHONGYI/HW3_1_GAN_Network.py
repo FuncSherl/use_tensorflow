@@ -197,7 +197,7 @@ class GAN_Net:
         '''
         
         noise=self.get_noise()
-        seeb,seeweight,lrr, deb_D,deb_G, _,_,dloss,gloss,summary=self.sess.run([self.debug2, self.debug, self.lr_rate, self.test_ori_loss_D ,self.test_ori_loss_G, 
+        seeb,seeweight,lrr, deb_D,deb_G, _,_,dloss,gloss,summary=self.sess.run([self.D_net, self.whole_net, self.lr_rate, self.test_ori_loss_D ,self.test_ori_loss_G, 
                                                             self.train_D, self.train_G, self.D_loss_mean,self.G_loss_mean,
                                                             self.summary_all], 
                                                            feed_dict={  self.noise_pla: noise , self.training:True})
@@ -210,10 +210,10 @@ class GAN_Net:
             self.cnt_tep+=1
             #if self.cnt_tep>2: exit()
         '''
-        print('G_last_bias:\n',seeweight,seeweight-self.deb_kep)
-        self.deb_kep=seeweight
-        print ('D_fir_bias:\n',seeb[0:3],seeb[0:3]-self.deb_kep2)
-        self.deb_kep2=seeb[0:3]
+        print('train-prob false:',np.mean(seeweight))
+        #self.deb_kep=seeweight
+        print('train-prob true:',np.mean(seeb))
+        #self.deb_kep2=seeb[0:3]
         
         return summary,dloss,gloss
     
@@ -609,6 +609,7 @@ if __name__ == '__main__':
             
             real,fake=gan.evla_D_once(1)
             print ('once prob of real/fake:',real,fake)
+            print ('time used:',time.time()-stt,' to be ',1.0/(time.time()-stt),' iters/s', ' left time:',(time.time()-stt)*(maxstep-i)/60/60,' hours')
             
         
         print ('Training done!!!-->time used:',(time.time()-begin_t),'s = ',(time.time()-begin_t)/60,' min')
