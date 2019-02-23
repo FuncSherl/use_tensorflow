@@ -4,3 +4,5 @@
 /data/tfrecords
 *.out
 *.log
+/logs_v3/
+/logs_*
