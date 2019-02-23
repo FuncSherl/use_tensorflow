@@ -74,6 +74,10 @@ def my_conv(inputdata, filterlen, outchannel,   scopename, stride=2, padding="SA
 def my_lrelu(inputdata, scopename):
     with tf.variable_scope(scopename) as scope:
         return tf.nn.leaky_relu(inputdata, leakyrelurate)
+    
+def my_dropout(inputdata, training, rate=0.5):
+    #dropout??
+    return tf.cond(training, lambda: tf.nn.dropout(inputdata, rate), lambda: inputdata)
 
     
 def my_fc(inputdata,  outchannel,   scopename,  reuse=tf.AUTO_REUSE, withbias=True):

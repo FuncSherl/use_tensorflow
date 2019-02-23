@@ -32,6 +32,7 @@ img_size=[img_size_h, img_size_w]
 
 base_lr=0.0002 #基础学习率
 beta1=0.5
+dropout_rate=0.5
 
 maxstep=160000 #训练多少次
 
@@ -386,6 +387,8 @@ class GAN_Net:
             tep=my_fc(tep, 1024, scope+'_fc1',  withbias=withbias)
             tep=my_lrelu(tep, scope)
             
+            tep=my_dropout(tep, self.training, dropout_rate)
+            
             tep=my_fc(tep, 1, scope+'_fc2',  withbias=withbias)
             
             #sigmoid
@@ -424,6 +427,8 @@ class GAN_Net:
             #fc
             tep=my_fc(tep, 1024, scope+'_fc1',  withbias=withbias)
             tep=my_lrelu(tep, scope)
+            
+            tep=my_dropout(tep, self.training, dropout_rate)
             
             tep=my_fc(tep, 1, scope+'_fc2',  withbias=withbias)
             
