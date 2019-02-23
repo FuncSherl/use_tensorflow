@@ -63,7 +63,7 @@ G_group_img_num=3
 img_channel=3
 eval_step=int (test_size/batchsize/G_group_img_num)
 
-logdir="./logs/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
+logdir="./logs_v3/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 
 bigimgsdir=op.join(logdir, 'randomimgs')
 if not op.exists(bigimgsdir): os.makedirs(bigimgsdir)
