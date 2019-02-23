@@ -246,10 +246,10 @@ class GAN_Net:
         print ('D1 loss_all:',D1_loss)
         print ('D2(D_clear) prob T/F --> ',np.mean(D2_T_prob),'/', np.mean(D2_F_prob))
         print ('D2 loss_all:',D2_loss)
-        print ('D_loss_sum_all:',D_loss_sum_all)
+        print ('>>D_loss_sum_all:',D_loss_sum_all)
         print ('G_loss_D1:',G_loss_D1)
         print ('G_loss_D2:',G_loss_D2)
-        print ('G_loss_sum_all:',G_loss_sum_all)
+        print ('>>G_loss_sum_all:',G_loss_sum_all)
         
         return summary   
        
