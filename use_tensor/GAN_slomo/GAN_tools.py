@@ -128,19 +128,19 @@ def my_unet(inputdata, layercnt=5,  filterlen=3, withbias=True):
     
     tep=my_conv(inputdata, filterlen+int(layercnt/2), channel_init*2, scopename='unet_down_start', stride=1,  withbias=withbias)
     tep=my_lrelu(tep, 'unet_down_start')
-    
-    #print (tep)
+    print ('\nforming UNET-->layer:',layercnt)
+    print (tep)
     for i in range(layercnt):
         tep=unet_down(tep, channel_init*( 2**(i+2)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), withbias=withbias)
-        #print (tep)
+        print (tep)
     
     for i in reversed(range(layercnt)):
         tep=unet_up(tep, channel_init*( 2**(i+1)), 'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  withbias=withbias)
-        #print (tep)
+        print (tep)
         
     tep=my_conv(tep, filterlen, 3, scopename='unet_up_end', stride=1, withbias=withbias)
     tep=tf.image.resize_images(tep, [inputshape[1],inputshape[2]], method=tf.image.ResizeMethod.BILINEAR)
-    #print (tep)
+    print (tep)
     return tep
 
 

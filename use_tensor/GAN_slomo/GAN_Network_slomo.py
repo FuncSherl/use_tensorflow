@@ -105,13 +105,13 @@ class GAN_Net:
         self.D_linear_net_T, self.D_linear_net_T_logit=self.Discriminator_net_linear(self.imgs_pla)
         self.D_linear_net_loss_sum, self.D_linear_net_loss_T, self.D_linear_net_loss_F=self.D_loss_TandF_logits(self.D_linear_net_T_logit, \
                                                                                                                 self.D_linear_net_F_logit, "D_linear_net")
-        print ('D form finished..')
+        print ('D1 form finished..')
         #D_2的输出
         self.D_clear_net_F, self.D_clear_net_F_logit=self.Discriminator_net_clear(self.G_net)
         self.D_clear_net_T, self.D_clear_net_T_logit=self.Discriminator_net_clear(self.frame1)
         self.D_clear_net_loss_sum, self.D_clear_net_loss_T, self.D_clear_net_loss_F=self.D_loss_TandF_logits(self.D_clear_net_T_logit, \
                                                                                                                 self.D_clear_net_F_logit, "D_clear_net")
-        print ('G form finished..')
+        print ('D2 form finished..')
         #这里对两个D的loss没有特殊处理，只是简单相加
         self.D_loss_all=self.D_clear_net_loss_sum + self.D_linear_net_loss_sum
         
