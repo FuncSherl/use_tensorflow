@@ -97,6 +97,7 @@ class GAN_Net:
         
         frame0and2=tf.concat([self.frame0, self.frame2], 3) #在第三维度连接起来
         #print ('after concat:',frame0and2)
+        #!!!!!!!!!!here is differs from v1,add to Generator output the ori img will reduce the generator difficulty 
         self.G_net=self.Generator_net(frame0and2)+self.frame0
         
         #D_1的输出 
