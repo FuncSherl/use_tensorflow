@@ -100,7 +100,8 @@ class GAN_Net:
         frame0and2=tf.concat([self.frame0, self.frame2], 3) #在第三维度连接起来
         #print ('after concat:',frame0and2)
         #!!!!!!!!!!here is differs from v1,add to Generator output the ori img will reduce the generator difficulty 
-        self.G_net=self.Generator_net(frame0and2)+self.frame0
+        self.G_net=self.Generator_net(frame0and2)+self.frame0  #注意这里是将其加上生成结果
+        print ('self.G_net:',self.G_net)
         
         #D_1的输出 
         frame0_False_2=tf.concat([self.frame0, self.G_net,self.frame2], 3)
@@ -121,6 +122,7 @@ class GAN_Net:
         #下面是G的loss
         self.G_loss_mean_D1=self.G_loss_F_logits(self.D_linear_net_F_logit, 'G_loss_D1')
         self.G_loss_mean_D2=self.G_loss_F_logits(self.D_clear_net_F_logit, 'G_loss_D2')
+        #这里对两个G的loss没有特殊处理，只是简单相加
         self.G_loss_all=self.G_loss_mean_D1 + self.G_loss_mean_D2      
         
         #还是应该以tf.trainable_variables()为主
