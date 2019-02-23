@@ -14,7 +14,7 @@ import tensorflow as tf
 from GAN_tools import *
 from data import create_dataset as cdata
 
-
+#this version change output of g to change img but not img
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -22,7 +22,7 @@ TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 train_size=112064 
 test_size=8508
-batchsize=12 #train
+batchsize=12  #train
 batchsize_test=batchsize #here it must equal to batchsize,or the placement size will error
 
 img_size_w=640
@@ -97,7 +97,7 @@ class GAN_Net:
         
         frame0and2=tf.concat([self.frame0, self.frame2], 3) #在第三维度连接起来
         #print ('after concat:',frame0and2)
-        self.G_net=self.Generator_net(frame0and2)
+        self.G_net=self.Generator_net(frame0and2)+self.frame0
         
         #D_1的输出 
         frame0_False_2=tf.concat([self.frame0, self.G_net,self.frame2], 3)
