@@ -783,7 +783,7 @@ if __name__ == '__main__':
             
             print ('train once-->gloss:',gloss,'  dloss:',dloss)
             
-            print ('time used:',time.time()-stt,' to be ',1.0/(time.time()-stt),' iters/s')
+            print ('time used:',time.time()-stt,' to be ',1.0/(time.time()-stt),' iters/s', ' left time:',(time.time()-stt)*(maxstep-i)/60/60,' hours')
             
         
         print ('Training done!!!-->time used:',(time.time()-begin_t),'s = ',(time.time()-begin_t)/60,' min')
