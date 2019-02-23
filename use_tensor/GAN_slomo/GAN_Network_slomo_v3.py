@@ -454,7 +454,7 @@ if __name__ == '__main__':
 
         begin_t=time.time()
         for i in range(maxstep):            
-            if ((i+1)%1000==0):#一次测试
+            if ((i+1)%2000==0):#一次测试
                 print ('\nbegining to eval D:')
                 real,fake=gan.evla_D_once()
                 print ('mean prob of real/fake:',real,fake)
