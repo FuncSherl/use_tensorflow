@@ -45,8 +45,8 @@ decay_rate=0.99
 #D_first_channel=18
 
 #G中unet的层数
-G_unet_layercnt=5
-G_filter_len=3
+G_unet_layercnt=3
+G_filter_len=4
 G_withbias=True
 
 
