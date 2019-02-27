@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'
 
-pc_id=1
+pc_id=0
 
 if pc_id==0: 
     videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
@@ -176,8 +176,8 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3):
         
         #生成的值遵循范围内的均匀分布 [minval, maxval)。下限minval包含在范围内，而上限maxval则被排除在外。
         #对于浮点数，默认范围是[0, 1)。对于int，至少maxval必须明确指定。
-        randnum_mid=tf.random_uniform(1,minval=3, maxval=num_ori_group-3, dtype=tf.int64)
-        randnum_r=tf.random_uniform(1,minval=2, maxval=tf.minimum(randnum_mid, num_ori_group-randnum_mid-1)   , dtype=tf.int64)
+        randnum_mid=tf.random_uniform([1],minval=3, maxval=num_ori_group-3, dtype=tf.int64)[0]
+        randnum_r=tf.random_uniform([1],minval=2, maxval=tf.minimum(randnum_mid, num_ori_group-randnum_mid-1)   , dtype=tf.int64)[0]
         frame0=image[:,:, (randnum_mid-randnum_r)*img_channel: (randnum_mid-randnum_r+1)*img_channel]
         frame1=image[:,:, randnum_mid*img_channel:(randnum_mid+1)*img_channel]
         frame2=image[:,:, (randnum_mid+randnum_r)*img_channel: (randnum_mid+randnum_r+1)*img_channel]
@@ -226,8 +226,8 @@ def gen_tfrecords():
 if __name__ == '__main__':
     #txt2frames(train_txt ,extratdir_train)
     #txt2frames(test_txt, extratdir_test)
-    gen_tfrecords()
-    #test_showtfimgs(tfrec_dir_train, 5)
+    #gen_tfrecords()
+    test_showtfimgs(tfrec_dir_train, 5)
             
             
             
