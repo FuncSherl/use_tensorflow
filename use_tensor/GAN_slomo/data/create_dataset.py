@@ -12,20 +12,21 @@ test_txt=r'./adobe240fps/test_list.txt'
 
 pc_id=1
 
-if pc_id==0: videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
-elif pc_id==1: videodir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/original_high_fps_videos' #
-elif pc_id==2: videodir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/original_high_fps_videos'
-
-if pc_id==0: extratdir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\extracted_videos' 
-elif pc_id==1:extratdir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos' #
-elif pc_id==2:extratdir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/extracted_videos'
+if pc_id==0: 
+    videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
+    extratdir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\extracted_videos' 
+    tfrec_dir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\tfrecords'
+elif pc_id==1: 
+    videodir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/original_high_fps_videos' #
+    extratdir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos' #
+    tfrec_dir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/tfrecords' #
+elif pc_id==2: 
+    videodir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/original_high_fps_videos'
+    extratdir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/extracted_videos'
+    tfrec_dir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/tfrecords'
 
 extratdir_train=op.join(extratdir, 'train')
 extratdir_test=op.join(extratdir, 'test')
-
-if pc_id==0: tfrec_dir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\tfrecords' 
-elif pc_id==1: tfrec_dir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/tfrecords' #
-elif pc_id==2: tfrec_dir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/tfrecords'
 
 tfrec_dir_train=op.join(tfrec_dir, 'train')
 tfrec_dir_test=op.join(tfrec_dir, 'test')
@@ -81,7 +82,7 @@ def txt2frames(txtpath, extratdir):
             cnt+=resu
         print (txtpath,'done:',cnt,' frames\n')
         
-def frames2tfrec(frame_dir, tfrecdir, group_num=3, imgs_perfile=3000, img_shape_required=[640, 360]):#使用cv2.resize时，参数输入是 宽×高 ，与以往操作不同
+def frames2tfrec(frame_dir, tfrecdir, group_num=12, groups_perfile=1000, img_shape_required=[640, 360]):#使用cv2.resize时，参数输入是 宽×高 ，与以往操作不同
     '''
     framedir:a root dir, contains many dirs which is one for a video
     group_num:3frame is a group
@@ -103,18 +104,21 @@ def frames2tfrec(frame_dir, tfrecdir, group_num=3, imgs_perfile=3000, img_shape_
             rimg=cv2.resize(rimg, tuple(img_shape_required))
             imgdata.append(rimg)
             
-            if len(imgdata)>group_num: imgdata.pop(0)
-            elif len(imgdata)<group_num: continue
+            if len(imgdata)<group_num: continue
+            elif len(imgdata)>group_num: 
+                imgdata=[imgdata[-1]]
+                continue
                 
             #print (imgdata.dtype, type(imgdata))
             
             groupdata=np.concatenate(imgdata,axis=2)
-            size=groupdata.shape  #(720, 1280, 9)
+            size=groupdata.shape  #(720, 1280, 3*12)
+            #print (size)
             groupdata_raw=groupdata.tobytes()#将图片转化为二进制格式
             
             print (size)
-            if cnt_num%imgs_perfile==0:
-                ftrecordfilename = (op.split(tfrecdir)[-1].strip()+".tfrecords_%.4d" % int(cnt_num/imgs_perfile))
+            if cnt_num%groups_perfile==0:
+                ftrecordfilename = (op.split(tfrecdir)[-1].strip()+".tfrecords_%.4d" % int(cnt_num/groups_perfile))
                 writer= tf.python_io.TFRecordWriter(op.join(tfrecdir,ftrecordfilename))
             
             example = tf.train.Example(
@@ -126,6 +130,7 @@ def frames2tfrec(frame_dir, tfrecdir, group_num=3, imgs_perfile=3000, img_shape_
             })) 
             writer.write(example.SerializeToString())  #序列化为字符串
             cnt_num+=1
+            
             
     writer.close()
     print ('for all: write to ',tfrecdir,'->',cnt_num,' groups done!!')
@@ -143,7 +148,7 @@ def preprocess_img(image,outlen):
     #image = tf.image.random_flip_left_right(image)
     return image
 
-def read_tfrecord_batch(tfdir, imgsize, batchsize=12):
+def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3):
     '''
     imgsize:[new_height, new_width]
     '''
@@ -207,8 +212,8 @@ def gen_tfrecords():
 if __name__ == '__main__':
     #txt2frames(train_txt ,extratdir_train)
     #txt2frames(test_txt, extratdir_test)
-    #gen_tfrecords()
-    test_showtfimgs(tfrec_dir_train, 5)
+    gen_tfrecords()
+    #test_showtfimgs(tfrec_dir_train, 5)
             
             
             
