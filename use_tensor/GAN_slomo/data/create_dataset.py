@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'
 
-pc_id=1
+pc_id=0
 
 if pc_id==0: 
     videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
@@ -82,7 +82,7 @@ def txt2frames(txtpath, extratdir):
             cnt+=resu
         print (txtpath,'done:',cnt,' frames\n')
         
-def frames2tfrec(frame_dir, tfrecdir, group_num=12, groups_perfile=1000, img_shape_required=[640, 360]):#使用cv2.resize时，参数输入是 宽×高 ，与以往操作不同
+def frames2tfrec(frame_dir, tfrecdir, group_num=12, groups_perfile=300, img_shape_required=[640, 360]):#使用cv2.resize时，参数输入是 宽×高 ，与以往操作不同
     '''
     framedir:a root dir, contains many dirs which is one for a video
     group_num:3frame is a group
