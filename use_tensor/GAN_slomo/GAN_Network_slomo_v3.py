@@ -34,7 +34,7 @@ base_lr=0.0002 #基础学习率
 beta1=0.5
 dropout_rate=0.5
 
-maxstep=160000 #训练多少次
+maxstep=360000 #训练多少次
 
 decay_steps=10000
 decay_rate=0.99
@@ -296,7 +296,7 @@ class GAN_Net:
             tepimgs, inerimg, D1_prob, D2_prob=self.Run_G()
             inerimg=self.tanh2img(inerimg)
             #保存原图
-            for ind,j in enumerate(tepimgs[:int(cnt/3) ]):  
+            for ind,j in enumerate(tepimgs[:int(cnt/4) ]):  
                 #print (j[0][0][0])
                 j=self.tanh2img(j) 
                 imgname=str(i)+'_'+str(ind)
