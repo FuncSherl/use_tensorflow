@@ -15,7 +15,7 @@ from GAN_tools import *
 from data import create_dataset as cdata
 
 #this version change output of g to change img but not img
-
+#and also the hegight and width
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
@@ -25,8 +25,8 @@ test_size=8508
 batchsize=8  #train
 batchsize_test=batchsize #here it must equal to batchsize,or the placement size will error
 
-img_size_w=640
-img_size_h=360
+img_size_w=int (640/2)
+img_size_h=int (360/2)
 img_size=[img_size_h, img_size_w]
 
 base_lr=0.0002 #基础学习率
@@ -44,8 +44,8 @@ decay_rate=0.99
 #D_first_channel=18
 
 #G中unet的层数
-G_unet_layercnt=5
-G_filter_len=3
+G_unet_layercnt=3
+G_filter_len=4
 G_withbias=True
 
 
