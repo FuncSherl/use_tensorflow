@@ -100,9 +100,11 @@ def unet_up(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=Tru
     '''
     Upsampling --> Leaky ReLU --> Convolution + Leaky ReLU
     '''
+    inputshape=inputdata.get_shape().as_list()
+    #use blinear to upsample
+    #tep=tf.image.resize_images(inputdata, (inputshape[1]*stride, inputshape[2]*stride) )
+    #use deconv to upsample
     tep=my_deconv(inputdata, filterlen, outchannel, scopename+'_deconv1', stride, withbias=withbias)
-    
-    #tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=1)
     tep=my_lrelu(tep, scopename)
     
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=1, withbias=withbias)
