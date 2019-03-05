@@ -101,12 +101,13 @@ def unet_up(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=Tru
     Upsampling --> Leaky ReLU --> Convolution + Leaky ReLU
     '''
     inputshape=inputdata.get_shape().as_list()
-    #use blinear to upsample
-    tep=tf.image.resize_images(inputdata, (inputshape[1]*stride, inputshape[2]*stride) )
-    
-    #use deconv to upsample
-    #tep=my_deconv(inputdata, filterlen, outchannel, scopename+'_deconv1', stride, withbias=withbias)
-    #tep=my_lrelu(tep, scopename)
+    if 0:
+        #use blinear to upsample
+        tep=tf.image.resize_bilinear(inputdata, (inputshape[1]*stride, inputshape[2]*stride) )
+    else:
+        #use deconv to upsample
+        tep=my_deconv(inputdata, filterlen, outchannel, scopename+'_deconv1', stride, withbias=withbias)
+        tep=my_lrelu(tep, scopename)
     
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=1, withbias=withbias)
     tep=my_lrelu(tep, scopename)
@@ -135,14 +136,24 @@ def my_unet(inputdata, layercnt=5,  filterlen=3, withbias=True):
     
     tep=my_conv(inputdata, filterlen+int(layercnt/2), channel_init*2, scopename='unet_down_start', stride=1,  withbias=withbias)
     tep=my_lrelu(tep, 'unet_down_start')
+    
     print ('\nforming UNET-->layer:',layercnt)
     print (tep)
+    skipcon=[]
     for i in range(layercnt):
+        skipcon.append(tep)
         tep=unet_down(tep, channel_init*( 2**(i+2)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), withbias=withbias)
         print (tep)
+        
     
     for i in reversed(range(layercnt)):
         tep=unet_up(tep, channel_init*( 2**(i+1)), 'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  withbias=withbias)
+        
+        print ('concating:',tep, skipcon[i])
+        tshape=skipcon[i].get_shape().as_list()
+        tep=tf.image.resize_bilinear(tep, (tshape[1], tshape[2]) )
+        
+        tep=tf.concat([tep, skipcon[i]], -1)
         print (tep)
         
     tep=my_conv(tep, filterlen, 3, scopename='unet_up_end', stride=1, withbias=withbias)
