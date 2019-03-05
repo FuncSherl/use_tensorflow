@@ -139,12 +139,14 @@ def my_unet(inputdata, layercnt=5,  filterlen=3, withbias=True):
     
     print ('\nforming UNET-->layer:',layercnt)
     print (tep)
-    skipcon=[]
-    for i in range(layercnt):
-        skipcon.append(tep)
+    skipcon=[tep]
+    for i in range(layercnt-1):
         tep=unet_down(tep, channel_init*( 2**(i+2)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), withbias=withbias)
         print (tep)
-        
+        skipcon.append(tep)
+    # 这里不将channel变为两倍了
+    tep=unet_down(tep, channel_init*( 2**(i+2)), 'unet_down_'+str(i+1), filterlen=filterlen , withbias=withbias)
+    print (tep)
     
     for i in reversed(range(layercnt)):
         tep=unet_up(tep, channel_init*( 2**(i+1)), 'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  withbias=withbias)
