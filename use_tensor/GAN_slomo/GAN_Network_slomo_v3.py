@@ -103,6 +103,7 @@ class GAN_Net:
         self.G_net=self.Generator_net(frame0and2)  #+self.frame0  #注意这里是将其加上生成结果
         print ('self.G_net:',self.G_net)
         
+    
         #D_1的输出 
         frame0_False_2=tf.concat([self.frame0, self.G_net,self.frame2], 3)
         self.D_linear_net_F, self.D_linear_net_F_logit=self.Discriminator_net_linear(frame0_False_2)
