@@ -101,15 +101,17 @@ def unet_up(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=Tru
     Upsampling --> Leaky ReLU --> Convolution + Leaky ReLU
     '''
     inputshape=inputdata.get_shape().as_list()
-    if 0:
+    if 1:
         #use blinear to upsample
         tep=tf.image.resize_bilinear(inputdata, (inputshape[1]*stride, inputshape[2]*stride) )
+        tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=1, withbias=withbias)
+        tep=my_lrelu(tep, scopename)
     else:
         #use deconv to upsample
         tep=my_deconv(inputdata, filterlen, outchannel, scopename+'_deconv1', stride, withbias=withbias)
         tep=my_lrelu(tep, scopename)
     
-    tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=1, withbias=withbias)
+    tep=my_conv(tep, filterlen, outchannel, scopename+'_conv2', stride=1, withbias=withbias)
     tep=my_lrelu(tep, scopename)
     
     return tep
@@ -118,8 +120,13 @@ def unet_down(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=T
     '''
     downsampling --> Convlution + Leaky ReLU --> Convolution + Leaky ReLU
     '''
+    if 1:
+        tep=tf.layers.average_pooling2d(inputdata, stride,stride)
+        stride=1
+    else:
+        tep=inputdata
 
-    tep=my_conv(inputdata, filterlen, outchannel, scopename+'_conv1', stride=stride, withbias=withbias)
+    tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=stride, withbias=withbias)
     tep=my_lrelu(tep, scopename)
     
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv2', stride=1, withbias=withbias)
