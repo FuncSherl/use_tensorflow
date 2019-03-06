@@ -118,6 +118,7 @@ def unet_down(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=T
     '''
     downsampling --> Convlution + Leaky ReLU --> Convolution + Leaky ReLU
     '''
+
     tep=my_conv(inputdata, filterlen, outchannel, scopename+'_conv1', stride=stride, withbias=withbias)
     tep=my_lrelu(tep, scopename)
     
