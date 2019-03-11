@@ -287,7 +287,7 @@ class GAN_Net:
         if not op.isdir(desdir): os.makedirs(desdir)
         
         #这里cnt不应该大于batchsize(64)
-        cnt=10
+        cnt=16
         
         #中间用cnt像素的黑色线分隔图片
         bigimg_len=[ img_size_h*cnt+(cnt-1)*cnt, img_size_w*(G_group_img_num+1)+(G_group_img_num)*cnt]  #     img_size*cnt+(cnt-1)*cnt
@@ -302,13 +302,14 @@ class GAN_Net:
                 j=self.tanh2img(j) 
                 imgname=str(i)+'_'+str(ind)
                 dirinstep=op.join(desdir, imgname)
-                
+                '''
                 for ki in range(G_group_img_num):      
                     im = j[:,:, ki*img_channel:(ki+1)*img_channel]
                     os.makedirs(dirinstep, exist_ok=True)
                     cv2.imwrite(op.join(dirinstep, str(ki)+'.jpg'), im)
                 
                 cv2.imwrite(op.join(dirinstep, 'fake_D1_'+str(D1_prob[ind])+'_D2_'+str(D2_prob[ind])+'.jpg'  ),inerimg[ind])
+                '''
             #每个batch选随机的cnt个合成图片
             #print (probs.shape)
             tep=list(range(batchsize))
