@@ -181,7 +181,7 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3):
         frame0=image[:,:, (randnum_mid-randnum_r)*img_channel: (randnum_mid-randnum_r+1)*img_channel]
         frame1=image[:,:, randnum_mid*img_channel:(randnum_mid+1)*img_channel]
         frame2=image[:,:, (randnum_mid+randnum_r)*img_channel: (randnum_mid+randnum_r+1)*img_channel]
-        image=tf.concat([frame0, frame1, frame2], 2)
+        image=tf.concat([frame0, frame1, frame2], -1)
         
         ###############################################################################################
         image=preprocess_img(image, imgsize)
