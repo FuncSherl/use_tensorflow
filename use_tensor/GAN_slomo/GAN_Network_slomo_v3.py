@@ -51,8 +51,8 @@ G_withbias=True
 
 
 #两个D的用的D_block的层数，即缩小几回
-D_1_layercnt=4
-D_1_filterlen=3
+D_1_layercnt=3
+D_1_filterlen=4
 D_1_withbias=True
 
 D_2_layercnt=D_1_layercnt
