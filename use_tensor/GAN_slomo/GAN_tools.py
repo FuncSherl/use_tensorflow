@@ -96,9 +96,9 @@ def my_fc(inputdata,  outchannel,   scopename,  reuse=tf.AUTO_REUSE, withbias=Tr
         return tep
     
     
-def unet_up(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=True):
+def unet_up(inputdata, outchannel,skipcon, scopename,stride=2, filterlen=3, withbias=True):
     '''
-    Upsampling --> Leaky ReLU --> Convolution + Leaky ReLU
+    Upsampling -->conv(channel/2) --> Leaky ReLU --> concat --> Convolution(channel/2) + Leaky ReLU
     '''
     inputshape=inputdata.get_shape().as_list()
     if 1:
@@ -110,6 +110,12 @@ def unet_up(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=Tru
         #use deconv to upsample
         tep=my_deconv(inputdata, filterlen, outchannel, scopename+'_deconv1', stride, withbias=withbias)
         tep=my_lrelu(tep, scopename)
+    
+    print ('-->concating:',tep, skipcon)
+    tshape=skipcon.get_shape().as_list()
+    tep=tf.image.resize_bilinear(tep, (tshape[1], tshape[2]) )
+        
+    tep=tf.concat([tep, skipcon], -1)
     
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv2', stride=1, withbias=withbias)
     tep=my_lrelu(tep, scopename)
@@ -147,28 +153,29 @@ def my_unet(inputdata, layercnt=3,  filterlen=3, withbias=True):
     
     print ('\nforming UNET-->layer:',layercnt)
     print (tep)
-    skipcon=[tep]
-    for i in range(layercnt-1):
+    skipcon=[]
+    for i in range(layercnt):
+        skipcon.append(tep)
         tep=unet_down(tep, channel_init*( 2**(i+2)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), withbias=withbias)
         print (tep)
-        skipcon.append(tep)
+        
+    '''
     # 这里不将channel变为两倍了
     tep=unet_down(tep, channel_init*( 2**(i+2)), 'unet_down_'+str(i+1), filterlen=filterlen , withbias=withbias)
     print (tep)
+    '''
     
     for i in reversed(range(layercnt)):
-        tep=unet_up(tep, channel_init*( 2**(i+1)), 'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  withbias=withbias)
-        
-        print ('concating:',tep, skipcon[i])
-        tshape=skipcon[i].get_shape().as_list()
-        tep=tf.image.resize_bilinear(tep, (tshape[1], tshape[2]) )
-        
-        tep=tf.concat([tep, skipcon[i]], -1)
+        tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon[i],'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  withbias=withbias)
         print (tep)
         
-    tep=my_conv(tep, filterlen, 3, scopename='unet_up_end', stride=1, withbias=withbias)
+    tep=my_conv(tep, filterlen, 6, scopename='unet_up_end1', stride=1, withbias=withbias)
+    print (tep)
+    
+    tep=my_conv(tep, filterlen, 3, scopename='unet_up_end2', stride=1, withbias=withbias)
     tep=tf.image.resize_images(tep, [inputshape[1],inputshape[2]], method=tf.image.ResizeMethod.BILINEAR)
     print (tep)
+    
     return tep
 
 

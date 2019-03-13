@@ -22,7 +22,7 @@ TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 train_size=112064 
 test_size=8508
-batchsize=16  #train
+batchsize=12  #train
 batchsize_test=batchsize #here it must equal to batchsize,or the placement size will error
 
 #
@@ -34,9 +34,9 @@ base_lr=0.0002 #基础学习率
 beta1=0.5
 dropout_rate=0.5
 
-maxstep=360000 #训练多少次
+maxstep=240000 #训练多少次
 
-decay_steps=10000
+decay_steps=8000
 decay_rate=0.99
 
 #incase_div_zero=1e-10  #这个值大一些可以避免d训得太好，也避免了g梯度
@@ -45,8 +45,8 @@ decay_rate=0.99
 #D_first_channel=18
 
 #G中unet的层数
-G_unet_layercnt=3
-G_filter_len=4
+G_unet_layercnt=4
+G_filter_len=3
 G_withbias=True
 
 
