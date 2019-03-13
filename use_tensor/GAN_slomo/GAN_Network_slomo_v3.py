@@ -68,6 +68,9 @@ logdir="./logs_v3/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_l
 
 bigimgsdir=op.join(logdir, 'randomimgs')
 if not op.exists(bigimgsdir): os.makedirs(bigimgsdir)
+
+gpu_options = tf.GPUOptions(allow_growth=True)
+config=tf.ConfigProto(gpu_options=gpu_options)
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -448,7 +451,7 @@ class GAN_Net:
 
 
 if __name__ == '__main__':   
-    with tf.Session() as sess:      
+    with tf.Session(config=config) as sess:      
         gan=GAN_Net(sess)
         
         logwriter = tf.summary.FileWriter(logdir,   sess.graph)
