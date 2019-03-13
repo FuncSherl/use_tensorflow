@@ -69,6 +69,7 @@ logdir="./logs_v3/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_l
 bigimgsdir=op.join(logdir, 'randomimgs')
 if not op.exists(bigimgsdir): os.makedirs(bigimgsdir)
 
+#设置GPU显存按需增长
 gpu_options = tf.GPUOptions(allow_growth=True)
 config=tf.ConfigProto(gpu_options=gpu_options)
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
