@@ -288,7 +288,8 @@ class GAN_Net:
     
     def eval_G_once(self, step=0):
         desdir=op.join(logdir, str(step))
-        if not op.isdir(desdir): os.makedirs(desdir)
+        #os.makedirs(desdir, exist_ok=True)
+    
         
         #这里cnt不应该大于batchsize(64)
         cnt=16
