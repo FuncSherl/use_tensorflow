@@ -22,7 +22,7 @@ TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 train_size=112064 
 test_size=8508
-batchsize=16  #train
+batchsize=12  #train
 batchsize_test=batchsize #here it must equal to batchsize,or the placement size will error
 
 #
@@ -177,11 +177,8 @@ class GAN_Net:
     
     def D_loss_TandF_logits(self, logits_t, logits_f, summaryname='default'):
         self.D_loss_fir=tf.nn.sigmoid_cross_entropy_with_logits(logits=logits_t, labels=tf.ones_like(logits_t))   #real
-        
-        
         self.D_loss_sec=tf.nn.sigmoid_cross_entropy_with_logits(logits=logits_f, labels=tf.zeros_like(logits_f))  #fake
         
-       
         #testing target
         real_loss_mean=tf.reduce_mean(self.D_loss_fir)
         fake_loss_mean=tf.reduce_mean(self.D_loss_sec)
