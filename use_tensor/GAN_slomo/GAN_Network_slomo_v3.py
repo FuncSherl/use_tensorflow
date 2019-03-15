@@ -353,7 +353,7 @@ class GAN_Net:
     
     def Generator_net(self, inputdata, withbias=G_withbias, filterlen=G_filter_len):
         with tf.variable_scope("G_Net",  reuse=tf.AUTO_REUSE) as scope:
-            tepimg=my_unet(inputdata,  layercnt=G_unet_layercnt,  filterlen=filterlen, withbias=withbias)
+            tepimg=my_unet(inputdata,  layercnt=G_unet_layercnt,  filterlen=filterlen, training=self.training,withbias=withbias)
             #####################################################################################################################################
             #tanh
             self.G_tanh= tf.nn.tanh(tepimg, name='G_tanh')
