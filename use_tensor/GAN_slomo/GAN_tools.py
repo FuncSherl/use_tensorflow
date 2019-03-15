@@ -96,7 +96,7 @@ def my_fc(inputdata,  outchannel,   scopename,  reuse=tf.AUTO_REUSE, withbias=Tr
         return tep
     
     
-def unet_up(inputdata, outchannel,skipcon, scopename,stride=2, filterlen=3, withbias=True):
+def unet_up(inputdata, outchannel,skipcon, scopename,stride=2, filterlen=3, training=True,withbias=True):
     '''
     Upsampling -->conv(channel/2) --> Leaky ReLU --> concat --> Convolution(channel/2) + Leaky ReLU
     '''
@@ -105,10 +105,12 @@ def unet_up(inputdata, outchannel,skipcon, scopename,stride=2, filterlen=3, with
         #use blinear to upsample
         tep=tf.image.resize_bilinear(inputdata, (inputshape[1]*stride, inputshape[2]*stride) )
         tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=1, withbias=withbias)
+        tep=my_batchnorm( tep,training, scopename+'_bn1')
         tep=my_lrelu(tep, scopename)
     else:
         #use deconv to upsample
         tep=my_deconv(inputdata, filterlen, outchannel, scopename+'_deconv1', stride, withbias=withbias)
+        tep=my_batchnorm( tep,training, scopename+'_bn1')
         tep=my_lrelu(tep, scopename)
     
     print ('-->concating:',tep, skipcon)
@@ -118,11 +120,12 @@ def unet_up(inputdata, outchannel,skipcon, scopename,stride=2, filterlen=3, with
     tep=tf.concat([tep, skipcon], -1)
     
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv2', stride=1, withbias=withbias)
+    tep=my_batchnorm( tep,training, scopename+'_bn2')
     tep=my_lrelu(tep, scopename)
     
     return tep
 
-def unet_down(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=True):
+def unet_down(inputdata, outchannel, scopename,stride=2, filterlen=3,training=True, withbias=True):
     '''
     downsampling --> Convlution + Leaky ReLU --> Convolution + Leaky ReLU
     '''
@@ -134,14 +137,16 @@ def unet_down(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=T
         tep=inputdata
 
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=stride, withbias=withbias)
+    tep=my_batchnorm( tep,training, scopename+'_bn1')
     tep=my_lrelu(tep, scopename)
     
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv2', stride=1, withbias=withbias)
+    tep=my_batchnorm( tep,training, scopename+'_bn2')
     tep=my_lrelu(tep, scopename)
     
     return tep
     
-def my_unet(inputdata, layercnt=3,  filterlen=3, withbias=True):
+def my_unet(inputdata, layercnt=3,  filterlen=3,training=True,  withbias=True):
     '''
     layercnt:下降和上升各有几层,原则上应该是一对一
     '''
@@ -157,7 +162,7 @@ def my_unet(inputdata, layercnt=3,  filterlen=3, withbias=True):
     skipcon=[]
     for i in range(layercnt):
         skipcon.append(tep)
-        tep=unet_down(tep, channel_init*( 2**(i+2)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), withbias=withbias)
+        tep=unet_down(tep, channel_init*( 2**(i+2)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), training=training,withbias=withbias)
         print (tep)
         
     '''
@@ -167,7 +172,7 @@ def my_unet(inputdata, layercnt=3,  filterlen=3, withbias=True):
     '''
     
     for i in reversed(range(layercnt)):
-        tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon[i],'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  withbias=withbias)
+        tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon[i],'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  training=training,withbias=withbias)
         print (tep)
     
     '''
