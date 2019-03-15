@@ -176,11 +176,11 @@ def my_unet(inputdata, layercnt=3,  filterlen=3,training=True,  withbias=True):
         print (tep)
     
     '''
-    tep=my_conv(tep, filterlen, 6, scopename='unet_up_end1', stride=1, withbias=withbias)
+    tep=my_conv(tep, filterlen, 6, scopename='unet_up_end0', stride=1, withbias=withbias)
     print (tep)
     '''
     
-    tep=my_conv(tep, filterlen, 3, scopename='unet_up_end', stride=1, withbias=withbias)
+    tep=my_conv(tep, filterlen, 3, scopename='unet_up_end1', stride=1, withbias=withbias)
     tep=tf.image.resize_images(tep, [inputshape[1],inputshape[2]], method=tf.image.ResizeMethod.BILINEAR)
     print (tep)
     
