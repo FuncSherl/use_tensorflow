@@ -193,7 +193,7 @@ def my_D_block(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=
 
 
 if __name__ == '__main__':
-    imgs_pla = tf.placeholder(datatype, [32, 360/2, 720/2, 3*2], name='imgs_in')
+    imgs_pla = tf.placeholder(datatype, [32, 360/2, 640/2, 3*2], name='imgs_in')
     
     with tf.variable_scope("G_Net",  reuse=tf.AUTO_REUSE) as scope:
         tep=my_unet(imgs_pla)
