@@ -137,7 +137,7 @@ def unet_down(inputdata, outchannel, scopename,stride=2, filterlen=3,training=Tr
     '''
     downsampling --> Convlution + Leaky ReLU --> Convolution + Leaky ReLU
     '''
-    if 1:
+    if 0:
         #tep=tf.layers.average_pooling2d(inputdata, stride,stride)
         tep=tf.layers.max_pooling2d(inputdata, stride,stride)
         stride=1
