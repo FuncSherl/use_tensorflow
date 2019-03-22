@@ -183,10 +183,12 @@ def my_unet(inputdata, layercnt=3,  filterlen=3,training=True,  withbias=True):
         tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon[i],'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  training=training,withbias=withbias)
         print (tep)
     
-    '''
+
     tep=my_conv(tep, filterlen, 6, scopename='unet_up_end0', stride=1, withbias=withbias)
+    
+    tep=my_batchnorm( tep,training, 'unet_up_end0_bn2')
+    tep=my_lrelu(tep, 'unet_up_end0_relu')
     print (tep)
-    '''
     
     tep=my_conv(tep, filterlen, 3, scopename='unet_up_end1', stride=1, withbias=withbias)
     tep=tf.image.resize_images(tep, [inputshape[1],inputshape[2]], method=tf.image.ResizeMethod.BILINEAR)
