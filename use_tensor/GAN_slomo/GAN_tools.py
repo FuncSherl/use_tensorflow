@@ -107,6 +107,10 @@ def unet_up(inputdata, outchannel,skipcon, scopename,stride=2, filterlen=3, trai
         tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=1, withbias=withbias)
         tep=my_batchnorm( tep,training, scopename+'_bn1')
         tep=my_lrelu(tep, scopename)
+        #单个cov无法拟合xor操作，而这里需要一个选择pixel的操作，线性操作不行
+        tep=my_conv(tep, filterlen, outchannel, scopename+'_conv2', stride=1, withbias=withbias)
+        tep=my_batchnorm( tep,training, scopename+'_bn2')
+        tep=my_lrelu(tep, scopename)
     else:
         #use deconv to upsample
         tep=my_deconv(inputdata, filterlen, outchannel, scopename+'_deconv1', stride, withbias=withbias)
@@ -118,9 +122,13 @@ def unet_up(inputdata, outchannel,skipcon, scopename,stride=2, filterlen=3, trai
     tep=tf.image.resize_bilinear(tep, (tshape[1], tshape[2]) )
         
     tep=tf.concat([tep, skipcon], -1)
+    #单个cov无法拟合xor操作，而这里需要一个选择pixel的操作，线性操作不行
+    tep=my_conv(tep, filterlen, outchannel, scopename+'_conv3', stride=1, withbias=withbias)
+    tep=my_batchnorm( tep,training, scopename+'_bn3')
+    tep=my_lrelu(tep, scopename)
     
-    tep=my_conv(tep, filterlen, outchannel, scopename+'_conv2', stride=1, withbias=withbias)
-    tep=my_batchnorm( tep,training, scopename+'_bn2')
+    tep=my_conv(tep, filterlen, outchannel, scopename+'_conv4', stride=1, withbias=withbias)
+    tep=my_batchnorm( tep,training, scopename+'_bn4')
     tep=my_lrelu(tep, scopename)
     
     return tep
