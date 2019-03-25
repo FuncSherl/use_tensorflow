@@ -197,14 +197,44 @@ def my_unet(inputdata, layercnt=3,  filterlen=3,training=True,  withbias=True):
     return tep
 
 
+
+    
+
+def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True,  withbias=True):
+    '''
+    这里将两个输入图片通过同一个特征网络，并保留中间各自特征
+    '''
+    inputshape=inputdata.get_shape().as_list()
+    channel_init=inputshape[-1]
+    
+    tep=inputdata    
+    print ('\nforming UNET-->layer1:',layercnt)
+    skipcon1=[]
+    for i in range(layercnt):
+        tep=unet_down(tep, channel_init*( 2**(i+1)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), training=training,withbias=withbias)
+        print (tep)
+        skipcon1.append(tep)
+    input1_fea=tep
+    
+    tep=inputdata2    
+    print ('\nforming UNET-->layer2:',layercnt)
+    skipcon2=[]
+    for i in range(layercnt):
+        tep=unet_down(tep, channel_init*( 2**(i+1)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), training=training,withbias=withbias)
+        print (tep)
+        skipcon2.append(tep)
+    input2_fea=tep
+    
+    
+        
+    
+    
 def my_D_block(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=True, training=True):
     tep=my_conv(inputdata, filterlen, outchannel, scopename+'_conv1', stride=stride, withbias=withbias)
     
     tep=my_batchnorm( tep,training, scopename)
     tep=my_lrelu(tep, scopename)
-    return tep
-    
-
+    return tep   
 
 
 if __name__ == '__main__':
