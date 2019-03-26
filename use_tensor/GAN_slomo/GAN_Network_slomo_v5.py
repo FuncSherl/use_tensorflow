@@ -68,7 +68,7 @@ G_group_img_num=3
 img_channel=3
 eval_step=int (test_size/batchsize/G_group_img_num)
 
-logdir="./logs_v4/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
+logdir="./logs_v5/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 
 bigimgsdir=op.join(logdir, 'randomimgs')
 if not op.exists(bigimgsdir): os.makedirs(bigimgsdir)
@@ -108,7 +108,7 @@ class GAN_Net:
         frame0and2=tf.concat([self.frame0, self.frame2], 3) #在第三维度连接起来
         #print ('after concat:',frame0and2)
         #!!!!!!!!!!here is differs from v1,add to Generator output the ori img will reduce the generator difficulty 
-        self.G_net=self.Generator_net(frame0and2)  #+self.frame0  #注意这里是直接作为生成结果
+        self.G_net=self.Generator_net(self.frame0, self.frame2)  #+self.frame0  #注意这里是直接作为生成结果
         print ('self.G_net:',self.G_net)
         
     
@@ -121,11 +121,14 @@ class GAN_Net:
                                                                                                                 self.D_linear_net_F_logit, "D_linear_net")
         print ('D1 form finished..')
         #D_2的输出
+        '''
         self.D_clear_net_F, self.D_clear_net_F_logit=self.Discriminator_net_clear(self.G_net)
         self.D_clear_net_T, self.D_clear_net_T_logit=self.Discriminator_net_clear(self.frame1)
         #下面是loss公式
         self.D_clear_net_loss_sum, self.D_clear_net_loss_T, self.D_clear_net_loss_F=self.D_loss_TandF_logits(self.D_clear_net_T_logit, \
                                                                                                                 self.D_clear_net_F_logit, "D_clear_net")
+        '''
+        self.D_clear_net_loss_sum=tf.reduced_mean(tf.squared_difference(self.G_net,self.frame1))
         print ('D2 form finished..')
         #这里对两个D的loss没有特殊处理，只是简单相加
         self.D_loss_all=self.D_clear_net_loss_sum + self.D_linear_net_loss_sum
@@ -362,9 +365,10 @@ class GAN_Net:
         return [cnt_real1/eval_step,cnt_real2/eval_step], [cnt_fake1/eval_step, cnt_fake2/eval_step]
         
     
-    def Generator_net(self, inputdata, withbias=G_withbias, filterlen=G_filter_len):
+    def Generator_net(self, inputdata1, inputdata2, withbias=G_withbias, filterlen=G_filter_len, layercnt=G_unet_layercnt):
         with tf.variable_scope("G_Net",  reuse=tf.AUTO_REUSE) as scope:
-            tepimg=my_unet(inputdata,  layercnt=G_unet_layercnt,  filterlen=filterlen,  training=self.training, withbias=withbias)
+            #tepimg=my_unet(inputdata,  layercnt=G_unet_layercnt,  filterlen=filterlen,  training=self.training, withbias=withbias)
+            tepimg=my_novel_unet(inputdata1, inputdata2, layercnt=layercnt,  filterlen=filterlen,  training=self.training, withbias=withbias)
             #####################################################################################################################################
             #tanh
             self.G_tanh= tf.nn.tanh(tepimg, name='G_tanh')
