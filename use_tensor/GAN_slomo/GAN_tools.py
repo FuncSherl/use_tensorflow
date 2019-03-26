@@ -251,7 +251,7 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
     '''
     inputshape=inputdata.get_shape().as_list()
     channel_init=inputshape[-1]
-    
+    ##########################################################################
     tep=inputdata    
     print ('\nforming UNET-->layer1:',layercnt)
     skipcon1=[]
@@ -261,6 +261,7 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
         if i<layercnt-1: skipcon1.append(tep)
     input1_fea=tep
     
+    #######################################################################
     tep=inputdata2    
     print ('\nforming UNET-->layer2:',layercnt)
     skipcon2=[]
@@ -270,10 +271,11 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
         if i<layercnt-1: skipcon2.append(tep)
     input2_fea=tep
     
+    ##################连接两个部分
     tep=my_novel_conv(input1_fea, input2_fea, filterlen, 'middle_novel_cnn')
     print (tep)
     
-    #up
+    ######################################################up
     for i in reversed(range(layercnt-1)):
         skipcon=my_novel_conv(skipcon1[i], skipcon2[i], filterlen+int( (layercnt-i)/3 ), 'unet_up_myconv_'+str(i))
         

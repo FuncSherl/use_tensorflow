@@ -121,19 +121,19 @@ class GAN_Net:
                                                                                                                 self.D_linear_net_F_logit, "D_linear_net")
         print ('D1 form finished..')
         #D_2的输出
-        '''
+        
         self.D_clear_net_F, self.D_clear_net_F_logit=self.Discriminator_net_clear(self.G_net)
         self.D_clear_net_T, self.D_clear_net_T_logit=self.Discriminator_net_clear(self.frame1)
         #下面是loss公式
         self.D_clear_net_loss_sum, self.D_clear_net_loss_T, self.D_clear_net_loss_F=self.D_loss_TandF_logits(self.D_clear_net_T_logit, \
                                                                                                                 self.D_clear_net_F_logit, "D_clear_net")
-        '''
         
-        =tf.reduced_mean(tf.squared_difference(self.G_net,self.frame1))
+        
+        #=tf.reduced_mean(tf.squared_difference(self.G_net,self.frame1))
         
         print ('D2 form finished..')
         #这里对两个D的loss没有特殊处理，只是简单相加
-        self.D_loss_all=self.D_linear_net_loss_sum # + self.D_clear_net_loss_sum
+        self.D_loss_all=self.D_linear_net_loss_sum  + self.D_clear_net_loss_sum
         
         #下面是G的loss
         self.G_loss_mean_D1=self.G_loss_F_logits(self.D_linear_net_F_logit, 'G_loss_D1')
