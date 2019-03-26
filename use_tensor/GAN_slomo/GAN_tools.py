@@ -197,11 +197,13 @@ def my_unet(inputdata, layercnt=3,  filterlen=3,training=True,  withbias=True):
     return tep
 
 
-def my_novel_conv(inputdata, inputdata2, filterlen, outchannel,   scopename, stride=2, padding="SAME", reuse=tf.AUTO_REUSE, withbias=True):
+def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=None, stride=2, padding="SAME", reuse=tf.AUTO_REUSE, withbias=True):
     '''
     stride:这里代表希望将输出大小变为原图的   1/stride (注意同deconv区分)
     '''
     inputshape=inputdata.get_shape().as_list()
+    if not outchannel: outchannel=inputshape[-1] #如果为定义，就等于输入channel
+    
     with tf.variable_scope(scopename,  reuse=reuse) as scope: 
         kernel=tf.get_variable('weights', [outchannel, filterlen,filterlen, inputshape[-1]], dtype=datatype, \
                                initializer=tf.random_normal_initializer(stddev=stddev))
@@ -210,7 +212,8 @@ def my_novel_conv(inputdata, inputdata2, filterlen, outchannel,   scopename, str
         tep_kernel=tf.transpose(kernel, [1,2,3,0])
         print ('tep_kernel:',tep_kernel)
         ori_cnn=tf.nn.conv2d(inputdata, tep_kernel, strides=[1,stride,stride,1], padding=padding)
-                
+                    
+        
         #left2right
         tep_kernel=tf.image.flip_left_right(kernel)
         tep_kernel=tf.transpose(tep_kernel, [1,2,3,0])
@@ -223,14 +226,18 @@ def my_novel_conv(inputdata, inputdata2, filterlen, outchannel,   scopename, str
         print ('tep_kernel:',tep_kernel)
         up_cnn=tf.nn.conv2d(inputdata2, tep_kernel, strides=[1,stride,stride,1], padding=padding)
                 
-                
+        #这里需要一个操作来集合这3个
+        all_cnn=(ori_cnn+left_cnn+up_cnn)
+        ret=all_cnn
+        
+        
         if withbias:
             bias=tf.get_variable('bias', [outchannel], dtype=datatype, initializer=tf.constant_initializer(bias_init))
             ret=tf.nn.bias_add(ret, bias)
             
             
             
-        return ret1
+        return ret
 
     
 
@@ -258,6 +265,8 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
         print (tep)
         skipcon2.append(tep)
     input2_fea=tep
+    
+    tep=my_novel_conv(input1_fea, input2_fea, filterlen, 'middle_novel_cnn')
     
     
     
