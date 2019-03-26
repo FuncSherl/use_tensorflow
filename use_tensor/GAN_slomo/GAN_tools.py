@@ -107,21 +107,25 @@ def unet_up(inputdata, outchannel,skipcon, scopename,stride=2, filterlen=3, trai
         tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=1, withbias=withbias)
         tep=my_batchnorm( tep,training, scopename+'_bn1')
         tep=my_lrelu(tep, scopename)
+        '''
         #单个cov无法拟合xor操作，而这里需要一个选择pixel的操作，线性操作不行
         tep=my_conv(tep, filterlen, outchannel, scopename+'_conv2', stride=1, withbias=withbias)
         tep=my_batchnorm( tep,training, scopename+'_bn2')
         tep=my_lrelu(tep, scopename)
+        '''
     else:
         #use deconv to upsample
         tep=my_deconv(inputdata, filterlen, outchannel, scopename+'_deconv1', stride, withbias=withbias)
         tep=my_batchnorm( tep,training, scopename+'_bn1')
         tep=my_lrelu(tep, scopename)
     
-    print ('-->concating:',tep, skipcon)
-    tshape=skipcon.get_shape().as_list()
-    tep=tf.image.resize_bilinear(tep, (tshape[1], tshape[2]) )
-        
-    tep=tf.concat([tep, skipcon], -1)
+    if skipcon is  not None:
+        print ('-->concating:',tep, skipcon)
+        tshape=skipcon.get_shape().as_list()
+        tep=tf.image.resize_bilinear(tep, (tshape[1], tshape[2]) )
+            
+        tep=tf.concat([tep, skipcon], -1)
+    
     #单个cov无法拟合xor操作，而这里需要一个选择pixel的操作，线性操作不行
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv3', stride=1, withbias=withbias)
     tep=my_batchnorm( tep,training, scopename+'_bn3')
@@ -197,7 +201,7 @@ def my_unet(inputdata, layercnt=3,  filterlen=3,training=True,  withbias=True):
     return tep
 
 
-def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=None, stride=2, padding="SAME", reuse=tf.AUTO_REUSE, withbias=True):
+def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=None, stride=1, padding="SAME", reuse=tf.AUTO_REUSE, withbias=True):
     '''
     stride:这里代表希望将输出大小变为原图的   1/stride (注意同deconv区分)
     '''
@@ -254,7 +258,7 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
     for i in range(layercnt):
         tep=unet_down(tep, channel_init*( 2**(i+1)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), training=training,withbias=withbias)
         print (tep)
-        skipcon1.append(tep)
+        if i<layercnt-1: skipcon1.append(tep)
     input1_fea=tep
     
     tep=inputdata2    
@@ -263,14 +267,26 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
     for i in range(layercnt):
         tep=unet_down(tep, channel_init*( 2**(i+1)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), training=training,withbias=withbias)
         print (tep)
-        skipcon2.append(tep)
+        if i<layercnt-1: skipcon2.append(tep)
     input2_fea=tep
     
     tep=my_novel_conv(input1_fea, input2_fea, filterlen, 'middle_novel_cnn')
+    print (tep)
     
-    
-    
+    #up
+    for i in reversed(range(layercnt-1)):
+        skipcon=my_novel_conv(skipcon1[i], skipcon2[i], filterlen+int( (layercnt-i)/3 ), 'unet_up_myconv_'+str(i))
         
+        tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon,'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  training=training,withbias=withbias)
+        print (tep)
+    
+    tep=unet_up(tep, channel_init*2, None,'unet_up_final_1', filterlen=filterlen+int( (layercnt)/3 ),  training=training,withbias=withbias)
+    print (tep)
+    tep=my_conv(tep, filterlen, channel_init, scopename='unet_up_final_2', stride=1, withbias=withbias)
+    tep=tf.image.resize_images(tep, [inputshape[1],inputshape[2]], method=tf.image.ResizeMethod.BILINEAR)
+    print (tep)
+    
+    return tep
     
     
 def my_D_block(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=True, training=True):
@@ -282,10 +298,11 @@ def my_D_block(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=
 
 
 if __name__ == '__main__':
-    imgs_pla = tf.placeholder(datatype, [32, 360/2, 640/2, 3*2], name='imgs_in')
+    imgs_pla = tf.placeholder(datatype, [32, 360/2, 640/2, 3], name='imgs_in')
     
     with tf.variable_scope("G_Net",  reuse=tf.AUTO_REUSE) as scope:
-        tep=my_unet(imgs_pla)
+        #tep=my_unet(imgs_pla)
+        tep=my_novel_unet(imgs_pla, imgs_pla)
         trainvars=tf.trainable_variables()
         
         print ()
