@@ -107,7 +107,7 @@ class GAN_Net:
         self.frame1=self.imgs_pla[:,:,:,img_channel:img_channel*2]
         self.frame2=self.imgs_pla[:,:,:,img_channel*2:]
         
-        frame0and2=tf.concat([self.frame0, self.frame2], 3) #在第三维度连接起来
+        #frame0and2=tf.concat([self.frame0, self.frame2], -1) #在第三维度连接起来
         #print ('after concat:',frame0and2)
         #!!!!!!!!!!here is differs from v1,add to Generator output the ori img will reduce the generator difficulty 
         self.G_net=self.Generator_net(self.frame0, self.frame2)  #+self.frame0  #注意这里是直接作为生成结果
@@ -132,17 +132,17 @@ class GAN_Net:
         
         
         '''
-        self.D_clear_net_loss_sum=tf.reduced_mean(tf.squared_difference(self.G_net,self.frame1))
+        self.G_loss_mean_Square=tf.reduce_mean(tf.squared_difference(self.G_net,self.frame1), name='G_clear_square_loss')
         
-        print ('D2 form finished..')
+        print ('G_loss_mean_Square form finished..')
         #这里对两个D的loss没有特殊处理，只是简单相加
-        self.D_loss_all=self.D_linear_net_loss_sum  + self.D_clear_net_loss_sum
+        self.D_loss_all=self.D_linear_net_loss_sum  #+ self.D_clear_net_loss_sum
         
         #下面是G的loss
         self.G_loss_mean_D1=self.G_loss_F_logits(self.D_linear_net_F_logit, 'G_loss_D1')
-        self.G_loss_mean_D2=self.G_loss_F_logits(self.D_clear_net_F_logit, 'G_loss_D2')
+        #self.G_loss_mean_D2=self.G_loss_F_logits(self.D_clear_net_F_logit, 'G_loss_D2')
         #这里对两个G的loss没有特殊处理，只是简单相加
-        self.G_loss_all=self.G_loss_mean_D1 + self.G_loss_mean_D2      
+        self.G_loss_all=self.G_loss_mean_D1 + self.G_loss_mean_Square# self.G_loss_mean_D2      
         
         #还是应该以tf.trainable_variables()为主
         t_vars=tf.trainable_variables()
@@ -255,23 +255,27 @@ class GAN_Net:
     def train_once_all(self):
         tepimgs=self.getbatch_train_imgs()
         
-        lrrate,_,_,D1_T_prob, D1_F_prob, D2_T_prob, D2_F_prob, D1_loss, D2_loss, D_loss_sum_all,_ , G_loss_D1, G_loss_D2, G_loss_sum_all, summary =\
+        lrrate,_,_,\
+        D1_T_prob, D1_F_prob, \
+        D1_loss, D_loss_sum_all,\
+        _ , G_loss_D1, G_loss_Square, G_loss_sum_all, \
+        summary =\
                                        self.sess.run([self.lr_rate, self.train_D , self.clip_D,\
                                                       self.D_linear_net_T, self.D_linear_net_F,\
-                                                      self.D_clear_net_T, self.D_clear_net_F,  \
-                                                      self.D_linear_net_loss_sum, self.D_clear_net_loss_sum, self.D_loss_all,\
-                                                      self.train_G, self.G_loss_mean_D1, self.G_loss_mean_D2, self.G_loss_all,\
+                                                      #self.D_clear_net_T, self.D_clear_net_F,  \
+                                                      self.D_linear_net_loss_sum, self.D_loss_all,\
+                                                      self.train_G, self.G_loss_mean_D1, self.G_loss_mean_Square, self.G_loss_all,\
                                                       self.summary_all]          , \
                                                     feed_dict={  self.imgs_pla:tepimgs , self.training:True})
         print ('trained once:')
         print ('lr:',lrrate)
         print ('D1(D_linear) prob T/F --> ',np.mean(D1_T_prob),'/',np.mean( D1_F_prob))
         print ('D1 loss_all:',D1_loss)
-        print ('D2(D_clear) prob T/F --> ',np.mean(D2_T_prob),'/', np.mean(D2_F_prob))
-        print ('D2 loss_all:',D2_loss)
+        #print ('D2(D_clear) prob T/F --> ',np.mean(D2_T_prob),'/', np.mean(D2_F_prob))
+        #print ('D2 loss_all:',D2_loss)
         print ('>>D_loss_sum_all:',D_loss_sum_all)
         print ('G_loss_D1:',G_loss_D1)
-        print ('G_loss_D2:',G_loss_D2)
+        print ('G_loss_square:',G_loss_Square)
         print ('>>G_loss_sum_all:',G_loss_sum_all)
         
         return summary   
@@ -279,7 +283,7 @@ class GAN_Net:
     
     def Run_G(self, training=False):
         tepimgs=self.getbatch_test_imgs()
-        inerimg, D1_prob, D2_prob=self.sess.run([self.G_net, self.D_linear_net_F, self.D_clear_net_F], feed_dict={self.imgs_pla:tepimgs, self.training:training})
+        inerimg, D1_prob, D2_prob=self.sess.run([self.G_net, self.D_linear_net_F, self.G_loss_mean_Square], feed_dict={self.imgs_pla:tepimgs, self.training:training})
         
         return tepimgs, inerimg, D1_prob, D2_prob
     
@@ -288,8 +292,8 @@ class GAN_Net:
         training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
         '''
         tepimgs=self.getbatch_test_imgs()
-        D1_probs,D2_probs=self.sess.run([self.D_linear_net_T,self.D_clear_net_T], feed_dict={self.imgs_pla:tepimgs, self.training:training})
-        return D1_probs,D2_probs
+        D1_probs,G_loss_Square=self.sess.run([self.D_linear_net_T,self.G_loss_mean_Square], feed_dict={self.imgs_pla:tepimgs, self.training:training})
+        return D1_probs,G_loss_Square
     
     def Run_D_F(self, training=False):
           
@@ -298,7 +302,7 @@ class GAN_Net:
         training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
         ''' 
         tepimgs=self.getbatch_test_imgs()
-        D1_probs,D2_probs=self.sess.run([self.D_linear_net_F,self.D_clear_net_F], feed_dict={self.imgs_pla:tepimgs, self.training:training})
+        D1_probs,D2_probs=self.sess.run([self.D_linear_net_F,self.G_loss_mean_Square], feed_dict={self.imgs_pla:tepimgs, self.training:training})
         return D1_probs,D2_probs
     
     
@@ -358,15 +362,15 @@ class GAN_Net:
         cnt_fake1=0
         cnt_fake2=0
         for i in range(eval_step):
-            prob1,prob2=self.Run_D_F()
+            prob1,G_loss_squ_F=self.Run_D_F()
             #print ('show prob shape:',probs.shape)  #[32,1]
             cnt_fake1+=np.mean(prob1)
-            cnt_fake2+=np.mean(prob2)
+            cnt_fake2+=np.mean(G_loss_squ_F)
         
         for i in range(eval_step):
-            prob1,prob2=self.Run_D_T()
+            prob1,G_loss_squ_T=self.Run_D_T()
             cnt_real1+=np.mean(prob1)
-            cnt_real2+=np.mean(prob2)
+            cnt_real2+=np.mean(G_loss_squ_T)
         return [cnt_real1/eval_step,cnt_real2/eval_step], [cnt_fake1/eval_step, cnt_fake2/eval_step]
         
     
