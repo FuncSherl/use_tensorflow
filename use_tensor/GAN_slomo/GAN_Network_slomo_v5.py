@@ -17,6 +17,7 @@ from data import create_dataset as cdata
 #this version change output of g to be img
 #and chagne img-size to v2's 1/2
 #use wgan loss function
+#my_novel_conv
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 print ('tensorflow version:',tf.__version__,'  path:',tf.__path__)
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
