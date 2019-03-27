@@ -70,7 +70,7 @@ G_group_img_num=3
 img_channel=3
 eval_step=int (test_size/batchsize/G_group_img_num)
 
-logdir="./logs_v5/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
+logdir="./logs_v6/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 
 bigimgsdir=op.join(logdir, 'randomimgs')
 if not op.exists(bigimgsdir): os.makedirs(bigimgsdir)
@@ -123,7 +123,7 @@ class GAN_Net:
                                                                                                                 self.D_linear_net_F_logit, "D_linear_net")
         print ('D1 form finished..')
         #D_2的输出
-        
+        '''
         self.D_clear_net_F, self.D_clear_net_F_logit=self.Discriminator_net_clear(self.G_net)
         self.D_clear_net_T, self.D_clear_net_T_logit=self.Discriminator_net_clear(self.frame1)
         #下面是loss公式
@@ -131,7 +131,8 @@ class GAN_Net:
                                                                                                                 self.D_clear_net_F_logit, "D_clear_net")
         
         
-        #=tf.reduced_mean(tf.squared_difference(self.G_net,self.frame1))
+        '''
+        self.D_clear_net_loss_sum=tf.reduced_mean(tf.squared_difference(self.G_net,self.frame1))
         
         print ('D2 form finished..')
         #这里对两个D的loss没有特殊处理，只是简单相加
