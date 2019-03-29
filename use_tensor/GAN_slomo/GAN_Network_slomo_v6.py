@@ -404,7 +404,7 @@ class GAN_Net:
             scope=scopevar.name
             tep=my_conv(self.imgs_float32, filterlen+int(layer_cnt/2), initchannel*2, scope+'_start', stride=3, withbias=withbias)
     
-            #tep=my_batchnorm( tep,self.training, scope)   #第一层不要bn试试
+            tep=my_batchnorm( tep,self.training, scope)   #第一层不要bn试试
             tep=my_lrelu(tep, scope)
             
             for i in range(layer_cnt):

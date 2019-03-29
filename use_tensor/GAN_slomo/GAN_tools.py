@@ -126,14 +126,15 @@ def unet_up(inputdata, outchannel,skipcon, scopename,stride=2, filterlen=3, trai
             
         tep=tf.concat([tep, skipcon], -1)
     
-    #单个cov无法拟合xor操作，而这里需要一个选择pixel的操作，线性操作不行
+    #单个conv无法拟合
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv3', stride=1, withbias=withbias)
     tep=my_batchnorm( tep,training, scopename+'_bn3')
     tep=my_lrelu(tep, scopename)
-    
+    '''
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv4', stride=1, withbias=withbias)
     tep=my_batchnorm( tep,training, scopename+'_bn4')
     tep=my_lrelu(tep, scopename)
+    '''
     
     return tep
 
@@ -231,7 +232,7 @@ def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=Non
         up_cnn=tf.nn.conv2d(inputdata2, tep_kernel, strides=[1,stride,stride,1], padding=padding)
                 
         #这里需要一个操作来集合这3个
-        all_cnn=(ori_cnn+left_cnn+up_cnn)
+        all_cnn=(ori_cnn*2+left_cnn+up_cnn)/4
         ret=all_cnn
         
         
@@ -251,40 +252,62 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
     '''
     inputshape=inputdata.get_shape().as_list()
     channel_init=inputshape[-1]
-    ##########################################################################
-    tep=inputdata    
-    print ('\nforming UNET-->layer1:',layercnt)
     skipcon1=[]
+    skipcon2=[]
+    ##########################################################################
+    #first unet-down input1:the first frame
+    tep=my_conv(inputdata , filterlen+int(layercnt/2), channel_init*2, scopename='unet_down_start', stride=1,  withbias=withbias)
+    #tep=my_batchnorm( tep,training, 'trace_1_unet_down_start_bn')
+    tep=my_lrelu(tep, 'trace_1_unet_down_start_relu')
+    print (tep)
+    
+    print ('\nforming UNET-->layer1:',layercnt)
+    
     for i in range(layercnt):
-        tep=unet_down(tep, channel_init*( 2**(i+1)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), training=training,withbias=withbias)
+        skipcon1.append(tep)
+        tep=unet_down(tep, channel_init*( 2**(i+2)), 'unet_down_'+str(i), stride=2, filterlen=filterlen+int( (layercnt-i)/2 ), training=training,withbias=withbias)
         print (tep)
-        if i<layercnt-1: skipcon1.append(tep)
+        
     input1_fea=tep
     
-    #######################################################################
-    tep=inputdata2    
+    #######################################################################   
+    #then unet-down the second frame 
+    tep=my_conv(inputdata2, filterlen+int(layercnt/2), channel_init*2, scopename='unet_down_start', stride=1,  withbias=withbias)
+    #tep=my_batchnorm( tep,training, 'trace_2_unet_down_start_bn')
+    tep=my_lrelu(tep, 'trace_2_unet_down_start_relu') 
+    print (tep)
+    
     print ('\nforming UNET-->layer2:',layercnt)
-    skipcon2=[]
+    
     for i in range(layercnt):
-        tep=unet_down(tep, channel_init*( 2**(i+1)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), training=training,withbias=withbias)
+        skipcon2.append(tep)
+        tep=unet_down(tep, channel_init*( 2**(i+2)), 'unet_down_'+str(i), stride=2, filterlen=filterlen+int( (layercnt-i)/2 ), training=training,withbias=withbias)
         print (tep)
-        if i<layercnt-1: skipcon2.append(tep)
+        
     input2_fea=tep
     
     ##################连接两个部分
+    #concating two middle feature
     tep=my_novel_conv(input1_fea, input2_fea, filterlen, 'middle_novel_cnn')
     print (tep)
     
     ######################################################up
-    for i in reversed(range(layercnt-1)):
-        skipcon=my_novel_conv(skipcon1[i], skipcon2[i], filterlen+int( (layercnt-i)/3 ), 'unet_up_myconv_'+str(i))
+    #begining unet-up 
+    for i in reversed(range(layercnt)):
+        skipcon=my_novel_conv(skipcon1[i], skipcon2[i], filterlen+int( (layercnt-i)/3 ), 'unet_up_novel_cnn_'+str(i))
         
-        tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon,'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  training=training,withbias=withbias)
+        tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon,'unet_up_'+str(i), stride=2,  filterlen=filterlen+int( (layercnt-i)/3 ),  training=training,withbias=withbias)
         print (tep)
-    
-    tep=unet_up(tep, channel_init*2, None,'unet_up_final_1', filterlen=filterlen+int( (layercnt)/3 ),  training=training,withbias=withbias)
+        
+    #finish the net 
+    tep=my_conv(tep, filterlen, channel_init*2, scopename='unet_up_final_1', stride=1, withbias=withbias)
+    tep=my_batchnorm( tep,training, 'unet_up_final_1_bn')
+    tep=my_lrelu(tep, 'unet_up_final_1_relu') 
     print (tep)
+    
+    #finally channel to 3
     tep=my_conv(tep, filterlen, channel_init, scopename='unet_up_final_2', stride=1, withbias=withbias)
+    
     tep=tf.image.resize_images(tep, [inputshape[1],inputshape[2]], method=tf.image.ResizeMethod.BILINEAR)
     print (tep)
     
