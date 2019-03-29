@@ -55,6 +55,8 @@ G_unet_layercnt=3
 G_filter_len=4
 G_withbias=True
 
+#the G_squareloss is reducing,at iter 170000, D_loss=2  but square_loss is 0.03,so there requires a rate to make square_loss more clear
+G_squareloss_rate_globalstep=8000 
 
 #两个D的用的D_block的层数，即缩小几回
 D_1_layercnt=4
@@ -85,7 +87,7 @@ config=tf.ConfigProto(gpu_options=gpu_options)
 class GAN_Net:
     def __init__(self, sess):
         self.sess=sess
-        self.global_step = tf.Variable(0, name='global_step', trainable=False)
+        self.global_step = tf.Variable(0.0, name='global_step',dtype=tf.float32, trainable=False)
         
         self.G_para=[]
         self.D_para=[]       
@@ -142,7 +144,7 @@ class GAN_Net:
         self.G_loss_mean_D1=self.G_loss_F_logits(self.D_linear_net_F_logit, 'G_loss_D1')
         #self.G_loss_mean_D2=self.G_loss_F_logits(self.D_clear_net_F_logit, 'G_loss_D2')
         #这里对两个G的loss没有特殊处理，只是简单相加
-        self.G_loss_all=self.G_loss_mean_D1 + self.G_loss_mean_Square# self.G_loss_mean_D2      
+        self.G_loss_all=self.G_loss_mean_D1 + self.G_loss_mean_Square * (1+self.global_step/G_squareloss_rate_globalstep)# self.G_loss_mean_D2      
         
         #还是应该以tf.trainable_variables()为主
         t_vars=tf.trainable_variables()
