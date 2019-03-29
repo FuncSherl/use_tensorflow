@@ -19,6 +19,7 @@ from data import create_dataset as cdata
 #use wgan loss function
 #my_novel_conv
 #use l2 loss for img clear
+#use global rate to mult square loss
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 print ('tensorflow version:',tf.__version__,'  path:',tf.__path__)
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
