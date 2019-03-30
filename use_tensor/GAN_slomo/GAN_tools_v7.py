@@ -232,19 +232,17 @@ def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=Non
         up_cnn=tf.nn.conv2d(inputdata2, tep_kernel, strides=[1,stride,stride,1], padding=padding)
                 
         #这里需要一个操作来集合这3个
-        #one_channel=(ori_cnn+left_cnn)/2.0
-        #ano_channel=(ori_cnn+up_cnn)/2.0
-        all_cnn=(ori_cnn*2+left_cnn+up_cnn)/4
-        ret=all_cnn
+        one_channel=(ori_cnn+left_cnn)/2.0
+        ano_channel=(ori_cnn+up_cnn)/2.0
         
         
         if withbias:
             bias=tf.get_variable('bias', [outchannel], dtype=datatype, initializer=tf.constant_initializer(bias_init))
-            ret=tf.nn.bias_add(ret, bias)
+            one_channel=tf.nn.bias_add(one_channel, bias)
+            ano_channel=tf.nn.bias_add(ano_channel, bias)
             
             
-            
-        return ret
+        return one_channel,ano_channel
 
     
 
@@ -290,14 +288,20 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
     
     ##################连接两个部分
     #concating two middle feature
-    tep=my_novel_conv(input1_fea, input2_fea, filterlen, 'middle_novel_cnn')
+    tep1,tep2=my_novel_conv(input1_fea, input2_fea, filterlen, 'middle_novel_cnn', withbias=withbias)
+    tep=(tep1+tep2)/2.0
     print (tep)
     
     ######################################################up
     #begining unet-up 
     for i in reversed(range(layercnt)):
-        skipcon=my_novel_conv(skipcon1[i], skipcon2[i], filterlen+int( (layercnt-i)/3 ), 'unet_up_novel_cnn_'+str(i))
+        tep1=skipcon1[i]
+        tep2=skipcon2[i]
         
+        for j in range(layercnt-i):
+            tep1,tep2=my_novel_conv(tep1, tep2, filterlen+int( (layercnt-i)/3 ), 'unet_up_novel_cnn_'+str(i)+'_'+str(j),  withbias=withbias)
+        
+        skipcon=(tep1+tep2)/2.0
         tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon,'unet_up_'+str(i), stride=2,  filterlen=filterlen+int( (layercnt-i)/3 ),  training=training,withbias=withbias)
         print (tep)
         
