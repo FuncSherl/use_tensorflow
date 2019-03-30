@@ -299,7 +299,15 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
         tep2=skipcon2[i]
         
         for j in range(layercnt-i):
-            tep1,tep2=my_novel_conv(tep1, tep2, filterlen+int( (layercnt-i)/3 ), 'unet_up_novel_cnn_'+str(i)+'_'+str(j),  withbias=withbias)
+            tep1,tep2=my_novel_conv(tep1, tep2, filterlen+int( (layercnt-i)/3 ), 'unet_up_novel_cnn_'+str(i)+'_'+str(j)+'_1',  withbias=withbias)
+            tep1=my_batchnorm( tep1,training, 'unet_up_novel_cnn_'+str(i)+'_'+str(j)+'_bn1')
+            tep1=my_lrelu(tep1)
+            
+            tep2=my_batchnorm( tep2,training, 'unet_up_novel_cnn_'+str(i)+'_'+str(j)+'_bn2')
+            tep2=my_lrelu(tep2)
+            
+            tep1,tep2=my_novel_conv(tep1, tep2, filterlen+int( (layercnt-i)/3 ), 'unet_up_novel_cnn_'+str(i)+'_'+str(j)+'_2',  withbias=withbias)
+            
         
         skipcon=(tep1+tep2)/2.0
         tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon,'unet_up_'+str(i), stride=2,  filterlen=filterlen+int( (layercnt-i)/3 ),  training=training,withbias=withbias)
