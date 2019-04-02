@@ -11,7 +11,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from GAN_tools import *
+from GAN_tools_v5 import *
 from data import create_dataset as cdata
 
 #this version change output of g to be img
