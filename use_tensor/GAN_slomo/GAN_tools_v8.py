@@ -239,7 +239,7 @@ def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=Non
         
         
         if withbias:
-            bias=tf.get_variable('bias', [outchannel], dtype=datatype, initializer=tf.constant_initializer(bias_init))
+            bias=tf.get_variable('bias', [inputshape[-1]], dtype=datatype, initializer=tf.constant_initializer(bias_init))
             one_channel=tf.nn.bias_add(one_channel, bias)
             ano_channel=tf.nn.bias_add(ano_channel, bias)
             
