@@ -351,9 +351,15 @@ class GAN_Net:
                 st_x= ki*(img_size_w+cnt) #列
                 st_y= i*(img_size_h+cnt) #行
                 #pre process images
-                pre_imgs=self.tanh2img(tepimgs[tep, :,:, ki*img_channel:(ki+1)*img_channel])
+                pre_imgs=self.tanh2img(tepimgs[tep, :,:, ki*img_channel:(ki+1)*img_channel])[0]
                 if ki==0: pre_imgs=cv2.putText(pre_imgs,'frame0_2_loss:'+str(frame0_2_loss[tep]),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
                 elif ki==1:  pre_imgs=cv2.putText(pre_imgs,'gan_frame1_loss_mean of batch:'+str(D2_prob),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
+                '''
+                print (type(pre_imgs))
+                print (pre_imgs.shape)
+                cv2.imshow('testing', pre_imgs)
+                cv2.waitKey()
+                '''
                 
                 bigimg_bests[st_y:st_y+img_size_h, st_x:st_x+img_size_w,:]=pre_imgs
             st_x= G_group_img_num*(img_size_w+cnt) #列
