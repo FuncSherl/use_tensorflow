@@ -110,6 +110,8 @@ class GAN_Net:
         self.frame1=self.imgs_pla[:,:,:,img_channel:img_channel*2]
         self.frame2=self.imgs_pla[:,:,:,img_channel*2:]
         
+        #这里是为了看看第一帧和第3帧的差距，用来给evalte
+        self.frame_0_2_squareloss=tf.reduce_mean(  tf.squared_difference(self.frame0,self.frame2) , [1,2,3], name='frame_0_2_squareloss')
         #frame0and2=tf.concat([self.frame0, self.frame2], -1) #在第三维度连接起来
         #print ('after concat:',frame0and2)
         #!!!!!!!!!!here is differs from v1,add to Generator output the ori img will reduce the generator difficulty 
@@ -286,9 +288,10 @@ class GAN_Net:
     
     def Run_G(self, training=False):
         tepimgs=self.getbatch_test_imgs()
-        inerimg, D1_prob, D2_prob=self.sess.run([self.G_net, self.D_linear_net_F, self.G_loss_mean_Square], feed_dict={self.imgs_pla:tepimgs, self.training:training})
+        inerimg, D1_prob, D2_prob, frame0_2_loss=self.sess.run([self.G_net, self.D_linear_net_F, self.G_loss_mean_Square, self.frame_0_2_squareloss], \
+                                                               feed_dict={self.imgs_pla:tepimgs, self.training:training})
         
-        return tepimgs, inerimg, D1_prob, D2_prob
+        return tepimgs, inerimg, D1_prob, D2_prob, frame0_2_loss
     
     def Run_D_T(self, training=False):
         '''
@@ -322,7 +325,7 @@ class GAN_Net:
         bigimg_bests=np.zeros([bigimg_len[0],bigimg_len[1],img_channel], dtype=np.uint8)
         
         for i in range(cnt):
-            tepimgs, inerimg, D1_prob, D2_prob=self.Run_G()
+            tepimgs, inerimg, D1_prob, D2_prob, frame0_2_loss=self.Run_G()
             inerimg=self.tanh2img(inerimg)
             #保存原图
             for ind,j in enumerate(tepimgs[:int(cnt/4) ]):  
@@ -347,7 +350,12 @@ class GAN_Net:
             for ki in range(G_group_img_num):
                 st_x= ki*(img_size_w+cnt) #列
                 st_y= i*(img_size_h+cnt) #行
-                bigimg_bests[st_y:st_y+img_size_h, st_x:st_x+img_size_w,:]=self.tanh2img(tepimgs[tep, :,:, ki*img_channel:(ki+1)*img_channel])
+                #pre process images
+                pre_imgs=self.tanh2img(tepimgs[tep, :,:, ki*img_channel:(ki+1)*img_channel])
+                if ki==0: pre_imgs=cv2.putText(pre_imgs,'frame0_2_loss:'+str(frame0_2_loss[tep]),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
+                elif ki==1:  pre_imgs=cv2.putText(pre_imgs,'gan_frame1_loss_mean of batch:'+str(D2_prob),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
+                
+                bigimg_bests[st_y:st_y+img_size_h, st_x:st_x+img_size_w,:]=pre_imgs
             st_x= G_group_img_num*(img_size_w+cnt) #列
             st_y= i*(img_size_h+cnt) #行
             bigimg_bests[st_y:st_y+img_size_h, st_x:st_x+img_size_w,:]=inerimg[tep]

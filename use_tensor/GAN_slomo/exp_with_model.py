@@ -90,8 +90,14 @@ next is D:
 42 <tf.Variable 'D_2_Net/D_2_Net_fc2/weights:0' shape=(1024, 1) dtype=float32_ref>
 43 <tf.Variable 'D_2_Net/D_2_Net_fc2/bias:0' shape=(1,) dtype=float32_ref>
 '''
+'''
+img=np.zeros([180,360,3],dtype=np.uint8)
+img=cv2.putText(img,'there 0 error(s):',(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
+cv2.imshow('t',img)
+cv2.waitKey()
+'''
 
-if __name__ == '__main__':
+if __name__ == '__main__...':
     with tf.Session() as sess:
         saver = tf.train.import_meta_graph(op.join(modelpath, r'model_keep-159999.meta') )
         saver.restore(sess, tf.train.latest_checkpoint(modelpath))
