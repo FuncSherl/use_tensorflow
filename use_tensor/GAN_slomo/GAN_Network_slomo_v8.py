@@ -353,7 +353,7 @@ class GAN_Net:
                 #pre process images
                 pre_imgs=self.tanh2img(tepimgs[tep, :,:, ki*img_channel:(ki+1)*img_channel])[0]
                 if ki==0: pre_imgs=cv2.putText(pre_imgs,'frame0_2_loss:'+str(frame0_2_loss[tep]),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
-                elif ki==1:  pre_imgs=cv2.putText(pre_imgs,'gan_frame1_loss_mean of batch:'+str(D2_prob),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
+                elif ki==1:  pre_imgs=cv2.putText(pre_imgs,'gan_loss_mean_batch:'+str(D2_prob),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
                 '''
                 print (type(pre_imgs))
                 print (pre_imgs.shape)
