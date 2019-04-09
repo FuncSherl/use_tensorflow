@@ -40,7 +40,7 @@ class Slomo:
         frame2=cv2.resize(frame2, self.imgshape)
               
         placetep=np.zeros(self.placeimgshape)
-        print (placetep.shape)
+        #print (placetep.shape)
         
         placetep[0,:,:,:3]=frame0
         placetep[0,:,:,6:]=frame2
@@ -48,7 +48,7 @@ class Slomo:
         ########################################
         
         out=self.sess.run(self.outimg, feed_dict={  self.img_pla:placetep , self.training:False})[0]
-        print (out.shape)
+        #print (out.shape)
         
         ##################################
         out=self.tanh2img(out)
@@ -56,12 +56,13 @@ class Slomo:
     
     def process_video(self, inpath=inputvideo, outpath=outputvideo):
         videoCapture = cv2.VideoCapture(inpath)  
+        
         size = (int(videoCapture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
         fps=int (videoCapture.get(cv2.CAP_PROP_FPS) )
-        
         frame_cnt=videoCapture.get(cv2.CAP_PROP_FRAME_COUNT) 
         
-        print ('original video: size:',size, '  fps:', fps)
+        print ('video:',inpath)
+        print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
         
         videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), fps, self.videoshape )
         print ('output video:',outputvideo,'\nsize:',self.videoshape, '  fps:', fps)
@@ -72,8 +73,12 @@ class Slomo:
         while success and (frame1 is not None):
             print (cnt,'/',frame_cnt)
             tepimg=self.getframe_inbetween(frame0, frame1)
-            videoWrite.write(frame0)
-            videoWrite.write(tepimg)
+            
+            cv2.imshow('t', tepimg)
+            cv2.waitKey()
+            
+            videoWrite.write(frame0) 
+            videoWrite.write(tepimg) 
             
             frame0=frame1
             cnt+=1
@@ -83,8 +88,20 @@ class Slomo:
         
         videoWrite.release()
         videoCapture.release()
+        self.show_video_info( outpath)
         
+    def show_video_info(self, inpath):
+        videoCapture = cv2.VideoCapture(inpath)
+        size = (int(videoCapture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        fps=int (videoCapture.get(cv2.CAP_PROP_FPS) )
         
+        frame_cnt=videoCapture.get(cv2.CAP_PROP_FRAME_COUNT) 
+        
+        print ('video:',inpath)
+        print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
+        
+        videoCapture.release()
+        return size, fps, frame_cnt
     
 
     def img2tanh(self,img):
