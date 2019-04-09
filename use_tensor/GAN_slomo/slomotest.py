@@ -69,13 +69,18 @@ class Slomo:
         
         success, frame0= videoCapture.read()
         success, frame1= videoCapture.read()
+        
         cnt=2
         while success and (frame1 is not None):
+            frame0=cv2.resize(frame0, self.imgshape)
+            frame1=cv2.resize(frame1, self.imgshape)
+            
             print (cnt,'/',frame_cnt)
+            
             tepimg=self.getframe_inbetween(frame0, frame1)
             
-            cv2.imshow('t', tepimg)
-            cv2.waitKey()
+            #cv2.imshow('t', tepimg)
+            #cv2.waitKey()
             
             videoWrite.write(frame0) 
             videoWrite.write(tepimg) 
@@ -83,6 +88,7 @@ class Slomo:
             frame0=frame1
             cnt+=1
             success, frame1= videoCapture.read()
+            
         
         videoWrite.write(frame0)
         
