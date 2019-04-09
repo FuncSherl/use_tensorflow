@@ -97,6 +97,35 @@ cv2.imshow('t',img)
 cv2.waitKey()
 '''
 
+
+t_var = tf.Variable(0.0)
+def cond(i, _):
+    return tf.less(i, 6)
+def body(i, _):
+    global t_var
+    flow = tf.assign(t_var, tf.cast(i, tf.float32))
+    return tf.add(i, 1), flow
+i, re = tf.while_loop(cond, body, [1, t_var])
+with tf.Session() as sess:
+    tf.global_variables_initializer().run()
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+    print(sess.run([i, re, t_var]))
+
+
 if __name__ == '__main__...':
     with tf.Session() as sess:
         saver = tf.train.import_meta_graph(op.join(modelpath, r'model_keep-159999.meta') )

@@ -105,6 +105,12 @@ class GAN_Net:
         #3个placeholder， img和noise,training 
         self.imgs_pla = tf.placeholder(tf.float32, [batchsize, img_size_h, img_size_w, G_group_img_num*img_channel], name='imgs_in')
         self.training=tf.placeholder(tf.bool, name='training_in')
+        print ('placeholders:\n','img_placeholder:',self.imgs_pla,'\ntraining:',self.training)
+        '''
+        placeholders:
+        img_placeholder: Tensor("imgs_in:0", shape=(12, 180, 320, 9), dtype=float32) 
+        training: Tensor("training_in:0", dtype=bool)
+        '''
         
         self.frame0=self.imgs_pla[:,:,:,:img_channel]
         self.frame1=self.imgs_pla[:,:,:,img_channel:img_channel*2]
@@ -116,7 +122,7 @@ class GAN_Net:
         #print ('after concat:',frame0and2)
         #!!!!!!!!!!here is differs from v1,add to Generator output the ori img will reduce the generator difficulty 
         self.G_net=self.Generator_net(self.frame0, self.frame2)  #+self.frame0  #注意这里是直接作为生成结果
-        print ('self.G_net:',self.G_net)
+        print ('self.G_net:',self.G_net)#self.G_net: Tensor("G_Net/G_tanh:0", shape=(12, 180, 320, 3), dtype=float32)
         
     
         #D_1的输出 
