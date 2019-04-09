@@ -12,9 +12,11 @@ import cv2,os
 
 modelpath=r'/home/sherl/workspaces/git/use_tensorflow/use_tensor/GAN_slomo/logs_v8/GAN_2019-04-04_20-17-08_base_lr-0.000200_batchsize-12_maxstep-240000'
 meta_name=r'model_keep-239999.meta'
-inputvideo ='./testing_gif/original.mp4'
-outputvideo='./testing_gif/myslomo.avi'
-os.makedirs('./testing_gif',  exist_ok=True)
+
+testvideodir='./testing_gif'
+inputvideo =op.join(testvideodir, 'original.mp4')
+outputvideo=op.join( testvideodir, 'myslomo.avi')
+os.makedirs(testvideodir,  exist_ok=True)
 
 class Slomo:
     def __init__(self,sess):
