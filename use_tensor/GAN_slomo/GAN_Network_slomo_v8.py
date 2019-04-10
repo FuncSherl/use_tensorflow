@@ -38,7 +38,7 @@ base_lr=0.0002 #基础学习率
 beta1=0.5
 dropout_rate=0.5
 
-maxstep=240000 #训练多少次
+maxstep=2400000 #训练多少次
 
 decay_steps=8000
 decay_rate=0.99
