@@ -76,8 +76,8 @@ class Slomo:
         cnt=2
         while success and (frame1 is not None):
             sttime=time.time()  
-            frame0=cv2.resize(frame0, self.imgshape)
-            frame1=cv2.resize(frame1, self.imgshape)
+            frame0=cv2.resize(frame0, self.videoshape)
+            frame1=cv2.resize(frame1, self.videoshape)
             
             
             
