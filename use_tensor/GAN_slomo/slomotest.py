@@ -8,7 +8,7 @@ import tensorflow as tf
 import numpy as np
 import os.path as op
 import matplotlib.pyplot as plt
-import cv2,os
+import cv2,os,time
 
 modelpath=r'/home/sherl/workspaces/git/use_tensorflow/use_tensor/GAN_slomo/logs_v8/GAN_2019-04-04_20-17-08_base_lr-0.000200_batchsize-12_maxstep-240000'
 meta_name=r'model_keep-239999.meta'
@@ -37,7 +37,7 @@ class Slomo:
         self.outimgshape=self.outimg.get_shape().as_list() #self.outimgshape: [12, 180, 320, 3]
         self.videoshape=(self.outimgshape[2], self.outimgshape[1]) #w*h
         
-    def getframe_inbetween(self,frame0,frame2):          
+    def getframe_inbetween(self,frame0,frame2):        
         frame0=cv2.resize(frame0, self.imgshape)
         frame2=cv2.resize(frame2, self.imgshape)
               
@@ -54,6 +54,7 @@ class Slomo:
         
         ##################################
         out=self.tanh2img(out)
+        
         return out
     
     def process_video(self, inpath=inputvideo, outpath=outputvideo):
@@ -66,7 +67,7 @@ class Slomo:
         print ('video:',inpath)
         print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
         
-        videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), fps, self.videoshape )
+        videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
         print ('output video:',outputvideo,'\nsize:',self.videoshape, '  fps:', fps)
         
         success, frame0= videoCapture.read()
@@ -74,10 +75,11 @@ class Slomo:
         
         cnt=2
         while success and (frame1 is not None):
+            sttime=time.time()  
             frame0=cv2.resize(frame0, self.imgshape)
             frame1=cv2.resize(frame1, self.imgshape)
             
-            print (cnt,'/',frame_cnt)
+            
             
             tepimg=self.getframe_inbetween(frame0, frame1)
             
@@ -89,6 +91,7 @@ class Slomo:
             
             frame0=frame1
             cnt+=1
+            print (cnt,'/',frame_cnt,'  time gap:',time.time()-sttime)
             success, frame1= videoCapture.read()
             
         
