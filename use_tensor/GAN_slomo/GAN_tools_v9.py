@@ -5,6 +5,7 @@ Created on 2019年2月19日
 @author: sherl
 '''
 import tensorflow as tf
+import numpy as np
 
 #use depthwise_conv to my_novel_conv
 
@@ -225,9 +226,9 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
             row=tf.cast( ind/width, tf.int32)
             col=ind%width
             st_row=tf.maximum(row-shifting, 0)
-            ed_row=tf.minimum(row+shifting, height)
+            ed_row=tf.minimum(row+shifting+1, height)
             st_col=tf.maximum(col-shifting, 0)
-            ed_col=tf.minimum(col+shifting, width)
+            ed_col=tf.minimum(col+shifting+1, width)
             
             indata1=inputdata[:, st_row:ed_row, st_col:ed_col, :]
             indata2=inputdata2[:, st_row:ed_row, st_col:ed_col, :]
@@ -259,6 +260,22 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
         
         tf.while_loop(cond, body, loop)
         return ret
+
+def test_my_find_flip():
+    A=np.array([[1,2,3], \
+                [2,1,3],\
+                [6,4,2]])
+    
+    C=A=np.array([[1,2,3], \
+                [2,1,3],\
+                [3,4,2]])
+    
+    B = np.array([ [[1,2,3], [4,5,6],[6,5,4]],\
+              [[7,8,9],[10,11,12],[9,7,4]]  ])
+    print (B.shape)
+    with tf.Session() as sess:  
+        print(sess.run(tf.argmin(B,1))) 
+
 
 
 def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=None, stride=1, padding="SAME", reuse=tf.AUTO_REUSE, withbias=True):
@@ -394,7 +411,7 @@ def my_D_block(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=
     return tep   
 
 
-if __name__ == '__main__':
+def test_unet():
     imgs_pla = tf.placeholder(datatype, [32, 360/2, 640/2, 3], name='imgs_in')
     
     with tf.variable_scope("G_Net",  reuse=tf.AUTO_REUSE) as scope:
@@ -405,6 +422,8 @@ if __name__ == '__main__':
         print ()
         for i in trainvars:
             print (i)
+
+
     
     
                 
