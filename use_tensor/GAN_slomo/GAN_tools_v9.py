@@ -266,15 +266,16 @@ def test_my_find_flip():
                 [2,1,3],\
                 [6,4,2]])
     
-    C=A=np.array([[1,2,3], \
-                [2,1,3],\
+    C=np.array([[1,2,1], \
+                [2,6,4],\
                 [3,4,2]])
     
     B = np.array([ [[1,2,3], [4,5,6],[6,5,4]],\
               [[7,8,9],[10,11,12],[9,7,4]]  ])
     print (B.shape)
     with tf.Session() as sess:  
-        print(sess.run(tf.argmin(B,1))) 
+        tep=my_find_flip(A,C,2,'test')
+        print(sess.run(tep)) 
 
 
 
@@ -424,7 +425,8 @@ def test_unet():
             print (i)
 
 
-    
+if __name__=='__main__':
+    test_my_find_flip()
     
                 
                 
