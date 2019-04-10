@@ -57,7 +57,7 @@ G_filter_len=4
 G_withbias=True
 
 #the G_squareloss is reducing,at iter 170000, D_loss=2  but square_loss is 0.03,so there requires a rate to make square_loss more clear
-G_squareloss_rate_globalstep=8000 
+G_squareloss_rate_globalstep=40000 
 
 #两个D的用的D_block的层数，即缩小几回
 D_1_layercnt=4
