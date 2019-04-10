@@ -204,6 +204,51 @@ def my_unet(inputdata, layercnt=3,  filterlen=3,training=True,  withbias=True):
     return tep
 
 
+def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_REUSE):
+    '''
+    filterlen:用这么大的范围内找对称点
+    '''
+    inputshape=inputdata.get_shape().as_list() #n,h,w,c
+    cnt_ind=int ( inputshape[1]*inputshape[2] )
+    width=int(inputshape[2] )
+    height=int(inputshape[1])
+    shifting=int(filterlen/2)
+    
+    with tf.variable_scope(scopename,  reuse=reuse) as scope: 
+        ind=tf.constant(0, dtype=tf.int32)
+        loop=[ind]
+        def cond(ind):
+            return ind<cnt_ind
+            
+        def body(ind):
+            row=tf.cast( ind/width, tf.int32)
+            col=ind%width
+            st_row=tf.maximum(row-shifting, 0)
+            ed_row=tf.minimum(row+shifting, height)
+            st_col=tf.maximum(col-shifting, 0)
+            ed_col=tf.minimum(col+shifting, width)
+            
+            indata1=inputdata[:, st_row:ed_row, st_col:ed_col, :]
+            indata2=inputdata2[:, st_row:ed_row, st_col:ed_col, :]
+            
+            indata2_left=tf.image.flip_left_right(indata2)
+            indata2_up  =tf.image.flip_up_down(indata2)
+            
+            indata1_left=tf.abs(indata1-indata2_left)
+            indata1_up  =tf.abs(indata1-indata2_up  )
+            
+            
+            
+            
+            
+            
+            ind+=1
+            return ind
+        
+        tf.while_loop(cond, body, loop)
+        
+
+
 def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=None, stride=1, padding="SAME", reuse=tf.AUTO_REUSE, withbias=True):
     '''
     stride:这里代表希望将输出大小变为原图的   1/stride (注意同deconv区分)
@@ -245,7 +290,6 @@ def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=Non
             
             
         return one_channel,ano_channel
-
     
 
 def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True,  withbias=True):
