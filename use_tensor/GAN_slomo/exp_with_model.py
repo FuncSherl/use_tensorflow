@@ -98,32 +98,14 @@ cv2.waitKey()
 '''
 
 
-t_var = tf.Variable(0.0)
-def cond(i, _):
-    return tf.less(i, 6)
-def body(i, _):
-    global t_var
-    flow = tf.assign(t_var, tf.cast(i, tf.float32))
-    return tf.add(i, 1), flow
-i, re = tf.while_loop(cond, body, [1, t_var])
-with tf.Session() as sess:
-    tf.global_variables_initializer().run()
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
-    print(sess.run([i, re, t_var]))
+
+B = np.array([ [[1,2,3], [4,5,6],[6,5,4]],\
+              [[7,8,9],[10,11,12],[9,7,4]]  ])
+print (B.shape)
+with tf.Session() as sess:  
+    print(sess.run(tf.argmin(B,1))) 
+    
+
 
 
 if __name__ == '__main__...':

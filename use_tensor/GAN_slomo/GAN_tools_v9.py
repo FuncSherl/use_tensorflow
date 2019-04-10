@@ -215,6 +215,7 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
     shifting=int(filterlen/2)
     
     with tf.variable_scope(scopename,  reuse=reuse) as scope: 
+        ret=tf.zeros_like(inputdata)
         ind=tf.constant(0, dtype=tf.int32)
         loop=[ind]
         def cond(ind):
@@ -233,20 +234,31 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
             
             indata2_left=tf.image.flip_left_right(indata2)
             indata2_up  =tf.image.flip_up_down(indata2)
+            indata2_up_left=tf.image.flip_left_right(indata2_up)
             
             indata1_left=tf.abs(indata1-indata2_left)
             indata1_up  =tf.abs(indata1-indata2_up  )
+            indata1_up_left=tf.abs(indata1-indata2_up_left)
             
+            #indata1_left_expan=tf.expand_dims(indata1_left, 1)
+            #indata1_up_expan=tf.expand_dims(indata1_up, 1)
+            #indata1_up_left_expan=tf.expand_dims(indata1_up_left, 1)
             
+            stack_all=tf.stack([indata1_left, indata1_up, indata1_up_left], 1) #[n,3,h,w,c]
+            first_min=tf.reduce_min(stack_all, [1]) #[n,h,w,c]
+            sec_min=tf.reduce_min(first_min, [1,2], keep_dims=True) #[n,1,1,c]
             
-            
+            min_bool= (first_min==sec_min)
+            tep=tf.where(min_bool,indata1 , tf.zeros_like(indata1))
+            tep=tf.reduce_mean(tep, [1,2])*(ed_row-st_row)*(ed_col-st_col) #[n,c]
+            ret[:,row, col, :]=tep
             
             
             ind+=1
             return ind
         
         tf.while_loop(cond, body, loop)
-        
+        return ret
 
 
 def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=None, stride=1, padding="SAME", reuse=tf.AUTO_REUSE, withbias=True):
