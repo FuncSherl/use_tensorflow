@@ -251,9 +251,9 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
             
             min_bool= (first_min==sec_min)
             tep=tf.where(min_bool,indata1 , tf.zeros_like(indata1))
-            tep=tf.reduce_mean(tep, [1,2])*(ed_row-st_row)*(ed_col-st_col) #[n,c]
-            ret[:,row, col, :]=tep
-            
+            tep=tf.reduce_mean(tep, [1,2])*tf.cast( (ed_row-st_row)*(ed_col-st_col), tf.float64) #[n,c]
+            #ret[:,row, col, :]=tep
+            #print (st_row)
             
             ind+=1
             return ind
@@ -269,6 +269,9 @@ def test_my_find_flip():
     C=np.array([[1,2,1], \
                 [2,6,4],\
                 [3,4,2]])
+    
+    A=tf.constant(np.zeros([12,32,32,3]))
+    C=tf.constant(np.zeros([12,32,32,3]))
     
     B = np.array([ [[1,2,3], [4,5,6],[6,5,4]],\
               [[7,8,9],[10,11,12],[9,7,4]]  ])
