@@ -99,11 +99,19 @@ cv2.waitKey()
 
 
 
-B = np.array([ [[1,2,3], [4,5,6],[6,5,4]],\
-              [[7,8,9],[10,11,12],[9,7,4]]  ])
-print (B.shape)
-with tf.Session() as sess:  
-    print(sess.run(tf.argmin(B,1))) 
+
+ 
+g = tf.Graph()
+with g.as_default():
+    a = tf.Variable(initial_value=[[0, 0, 0, 0],[0, 0, 0, 0]])
+    b = tf.scatter_nd_update(a, [[0]], [ [1,2,3,4] ] )  #[[1, 1, 0, 0], [1, 0, 4, 0]]
+    print (a)  #<tf.Variable 'Variable:0' shape=(2, 4) dtype=int32_ref>
+with tf.Session(graph=g) as sess:
+    sess.run(tf.global_variables_initializer())
+    print(sess.run(a))
+    print(sess.run(b))
+    print(sess.run(a))
+
     
 
 
