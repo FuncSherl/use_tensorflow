@@ -260,6 +260,7 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
             min_bool= (first_min==sec_min)
             tep=tf.where(min_bool,indata1 , tf.zeros_like(indata1))
             tep=tf.reduce_mean(tep, [1,2])*tf.cast( (ed_row-st_row)*(ed_col-st_col), tf.float64) #[n,c]
+            
             #ret[:,row, col, :]=tep
             #print (st_row)
             #tf.scatter_update()
