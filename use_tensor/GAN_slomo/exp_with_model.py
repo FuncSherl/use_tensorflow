@@ -116,7 +116,7 @@ class FizzBuzz():
 
     def body(self, i, _):
         flow = tf.cond(
-            tf.equal(tf.mod(i, 15), 0),  # 如果值能被 15 整除，那么就把该位置赋值为 FizzBuzz
+            tf.equal(tf.mod(i, 11), 0),  # 如果值能被 15 整除，那么就把该位置赋值为 FizzBuzz
                 lambda: tf.assign(self.array[i - 1], 'FizzBuzz'),
             
                 lambda: tf.cond(tf.equal(tf.mod(i, 3), 0), # 如果值能被 3 整除，那么就把该位置赋值为 Fizz

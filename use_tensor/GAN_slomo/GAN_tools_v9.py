@@ -216,7 +216,8 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
     shifting=int(filterlen/2)
     
     with tf.variable_scope(scopename,  reuse=reuse) as scope: 
-        ret=tf.get_variable('ret_var', inputshape, dtype=tf.float32,  initializer=tf.zeros_initializer())
+        ret=tf.Variable(np.zeros(shape= inputshape, dtype=np.float32))
+        #ret=tf.get_variable('ret_var', inputshape, dtype=tf.float32,  initializer=tf.ones_initializer())
         #ret=tf.transpose(ret, [1,2,0,3]) #[h,w,n,c]
         
         
@@ -277,11 +278,11 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
             
             return ind,flow
         
-        indd,rett=tf.while_loop(cond, body, loop)
+        ind,rett=tf.while_loop(cond, body, loop)
         
         ##[h,w,n,c]->[n,h,w,c]
         
-        return indd,rett
+        return rett
     
 def my_find_flip_no_tensor(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_REUSE):
     '''
@@ -353,7 +354,7 @@ def test_my_find_flip():
         
         #sess.run(tf.local_variables_initializer())
         
-        ind,tep=my_find_flip(A,C,2,'test')
+        tep=my_find_flip(A,C,2,'test')
         
         sess.run(tf.global_variables_initializer())
         #tep=my_find_flip_no_tensor(A,C,2,'test')
