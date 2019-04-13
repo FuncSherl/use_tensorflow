@@ -98,7 +98,7 @@ cv2.waitKey()
 '''
 
 
-
+#https://zhuanlan.zhihu.com/p/31958302
 
 class FizzBuzz():
     def __init__(self, length=30):
