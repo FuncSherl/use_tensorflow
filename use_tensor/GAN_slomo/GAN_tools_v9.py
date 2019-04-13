@@ -221,11 +221,12 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
         
         
         ind=tf.constant(0, dtype=tf.int32)
-        loop=[ind]
-        def cond(ind):
+        loop=[ind, ret]
+        
+        def cond(ind, _):
             return ind<cnt_ind
             
-        def body(ind):
+        def body(ind, _):
             nonlocal ret
             #ret=tf.Variable(np.zeros(shape=[inputshape[1], inputshape[2], inputshape[0], inputshape[3]], dtype=np.float32))
             
@@ -259,7 +260,8 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
             tep=tf.where(min_bool,indata1 , tf.zeros_like(indata1))
             tep=tf.reduce_mean(tep, [1,2])*tf.cast( (ed_row-st_row)*(ed_col-st_col), tf.float32) #[n,c]
             
-            tf.assign(ret[:,row, col, :],tep)
+            #ret=tf.concat( [ret, tf.expand_dims(tep, 0)], 0 ) 
+            
             #print (st_row)
             #tf.scatter_update()
             
@@ -270,13 +272,16 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
             
             
             ind+=1
-            return ind
+            
+            flow=tf.cond(ind<cnt_ind, lambda: tf.assign(ret[:,row, col, :],tep), lambda:ret)
+            
+            return ind,flow
         
-        tf.while_loop(cond, body, loop)
+        indd,rett=tf.while_loop(cond, body, loop)
         
         ##[h,w,n,c]->[n,h,w,c]
         
-        return ret
+        return indd,rett
     
 def my_find_flip_no_tensor(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_REUSE):
     '''
@@ -328,26 +333,31 @@ def my_find_flip_no_tensor(inputdata, inputdata2, filterlen,    scopename, reuse
     
 
 def test_my_find_flip():
-    A=np.array([[1,2,3], \
+    A=np.array([[[[1,2,3], \
                 [2,1,3],\
-                [6,4,2]])
+                [6,4,2]]]])
     
-    C=np.array([[1,2,1], \
+    C=np.array([[[[1,2,1], \
                 [2,6,4],\
-                [3,4,2]])
+                [3,4,2]]]])
     
-    A=tf.constant(np.zeros([12,32,320,3]), dtype=tf.float32)
-    C=tf.constant(np.zeros([12,32,320,3]), dtype=tf.float32)
+    B = np.array([[ [[1,2,3], [4,5,6],[6,5,4]],\
+              [[7,8,9],[10,11,12],[9,7,4]]  ]])
     
-    B = np.array([ [[1,2,3], [4,5,6],[6,5,4]],\
-              [[7,8,9],[10,11,12],[9,7,4]]  ])
-    print (B.shape)
+    A=tf.constant(B, dtype=tf.float32)
+    C=tf.constant(B, dtype=tf.float32)
+    
+    
+    print (A.shape, B.shape)
     with tf.Session() as sess:  
+        
+        #sess.run(tf.local_variables_initializer())
+        
+        ind,tep=my_find_flip(A,C,2,'test')
+        
         sess.run(tf.global_variables_initializer())
-        
-        
-        tep=my_find_flip(A,C,2,'test')
         #tep=my_find_flip_no_tensor(A,C,2,'test')
+        
         print(sess.run(tep)) 
 
 
