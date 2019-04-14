@@ -98,12 +98,11 @@ cv2.waitKey()
 '''
 
 
-#https://zhuanlan.zhihu.com/p/31958302
 
 class FizzBuzz():
     def __init__(self, length=30):
         self.length = length  # 程序需要执行的序列长度
-        self.array = tf.Variable([str(i) for i in range(1, length+1)], dtype=tf.string, trainable=False)  # 最后程序返回的结果
+        self.array = tf.Variable([[i,i] for i in range(1, length+1)], dtype=tf.float32, trainable=False)  # 最后程序返回的结果
         self.graph = tf.while_loop(self.cond, self.body, [1, self.array],)   # 对每一个值进行循环判断
 
     def run(self):
@@ -115,24 +114,90 @@ class FizzBuzz():
         return (tf.less(i, self.length+1)) # 判断是否是最后一个值
 
     def body(self, i, _):
-        flow = tf.cond(
-            tf.equal(tf.mod(i, 11), 0),  # 如果值能被 15 整除，那么就把该位置赋值为 FizzBuzz
-                lambda: tf.assign(self.array[i - 1], 'FizzBuzz'),
-            
-                lambda: tf.cond(tf.equal(tf.mod(i, 3), 0), # 如果值能被 3 整除，那么就把该位置赋值为 Fizz
-                        lambda: tf.assign(self.array[i - 1], 'Fizz'),
-                        lambda: tf.cond(tf.equal(tf.mod(i, 5), 0),   # 如果值能被 5 整除，那么就把该位置赋值为 Buzz
-                                lambda: tf.assign(self.array[i - 1], 'Buzz'),
-                                lambda: self.array  # 最后返回的结果
-                )
-            )
-        )
+        flow = tf.cond( tf.equal(tf.mod(i, 5), 0),  lambda: tf.assign(self.array[i - 1], [tf.cast(i, tf.float32), 0]  ),  lambda: self.array   )
+                
         return (tf.add(i, 1), flow)
 
 if __name__ == '__main__':
     fizzbuzz = FizzBuzz(length=20)
     ix, array = fizzbuzz.run()
     print(array)
+
+
+
+#https://zhuanlan.zhihu.com/p/31958302
+
+class FizzBuzz2():
+    def __init__(self, inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_REUSE):
+        inputshape=inputdata.get_shape().as_list() #n,h,w,c
+        self.cnt_ind=int ( inputshape[1]*inputshape[2] )
+        self.width=int(inputshape[2] )
+        self.height=int(inputshape[1])
+        self.shifting=int(filterlen/2)
+        self.ind=tf.constant(0, dtype=tf.int32)
+        self.inputdata=inputdata
+        self.inputdata2=inputdata2
+        
+        self.array = tf.Variable(np.zeros(shape= inputshape, dtype=np.float32),dtype=tf.float32, trainable=False)
+        loop=[self.ind, self.array]
+        
+        self.graph = tf.while_loop(self.cond, self.body, loop)   # 对每一个值进行循环判断
+
+    def run(self):
+        with tf.Session() as sess:
+            tf.global_variables_initializer().run()
+            return sess.run(self.graph)    
+
+    def cond(self, ind, _):
+        return ind<self.cnt_ind
+
+    def body(self, ind, _):
+        row=tf.cast( ind/self.width, tf.int32)
+        col=ind%self.width
+        st_row=tf.maximum(row-self.shifting, 0)
+        ed_row=tf.minimum(row+self.shifting+1, self.height)
+        st_col=tf.maximum(col-self.shifting, 0)
+        ed_col=tf.minimum(col+self.shifting+1, self.width)
+            
+        indata1=self.inputdata[:, st_row:ed_row, st_col:ed_col, :]
+        indata2=self.inputdata2[:, st_row:ed_row, st_col:ed_col, :]
+            
+        indata2_left=tf.image.flip_left_right(indata2)
+        indata2_up  =tf.image.flip_up_down(indata2)
+        indata2_up_left=tf.image.flip_left_right(indata2_up)
+            
+        indata1_left=tf.abs(indata1-indata2_left)
+        indata1_up  =tf.abs(indata1-indata2_up  )
+        indata1_up_left=tf.abs(indata1-indata2_up_left)
+            
+            
+            
+        stack_all=tf.stack([indata1_left, indata1_up, indata1_up_left], 1) #[n,3,h,w,c]
+        first_min=tf.reduce_min(stack_all, [1]) #[n,h,w,c]
+        sec_min=tf.reduce_min(first_min, [1,2], keep_dims=True) #[n,1,1,c]
+            
+        min_bool= (first_min==sec_min)
+        tep=tf.where(min_bool,indata1 , tf.zeros_like(indata1))
+        tep=tf.reduce_mean(tep, [1,2])*tf.cast( (ed_row-st_row)*(ed_col-st_col), tf.float32) #[n,c]
+            
+      
+        #flow=tf.assign(self.array[:,row, col, :],tep)
+        #flow=tf.cond(  tf.less(ind, self.cnt_ind), lambda: tf.assign(self.array[:,row, col, :],tep), lambda:self.array)
+            
+        return (tf.add(ind, 1), flow)
+
+if __name__ == '__main__':
+    B = np.array([[ [[1,2,3], [4,5,6],[6,5,4]],\
+              [[7,8,9],[10,11,12],[9,7,4]]  ]])
+    
+    A=tf.constant(B, dtype=tf.float32)
+    C=tf.constant(B, dtype=tf.float32)
+    
+    print (B.shape)
+    
+    fizzbuzz = FizzBuzz2(A,C,2,'test')
+    ix, array = fizzbuzz.run()
+    print(ix,array)
 
     
 

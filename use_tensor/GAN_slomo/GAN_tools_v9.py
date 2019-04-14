@@ -216,8 +216,9 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
     shifting=int(filterlen/2)
     
     with tf.variable_scope(scopename,  reuse=reuse) as scope: 
-        ret=tf.Variable(np.zeros(shape= inputshape, dtype=np.float32))
-        #ret=tf.get_variable('ret_var', inputshape, dtype=tf.float32,  initializer=tf.ones_initializer())
+        #ret=tf.Variable(np.zeros(shape= inputshape, dtype=np.float32),dtype=tf.float32, trainable=False)
+        
+        ret=tf.get_variable('ret_var', inputshape, dtype=tf.float32,  initializer=tf.ones_initializer())
         #ret=tf.transpose(ret, [1,2,0,3]) #[h,w,n,c]
         
         
@@ -269,14 +270,11 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
             #print (ret) #Tensor("test/while/Identity_1:0", shape=(32, 32, 12, 3), dtype=float32)
             #ret=tf.scatter_nd_update( ret, [[row, col]], [tf.cast(tep, tf.float32)] )
           
+            flow=tf.assign(ret[:,row, col, :],tep)
+            flow=tf.tile(sec_min, [1, height, width, 1])
+            #flow=tf.cond(ind<cnt_ind, lambda: tf.assign(ret[:,row, col, :],tep), lambda:ret)
             
-            
-            
-            ind+=1
-            
-            flow=tf.cond(ind<cnt_ind, lambda: tf.assign(ret[:,row, col, :],tep), lambda:ret)
-            
-            return ind,flow
+            return (tf.add(ind, 1), flow)
         
         ind,rett=tf.while_loop(cond, body, loop)
         
@@ -342,8 +340,8 @@ def test_my_find_flip():
                 [2,6,4],\
                 [3,4,2]]]])
     
-    B = np.array([[ [[1,2,3], [4,5,6],[6,5,4]],\
-              [[7,8,9],[10,11,12],[9,7,4]]  ]])
+    B = np.array([[ [[1], [4],[6]],\
+              [[7],[10],[9]]  ]])
     
     A=tf.constant(B, dtype=tf.float32)
     C=tf.constant(B, dtype=tf.float32)
@@ -359,6 +357,9 @@ def test_my_find_flip():
         sess.run(tf.global_variables_initializer())
         #tep=my_find_flip_no_tensor(A,C,2,'test')
         
+        print(sess.run(tep)) 
+        print(sess.run(tep)) 
+        print(sess.run(tep)) 
         print(sess.run(tep)) 
 
 
