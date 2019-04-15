@@ -233,7 +233,8 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
             #ret=tf.Variable(np.zeros(shape=[inputshape[1], inputshape[2], inputshape[0], inputshape[3]], dtype=np.float32))
             
             row=tf.cast( ind/width, tf.int32)
-            col=ind%width
+            col=tf.cast( ind%width, tf.int32)
+            
             st_row=tf.maximum(row-shifting, 0)
             ed_row=tf.minimum(row+shifting+1, height)
             st_col=tf.maximum(col-shifting, 0)
@@ -258,9 +259,10 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
             first_min=tf.reduce_min(stack_all, [1]) #[n,h,w,c]
             sec_min=tf.reduce_min(first_min, [1,2], keep_dims=True) #[n,1,1,c]
             
-            min_bool= (first_min==sec_min)
+            min_bool= tf.equal(first_min,sec_min)
             tep=tf.where(min_bool,indata1 , tf.zeros_like(indata1))
-            tep=tf.reduce_mean(tep, [1,2])*tf.cast( (ed_row-st_row)*(ed_col-st_col), tf.float32) #[n,c]
+            nozerocnt=tf.count_nonzero(tep, [1,2])
+            tep=tf.reduce_mean(tep, [1,2])*tf.cast( (ed_row-st_row)*(ed_col-st_col), tf.float32)/tf.cast(nozerocnt, tf.float32) #[n,c]
             
             #ret=tf.concat( [ret, tf.expand_dims(tep, 0)], 0 ) 
             
@@ -293,7 +295,7 @@ def my_find_flip_no_tensor(inputdata, inputdata2, filterlen,    scopename, reuse
     shifting=int(filterlen/2)
     
     kep_tep=[]
-    
+    debug=[]
     with tf.variable_scope(scopename,  reuse=reuse) as scope:
         for ind in range(cnt_ind):
             row=int( ind/width)
@@ -309,18 +311,34 @@ def my_find_flip_no_tensor(inputdata, inputdata2, filterlen,    scopename, reuse
             indata2_left=tf.image.flip_left_right(indata2)
             indata2_up  =tf.image.flip_up_down(indata2)
             indata2_up_left=tf.image.flip_left_right(indata2_up)
+            
+            
                 
             indata1_left=tf.abs(indata1-indata2_left)
             indata1_up  =tf.abs(indata1-indata2_up  )
             indata1_up_left=tf.abs(indata1-indata2_up_left)
             
+            
             stack_all=tf.stack([indata1_left, indata1_up, indata1_up_left], 1) #[n,3,h,w,c]
             first_min=tf.reduce_min(stack_all, [1]) #[n,h,w,c]
+            
             sec_min=tf.reduce_min(first_min, [1,2], keep_dims=True) #[n,1,1,c]
+            
+            #debug.append(sec_min)
                 
-            min_bool= (first_min==sec_min)
+            min_bool= tf.equal(first_min, sec_min)
+            
+            #debug.append(min_bool)
+            
             tep=tf.where(min_bool,indata1 , tf.zeros_like(indata1))
-            tep=tf.reduce_mean(tep, [1,2])*tf.cast( (ed_row-st_row)*(ed_col-st_col), tf.float64) #[n,c]
+            
+            nozerocnt=tf.count_nonzero(tep, [1,2])
+            
+            debug.append(tep)
+            
+            tep=tf.reduce_mean(tep, [1,2])*tf.cast( (ed_row-st_row)*(ed_col-st_col), tf.float32)/tf.cast(nozerocnt, tf.float32)  #[n,c]
+            debug.append(tep)
+            
             kep_tep.append(tep)
             print (ind,'/',cnt_ind,tep)
             
@@ -328,7 +346,7 @@ def my_find_flip_no_tensor(inputdata, inputdata2, filterlen,    scopename, reuse
         stack_tep=tf.reshape(stack_tep, inputshape) #[n,h,w,c]
         #stack_tep=tf.transpose(stack_tep, [2,0,1,3])
         print (stack_tep)
-        return stack_tep
+        return debug#stack_tep
     
 
 def test_my_find_flip():
@@ -353,14 +371,14 @@ def test_my_find_flip():
         #sess.run(tf.local_variables_initializer())
         
         tep=my_find_flip(A,C,2,'test')
+        tep=my_find_flip_no_tensor(A,C,2,'test')
         
         sess.run(tf.global_variables_initializer())
-        #tep=my_find_flip_no_tensor(A,C,2,'test')
         
         print(sess.run(tep)) 
-        print(sess.run(tep)) 
-        print(sess.run(tep)) 
-        print(sess.run(tep)) 
+        #print(sess.run(tep)) 
+        #print(sess.run(tep)) 
+        #print(sess.run(tep)) 
 
 
 

@@ -176,12 +176,13 @@ class FizzBuzz2():
         first_min=tf.reduce_min(stack_all, [1]) #[n,h,w,c]
         sec_min=tf.reduce_min(first_min, [1,2], keep_dims=True) #[n,1,1,c]
             
-        min_bool= (first_min==sec_min)
+        min_bool= tf.equal(first_min, sec_min)
         tep=tf.where(min_bool,indata1 , tf.zeros_like(indata1))
-        tep=tf.reduce_mean(tep, [1,2])*tf.cast( (ed_row-st_row)*(ed_col-st_col), tf.float32) #[n,c]
+        nozerocnt=tf.count_nonzero(tep, [1,2])
+        tep=tf.reduce_mean(tep, [1,2])*tf.cast( (ed_row-st_row)*(ed_col-st_col), tf.float32)/tf.cast(nozerocnt, tf.float32) #[n,c]
             
       
-        #flow=tf.assign(self.array[:,row, col, :],tep)
+        flow=tf.assign(self.array[:,row, col, :],tep)
         #flow=tf.cond(  tf.less(ind, self.cnt_ind), lambda: tf.assign(self.array[:,row, col, :],tep), lambda:self.array)
             
         return (tf.add(ind, 1), flow)
