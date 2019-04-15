@@ -7,6 +7,7 @@ Created on 2019年2月19日
 import tensorflow as tf
 import numpy as np
 
+
 #use depthwise_conv to my_novel_conv
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -218,18 +219,18 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
     with tf.variable_scope(scopename,  reuse=reuse) as scope: 
         #ret=tf.Variable(np.zeros(shape= inputshape, dtype=np.float32),dtype=tf.float32, trainable=False)
         
-        ret=tf.get_variable(scope.name+'_ret_var', inputshape, dtype=tf.float32,  initializer=tf.zeros_initializer(), trainable=False)
+        #ret=tf.get_variable(scope.name+'_ret_var', inputshape, dtype=tf.float32,  initializer=tf.zeros_initializer(), trainable=False)
         #ret=tf.transpose(ret, [1,2,0,3]) #[h,w,n,c]
-        print (ret)
+        #print (ret)
         
         ind=tf.constant(0, dtype=tf.int32)
-        loop=[ind, ret]
+        loop=[ind,  tf.zeros([1,  inputshape[0], inputshape[-1]], dtype=tf.float32)  ]
         
         def cond(ind, _):
             return ind<cnt_ind
             
         def body(ind, flow):
-            nonlocal ret
+            #nonlocal ret
             #ret=tf.Variable(np.zeros(shape=[inputshape[1], inputshape[2], inputshape[0], inputshape[3]], dtype=np.float32))
             
             row=tf.cast( ind/width, tf.int32)
@@ -271,14 +272,25 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
             
             #print (ret) #Tensor("test/while/Identity_1:0", shape=(32, 32, 12, 3), dtype=float32)
             #ret=tf.scatter_nd_update( ret, [[row, col]], [tf.cast(tep, tf.float32)] )
+            '''
             with tf.control_dependencies([flow]):
                 flow=tf.assign(ret[:,row, col, :],tep)
+            '''
+            flow=tf.cond(tf.equal(ind, 0),  lambda:tf.expand_dims(tep, 0), lambda:tf.concat( [flow, tf.expand_dims(tep, 0)], 0 ) )
+            
             #flow=tf.tile(sec_min, [1, height, width, 1])
             #flow=tf.cond(ind<cnt_ind, lambda: tf.assign(ret[:,row, col, :],tep), lambda:ret)
             
-            return (tf.add(ind, 1), flow)
+            return tf.add(ind, 1), flow
         
-        ind,rett=tf.while_loop(cond, body, loop)
+        ind,rett=tf.while_loop(cond, body, loop, shape_invariants=[\
+                                                                   tf.TensorShape([]),   \
+                                                                   tf.TensorShape( [ None, inputshape[0], inputshape[-1] ] )\
+                                                                   ]  )
+        
+        print (rett) #[h*w, n, c]
+        rett=tf.transpose(rett, [1,0,2] )
+        rett=tf.reshape(rett, inputshape )
         
         return rett
     
@@ -367,7 +379,7 @@ def test_my_find_flip():
         #sess.run(tf.local_variables_initializer())
         
         tep=my_find_flip(A,C,2,'test')
-        tep=my_find_flip_no_tensor(A,C,2,'test')
+        #tep=my_find_flip_no_tensor(A,C,2,'test')
         
         sess.run(tf.global_variables_initializer())
         
@@ -425,7 +437,7 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
     '''
     这里将两个输入图片通过同一个特征网络，并保留中间各自特征
     '''
-    flipconv_method=my_find_flip_no_tensor
+    flipconv_method=my_find_flip
     inputshape=inputdata.get_shape().as_list()
     channel_init=inputshape[-1]
     skipcon1=[]
