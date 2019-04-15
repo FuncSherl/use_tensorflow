@@ -108,20 +108,23 @@ class FizzBuzz():
     def run(self):
         with tf.Session() as sess:
             tf.global_variables_initializer().run()
-            return sess.run(self.graph)    
+            return sess.run([self.graph])    
 
     def cond(self, i, _):
         return (tf.less(i, self.length+1)) # 判断是否是最后一个值
 
-    def body(self, i, _):
-        flow = tf.cond( tf.equal(tf.mod(i, 5), 0),  lambda: tf.assign(self.array[i - 1], [tf.cast(i, tf.float32), 0]  ),  lambda: self.array   )
-                
+    def body(self, i, flow):
+        #flow = tf.cond( tf.equal(tf.mod(i, 5), 0),     lambda: tf.assign(self.array[i - 1], [tf.cast(i, tf.float32), 0]  ),lambda: self.array,  )
+        with tf.control_dependencies([flow]):
+            flow=tf.cond(tf.equal(tf.mod(i, 5), 0),lambda: self.array,    lambda:tf.assign(self.array[i - 1], [tf.cast(i, tf.float32), 0]  ) )
         return (tf.add(i, 1), flow)
 
 if __name__ == '__main__':
-    fizzbuzz = FizzBuzz(length=20)
-    ix, array = fizzbuzz.run()
-    print(array)
+    fizzbuzz = FizzBuzz(length=60)
+    print(fizzbuzz.run())
+    print(fizzbuzz.run())
+    print(fizzbuzz.run())
+    
 
 
 
@@ -138,7 +141,7 @@ class FizzBuzz2():
         self.inputdata=inputdata
         self.inputdata2=inputdata2
         
-        self.array = tf.Variable(np.zeros(shape= inputshape, dtype=np.float32),dtype=tf.float32, trainable=False)
+        self.array = tf.get_variable('ret_var', inputshape, dtype=tf.float32,  initializer=tf.zeros_initializer(), trainable=False)
         loop=[self.ind, self.array]
         
         self.graph = tf.while_loop(self.cond, self.body, loop)   # 对每一个值进行循环判断
@@ -151,7 +154,7 @@ class FizzBuzz2():
     def cond(self, ind, _):
         return ind<self.cnt_ind
 
-    def body(self, ind, _):
+    def body(self, ind, flow):
         row=tf.cast( ind/self.width, tf.int32)
         col=ind%self.width
         st_row=tf.maximum(row-self.shifting, 0)
@@ -181,9 +184,9 @@ class FizzBuzz2():
         nozerocnt=tf.count_nonzero(tep, [1,2])
         tep=tf.reduce_mean(tep, [1,2])*tf.cast( (ed_row-st_row)*(ed_col-st_col), tf.float32)/tf.cast(nozerocnt, tf.float32) #[n,c]
             
-      
-        flow=tf.assign(self.array[:,row, col, :],tep)
-        #flow=tf.cond(  tf.less(ind, self.cnt_ind), lambda: tf.assign(self.array[:,row, col, :],tep), lambda:self.array)
+        with tf.control_dependencies([flow]):
+            flow=tf.assign(self.array[:,row, col, :],tep)
+            #flow=tf.cond(  tf.less(ind, self.cnt_ind), lambda: tf.assign(self.array[:,row, col, :],tep), lambda:self.array)
             
         return (tf.add(ind, 1), flow)
 
@@ -197,9 +200,10 @@ if __name__ == '__main__':
     print (B.shape)
     
     fizzbuzz = FizzBuzz2(A,C,2,'test')
-    ix, array = fizzbuzz.run()
-    print(ix,array)
-
+    print(fizzbuzz.run())
+    print(fizzbuzz.run())
+    print(fizzbuzz.run())
+    print(fizzbuzz.run())
     
 
 

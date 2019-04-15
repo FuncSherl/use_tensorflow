@@ -218,9 +218,9 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
     with tf.variable_scope(scopename,  reuse=reuse) as scope: 
         #ret=tf.Variable(np.zeros(shape= inputshape, dtype=np.float32),dtype=tf.float32, trainable=False)
         
-        ret=tf.get_variable('ret_var', inputshape, dtype=tf.float32,  initializer=tf.ones_initializer())
+        ret=tf.get_variable(scope.name+'_ret_var', inputshape, dtype=tf.float32,  initializer=tf.zeros_initializer(), trainable=False)
         #ret=tf.transpose(ret, [1,2,0,3]) #[h,w,n,c]
-        
+        print (ret)
         
         ind=tf.constant(0, dtype=tf.int32)
         loop=[ind, ret]
@@ -228,7 +228,7 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
         def cond(ind, _):
             return ind<cnt_ind
             
-        def body(ind, _):
+        def body(ind, flow):
             nonlocal ret
             #ret=tf.Variable(np.zeros(shape=[inputshape[1], inputshape[2], inputshape[0], inputshape[3]], dtype=np.float32))
             
@@ -271,16 +271,14 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
             
             #print (ret) #Tensor("test/while/Identity_1:0", shape=(32, 32, 12, 3), dtype=float32)
             #ret=tf.scatter_nd_update( ret, [[row, col]], [tf.cast(tep, tf.float32)] )
-          
-            flow=tf.assign(ret[:,row, col, :],tep)
-            flow=tf.tile(sec_min, [1, height, width, 1])
+            with tf.control_dependencies([flow]):
+                flow=tf.assign(ret[:,row, col, :],tep)
+            #flow=tf.tile(sec_min, [1, height, width, 1])
             #flow=tf.cond(ind<cnt_ind, lambda: tf.assign(ret[:,row, col, :],tep), lambda:ret)
             
             return (tf.add(ind, 1), flow)
         
         ind,rett=tf.while_loop(cond, body, loop)
-        
-        ##[h,w,n,c]->[n,h,w,c]
         
         return rett
     
@@ -311,9 +309,7 @@ def my_find_flip_no_tensor(inputdata, inputdata2, filterlen,    scopename, reuse
             indata2_left=tf.image.flip_left_right(indata2)
             indata2_up  =tf.image.flip_up_down(indata2)
             indata2_up_left=tf.image.flip_left_right(indata2_up)
-            
-            
-                
+               
             indata1_left=tf.abs(indata1-indata2_left)
             indata1_up  =tf.abs(indata1-indata2_up  )
             indata1_up_left=tf.abs(indata1-indata2_up_left)
@@ -334,10 +330,10 @@ def my_find_flip_no_tensor(inputdata, inputdata2, filterlen,    scopename, reuse
             
             nozerocnt=tf.count_nonzero(tep, [1,2])
             
-            debug.append(tep)
+            #debug.append(tep)
             
             tep=tf.reduce_mean(tep, [1,2])*tf.cast( (ed_row-st_row)*(ed_col-st_col), tf.float32)/tf.cast(nozerocnt, tf.float32)  #[n,c]
-            debug.append(tep)
+            #debug.append(tep)
             
             kep_tep.append(tep)
             print (ind,'/',cnt_ind,tep)
@@ -346,7 +342,7 @@ def my_find_flip_no_tensor(inputdata, inputdata2, filterlen,    scopename, reuse
         stack_tep=tf.reshape(stack_tep, inputshape) #[n,h,w,c]
         #stack_tep=tf.transpose(stack_tep, [2,0,1,3])
         print (stack_tep)
-        return debug#stack_tep
+        return stack_tep
     
 
 def test_my_find_flip():
@@ -429,6 +425,7 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
     '''
     这里将两个输入图片通过同一个特征网络，并保留中间各自特征
     '''
+    flipconv_method=my_find_flip_no_tensor
     inputshape=inputdata.get_shape().as_list()
     channel_init=inputshape[-1]
     skipcon1=[]
@@ -467,8 +464,8 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
     
     ##################连接两个部分
     #concating two middle feature
-    tep1,tep2=my_novel_conv(input1_fea, input2_fea, filterlen, 'middle_novel_cnn', withbias=withbias)
-    tep=(tep1+tep2)/2.0
+    tep=flipconv_method(input1_fea, input2_fea, filterlen, 'middle_novel_cnn')
+    
     print (tep)
     
     ######################################################up
@@ -477,18 +474,8 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
         tep1=skipcon1[i]
         tep2=skipcon2[i]
         
-        for j in range(layercnt-i):
-            tep1,tep2=my_novel_conv(tep1, tep2, filterlen+int( (layercnt-i)/3 ), 'unet_up_novel_cnn_'+str(i)+'_'+str(j)+'_1',  withbias=withbias)
-            tep1=my_batchnorm( tep1,training, 'unet_up_novel_cnn_'+str(i)+'_'+str(j)+'_bn1')
-            tep1=my_lrelu(tep1,'unet_up_novel_cnn_'+str(i)+'_'+str(j)+'_lrelu1')
-            
-            tep2=my_batchnorm( tep2,training, 'unet_up_novel_cnn_'+str(i)+'_'+str(j)+'_bn2')
-            tep2=my_lrelu(tep2,'unet_up_novel_cnn_'+str(i)+'_'+str(j)+'_lrelu2')
-            
-            tep1,tep2=my_novel_conv(tep1, tep2, filterlen+int( (layercnt-i)/3 ), 'unet_up_novel_cnn_'+str(i)+'_'+str(j)+'_2',  withbias=withbias)
-            
+        skipcon=flipconv_method(tep1, tep2, filterlen+int( 2**(layercnt-i) )+2, 'unet_up_novel_cnn_'+str(i))
         
-        skipcon=(tep1+tep2)/2.0
         tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon,'unet_up_'+str(i), stride=2,  filterlen=filterlen+int( (layercnt-i)/3 ),  training=training,withbias=withbias)
         print (tep)
         
