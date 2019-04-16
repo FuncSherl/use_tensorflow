@@ -218,13 +218,14 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
     
     with tf.variable_scope(scopename,  reuse=reuse) as scope: 
         #ret=tf.Variable(np.zeros(shape= inputshape, dtype=np.float32),dtype=tf.float32, trainable=False)
+        ret=tf.TensorArray(tf.float32, cnt_ind, element_shape=[inputshape[0], inputshape[-1]])
         
         #ret=tf.get_variable(scope.name+'_ret_var', inputshape, dtype=tf.float32,  initializer=tf.zeros_initializer(), trainable=False)
         #ret=tf.transpose(ret, [1,2,0,3]) #[h,w,n,c]
         #print (ret)
         
         ind=tf.constant(0, dtype=tf.int32)
-        loop=[ind,  tf.zeros([1,  inputshape[0], inputshape[-1]], dtype=tf.float32)  ]
+        loop=[ind,  ret ]
         
         def cond(ind, _):
             return ind<cnt_ind
@@ -276,18 +277,17 @@ def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_R
             with tf.control_dependencies([flow]):
                 flow=tf.assign(ret[:,row, col, :],tep)
             '''
-            flow=tf.cond(tf.equal(ind, 0),  lambda:tf.expand_dims(tep, 0), lambda:tf.concat( [flow, tf.expand_dims(tep, 0)], 0 ) )
+            #flow=tf.cond(tf.equal(ind, 0),  lambda:tf.expand_dims(tep, 0), lambda:tf.concat( [flow, tf.expand_dims(tep, 0)], 0 ) )
+            flow=flow.write(ind, tep)
             
             #flow=tf.tile(sec_min, [1, height, width, 1])
             #flow=tf.cond(ind<cnt_ind, lambda: tf.assign(ret[:,row, col, :],tep), lambda:ret)
             
             return tf.add(ind, 1), flow
         
-        ind,rett=tf.while_loop(cond, body, loop, shape_invariants=[\
-                                                                   tf.TensorShape([]),   \
-                                                                   tf.TensorShape( [ None, inputshape[0], inputshape[-1] ] )\
-                                                                   ]  )
+        ind,rett=tf.while_loop(cond, body, loop,  ) #shape_invariants=[tf.TensorShape([]),    tf.TensorShape( [ None, inputshape[0], inputshape[-1] ] )   ] 
         
+        rett=rett.stack()
         print (rett) #[h*w, n, c]
         rett=tf.transpose(rett, [1,0,2] )
         rett=tf.reshape(rett, inputshape )
