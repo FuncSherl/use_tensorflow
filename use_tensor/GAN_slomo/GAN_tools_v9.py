@@ -426,7 +426,7 @@ def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=Non
         #print ('tep_kernel:',tep_kernel)
         cnn_ori_left=tf.nn.depthwise_conv2d(inputdata, tep_kernel, strides=[1,stride,stride,1], padding=padding)
         cnn_ori_left2=tf.nn.depthwise_conv2d(inputdata2, tep_kernel, strides=[1,stride,stride,1], padding=padding)
-        #
+        #!!!!!!!!!!!!!!!!1
         tep_kernel=tf.image.flip_left_right(kernel_left)
         tep_kernel=tf.transpose(tep_kernel, [1,2,3,0])
         #print ('tep_kernel:',tep_kernel)
@@ -437,9 +437,10 @@ def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=Non
         cnn_left_abs2=tf.abs(cnn_ori_left2-cnn_left2)
         
         cnn_left_arg_min=tf.argmin( tf.stack([cnn_left_abs, cnn_left_abs2], 4) , 4)
+        min_datas=tf.where(cnn_left_arg_min==0, cnn_left, cnn_ori_left2)/tf.cast(conv_kernel_left_cnt, tf.float32)
         
         cnn_left_min=tf.minimum(cnn_left_abs, cnn_left_abs2)/tf.cast(conv_kernel_left_cnt, tf.float32)
-        cnn_left_min*inputdata+(1-cnn_left_min)*
+        #cnn_left_final=cnn_left_min*inputdata+(1-cnn_left_min)*min_datas
         
         
         #up_down

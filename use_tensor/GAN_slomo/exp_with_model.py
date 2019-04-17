@@ -98,7 +98,7 @@ cv2.waitKey()
 '''
 
 
-
+'''
 class FizzBuzz():
     def __init__(self, length=30):
         self.length = length  # 程序需要执行的序列长度
@@ -205,6 +205,17 @@ if __name__ == '__main__':
     print(fizzbuzz.run())
     print(fizzbuzz.run())
     
+'''
+
+a = tf.Variable(np.ones([3,2,3]))
+index_a = tf.where(a>0)
+print (index_a)
+tep=tf.gather_nd(a, index_a)
+print (tep)
+ 
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    print(sess.run(tep))
 
 
 
