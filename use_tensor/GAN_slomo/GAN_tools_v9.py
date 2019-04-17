@@ -390,39 +390,74 @@ def test_my_find_flip():
 
 
 
-def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=None, stride=1, padding="SAME", reuse=tf.AUTO_REUSE, withbias=True):
+def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=None, stride=1, padding="SAME", reuse=tf.AUTO_REUSE, withbias=True, training=True):
     '''
     stride:这里代表希望将输出大小变为原图的   1/stride (注意同deconv区分)
     '''
     inputshape=inputdata.get_shape().as_list()
     if not outchannel: outchannel= 1 #inputshape[-1] #如果未定义，就等于输入channel
     
+    conv_kernel_left=np.zeros([outchannel, filterlen,filterlen, inputshape[-1]])
+    conv_kernel_left[:, :, :int(filterlen/2), :]=1
+    conv_kernel_left_cnt=np.count_nonzero(conv_kernel_left)
+    
+    conv_kernel_up=np.zeros([outchannel, filterlen,filterlen, inputshape[-1]])
+    conv_kernel_up[:, :int(filterlen/2), :,  :]=1
+    conv_kernel_up_cnt=np.count_nonzero(conv_kernel_up)
+    
+    conv_kernel_180=np.zeros([outchannel, filterlen,filterlen, inputshape[-1]])
+    conv_kernel_180[:, :int(filterlen/2), :int(filterlen/2),  :]=1
+    conv_kernel_180_cnt=np.count_nonzero(conv_kernel_180)
+    
+    
     with tf.variable_scope(scopename,  reuse=reuse) as scope: 
-        kernel=tf.get_variable('weights', [outchannel, filterlen,filterlen, inputshape[-1]], dtype=datatype, \
-                               initializer=tf.random_normal_initializer(stddev=stddev))
+        inputdata =my_batchnorm(inputdata , training)
+        inputdata2=my_batchnorm(inputdata2, training)
+        
+        kernel_left=tf.Variable(conv_kernel_left, trainable=False, dtype=tf.float32)
+        kernel_up=tf.Variable(conv_kernel_up, trainable=False, dtype=tf.float32)
+        kernel_180=tf.Variable(conv_kernel_180, trainable=False, dtype=tf.float32)
         #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
         #但是这个为了进行反转，特意这么设置，后面送进去卷积前要transpose
-        tep_kernel=tf.transpose(kernel, [1,2,3,0])
-        print ('tep_kernel:',tep_kernel)
-        ori_cnn=tf.nn.depthwise_conv2d(inputdata, tep_kernel, strides=[1,stride,stride,1], padding=padding)
-                    
         
-        #left2right
-        tep_kernel=tf.image.flip_left_right(kernel)
+        #left_right
+        tep_kernel=kernel_left
         tep_kernel=tf.transpose(tep_kernel, [1,2,3,0])
-        print ('tep_kernel:',tep_kernel)
-        left_cnn=tf.nn.depthwise_conv2d(inputdata2, tep_kernel, strides=[1,stride,stride,1], padding=padding)
-                
-        #up 2 down
-        tep_kernel=tf.image.flip_up_down(kernel)
+        #print ('tep_kernel:',tep_kernel)
+        cnn_ori_left=tf.nn.depthwise_conv2d(inputdata, tep_kernel, strides=[1,stride,stride,1], padding=padding)
+        cnn_ori_left2=tf.nn.depthwise_conv2d(inputdata2, tep_kernel, strides=[1,stride,stride,1], padding=padding)
+        #
+        tep_kernel=tf.image.flip_left_right(kernel_left)
         tep_kernel=tf.transpose(tep_kernel, [1,2,3,0])
-        print ('tep_kernel:',tep_kernel)
-        up_cnn=tf.nn.depthwise_conv2d(inputdata2, tep_kernel, strides=[1,stride,stride,1], padding=padding)
-                
-        #这里需要一个操作来集合这3个
-        one_channel=(ori_cnn+left_cnn)/2.0
-        ano_channel=(ori_cnn+up_cnn)/2.0
+        #print ('tep_kernel:',tep_kernel)
+        cnn_left=tf.nn.depthwise_conv2d(inputdata2, tep_kernel, strides=[1,stride,stride,1], padding=padding)
+        cnn_left2=tf.nn.depthwise_conv2d(inputdata, tep_kernel, strides=[1,stride,stride,1], padding=padding)
         
+        cnn_left_abs=tf.abs(cnn_ori_left-cnn_left) #[n,h,w,c]
+        cnn_left_abs2=tf.abs(cnn_ori_left2-cnn_left2)
+        
+        cnn_left_arg_min=tf.argmin( tf.stack([cnn_left_abs, cnn_left_abs2], 4) , 4)
+        
+        cnn_left_min=tf.minimum(cnn_left_abs, cnn_left_abs2)/tf.cast(conv_kernel_left_cnt, tf.float32)
+        cnn_left_min*inputdata+(1-cnn_left_min)*
+        
+        
+        #up_down
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+       
         
         if withbias:
             bias=tf.get_variable('bias', [inputshape[-1]], dtype=datatype, initializer=tf.constant_initializer(bias_init))
