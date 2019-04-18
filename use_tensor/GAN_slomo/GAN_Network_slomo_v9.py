@@ -52,8 +52,8 @@ weightclip_max=0.01
 #D_first_channel=18
 
 #G中unet的层数
-G_unet_layercnt=2
-G_filter_len=4
+G_unet_layercnt=3
+G_filter_len=3
 G_withbias=True
 
 #the G_squareloss is reducing,at iter 170000, D_loss=2  but square_loss is 0.03,so there requires a rate to make square_loss more clear

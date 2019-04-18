@@ -390,7 +390,7 @@ def test_my_find_flip():
 
 
 
-def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=None, stride=1, padding="SAME", reuse=tf.AUTO_REUSE, withbias=True, training=True):
+def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=None, stride=1, padding="SAME", reuse=tf.AUTO_REUSE, withbias=False, training=True):
     '''
     stride:这里代表希望将输出大小变为原图的   1/stride (注意同deconv区分)
     '''
@@ -400,6 +400,8 @@ def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=Non
     conv_kernel_left=np.zeros([outchannel, filterlen,filterlen, inputshape[-1]])
     conv_kernel_left[:, :, :int(filterlen/2), :]=1
     conv_kernel_left_cnt=np.count_nonzero(conv_kernel_left)
+    
+    #print (conv_kernel_left[0, :, :,0])
     
     conv_kernel_up=np.zeros([outchannel, filterlen,filterlen, inputshape[-1]])
     conv_kernel_up[:, :int(filterlen/2), :,  :]=1
@@ -535,7 +537,7 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
         tep1=skipcon1[i]
         tep2=skipcon2[i]
         
-        skipcon=flipconv_method(tep1, tep2, filterlen+int( 2**(layercnt-i) )+2, 'unet_up_novel_cnn_'+str(i),  training=training)
+        skipcon=flipconv_method(tep1, tep2, filterlen+int( 2**(layercnt-i) ), 'unet_up_novel_cnn_'+str(i),  training=training)
         
         tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon,'unet_up_'+str(i), stride=2,  filterlen=filterlen+int( (layercnt-i)/3 ),  training=training,withbias=withbias)
         print (tep)
