@@ -411,8 +411,8 @@ def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=Non
     
     
     with tf.variable_scope(scopename,  reuse=reuse) as scope: 
-        inputdata =my_batchnorm(inputdata , training)
-        inputdata2=my_batchnorm(inputdata2, training)
+        inputdata =my_batchnorm(inputdata , training, 'batchnorm_input1')
+        inputdata2=my_batchnorm(inputdata2, training, 'batchnorm_input2')
         
         kernel_left=tf.Variable(conv_kernel_left, trainable=False, dtype=tf.float32)
         kernel_up=tf.Variable(conv_kernel_up, trainable=False, dtype=tf.float32)
@@ -437,43 +437,56 @@ def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=Non
         cnn_left_abs2=tf.abs(cnn_ori_left2-cnn_left2)
         
         cnn_left_arg_min=tf.argmin( tf.stack([cnn_left_abs, cnn_left_abs2], 4) , 4)
-        min_datas=tf.where(cnn_left_arg_min==0, cnn_left, cnn_ori_left2)/tf.cast(conv_kernel_left_cnt, tf.float32)
+        min_datas_left=tf.where( tf.equal(cnn_left_arg_min,0) , cnn_left, cnn_ori_left2)/tf.cast(conv_kernel_left_cnt, tf.float32)
         
-        cnn_left_min=tf.minimum(cnn_left_abs, cnn_left_abs2)/tf.cast(conv_kernel_left_cnt, tf.float32)
-        #cnn_left_final=cnn_left_min*inputdata+(1-cnn_left_min)*min_datas
+        cnn_left_min=tf.minimum(cnn_left_abs, cnn_left_abs2)  #/tf.cast(conv_kernel_left_cnt, tf.float32)
+        #cnn_left_final=cnn_left_min*inputdata+(1-cnn_left_min)*min_datas_left
         
-        
+        #up_down!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         #up_down
+        tep_kernel=kernel_up
+        tep_kernel=tf.transpose(tep_kernel, [1,2,3,0])
+        #print ('tep_kernel:',tep_kernel)
+        cnn_ori_up=tf.nn.depthwise_conv2d(inputdata, tep_kernel, strides=[1,stride,stride,1], padding=padding)
+        cnn_ori_up2=tf.nn.depthwise_conv2d(inputdata2, tep_kernel, strides=[1,stride,stride,1], padding=padding)
+        #!!!!!!!!!!!!!!!!1
+        tep_kernel=tf.image.flip_up_down(kernel_up)
+        tep_kernel=tf.transpose(tep_kernel, [1,2,3,0])
+        #print ('tep_kernel:',tep_kernel)
+        cnn_up=tf.nn.depthwise_conv2d(inputdata2, tep_kernel, strides=[1,stride,stride,1], padding=padding)
+        cnn_up2=tf.nn.depthwise_conv2d(inputdata, tep_kernel, strides=[1,stride,stride,1], padding=padding)
+        
+        cnn_up_abs=tf.abs(cnn_ori_up-cnn_up) #[n,h,w,c]
+        cnn_up_abs2=tf.abs(cnn_ori_up2-cnn_up2)
+        
+        cnn_up_arg_min=tf.argmin( tf.stack([cnn_up_abs, cnn_up_abs2], 4) , 4)
+        min_datas_up=tf.where( tf.equal(cnn_up_arg_min,0) , cnn_up, cnn_ori_up2)/tf.cast(conv_kernel_up_cnt, tf.float32)
+        
+        cnn_up_min=tf.minimum(cnn_up_abs, cnn_up_abs2)  #/tf.cast(conv_kernel_up_cnt, tf.float32)
+        #cnn_up_final=cnn_up_min*inputdata+(1-cnn_up_min)*min_datas_up
         
         
         
         
+        #merge
+        all_arg_min=tf.argmin( tf.stack([cnn_left_min, cnn_up_min], 4) , 4)
+        all_final=tf.where( tf.equal(all_arg_min,0) , min_datas_left, min_datas_up)       
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-       
         
         if withbias:
             bias=tf.get_variable('bias', [inputshape[-1]], dtype=datatype, initializer=tf.constant_initializer(bias_init))
-            one_channel=tf.nn.bias_add(one_channel, bias)
-            ano_channel=tf.nn.bias_add(ano_channel, bias)
+            all_final=tf.nn.bias_add(all_final, bias)
+
             
             
-        return one_channel,ano_channel
+        return all_final
     
 
 def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True,  withbias=True):
     '''
     这里将两个输入图片通过同一个特征网络，并保留中间各自特征
     '''
-    flipconv_method=my_find_flip
+    flipconv_method=my_novel_conv
     inputshape=inputdata.get_shape().as_list()
     channel_init=inputshape[-1]
     skipcon1=[]
@@ -512,7 +525,7 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
     
     ##################连接两个部分
     #concating two middle feature
-    tep=flipconv_method(input1_fea, input2_fea, filterlen, 'middle_novel_cnn')
+    tep=flipconv_method(input1_fea, input2_fea, filterlen, 'middle_novel_cnn', training=training)
     
     print (tep)
     
@@ -522,7 +535,7 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
         tep1=skipcon1[i]
         tep2=skipcon2[i]
         
-        skipcon=flipconv_method(tep1, tep2, filterlen+int( 2**(layercnt-i) )+2, 'unet_up_novel_cnn_'+str(i))
+        skipcon=flipconv_method(tep1, tep2, filterlen+int( 2**(layercnt-i) )+2, 'unet_up_novel_cnn_'+str(i),  training=training)
         
         tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon,'unet_up_'+str(i), stride=2,  filterlen=filterlen+int( (layercnt-i)/3 ),  training=training,withbias=withbias)
         print (tep)
