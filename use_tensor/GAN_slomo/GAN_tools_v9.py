@@ -413,8 +413,8 @@ def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=Non
     
     
     with tf.variable_scope(scopename,  reuse=reuse) as scope: 
-        inputdata =my_batchnorm(inputdata , training, 'batchnorm_input1')
-        inputdata2=my_batchnorm(inputdata2, training, 'batchnorm_input2')
+        #inputdata =my_batchnorm(inputdata , training, 'batchnorm_input1')
+        #inputdata2=my_batchnorm(inputdata2, training, 'batchnorm_input2')
         
         kernel_left=tf.Variable(conv_kernel_left, trainable=False, dtype=tf.float32)
         kernel_up=tf.Variable(conv_kernel_up, trainable=False, dtype=tf.float32)
