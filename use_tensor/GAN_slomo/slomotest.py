@@ -78,7 +78,7 @@ class Slomo:
         print ('video:',inpath)
         print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
         
-        videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (3), self.videoshape )
+        videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
         print ('output video:',outputvideo,'\nsize:',self.videoshape, '  fps:', fps)
         
         
