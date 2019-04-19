@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import cv2,os,time
 
 modelpath=r'/home/sherl/workspaces/git/use_tensorflow/use_tensor/GAN_slomo/logs_v8/GAN_2019-04-12_15-48-20_base_lr-0.000200_batchsize-12_maxstep-2400000'
-meta_name=r'model_keep-381999.meta'
+meta_name=r'model_keep-467999.meta'
 
 testvideodir='./testing_gif'
 inputvideo =op.join(testvideodir, 'original.mp4')
@@ -32,6 +32,7 @@ class Slomo:
         self.training= self.graph.get_tensor_by_name("training_in:0")
         
         self.placeimgshape=self.img_pla.get_shape().as_list() #[12, 180, 320, 9]
+        self.batch=self.placeimgshape[0]
         self.imgshape=(self.placeimgshape[2], self.placeimgshape[1]) #w*h
         
         self.outimgshape=self.outimg.get_shape().as_list() #self.outimgshape: [12, 180, 320, 3]
@@ -57,7 +58,17 @@ class Slomo:
         
         return out
     
-    def process_video(self, inpath=inputvideo, outpath=outputvideo):
+    def insert_list_frames(self, frames):
+        ret=[frames[0]]
+        for i in range(len(frames)-1):
+            tep=self.getframe_inbetween(frames[i], frames[i+1])
+            ret.append(tep)
+            ret.append(frames[i+1])
+            print ('->',i,'/',len(frames)-1)
+        return ret
+    
+    
+    def process_video(self, recursive=2, inpath=inputvideo, outpath=outputvideo):
         videoCapture = cv2.VideoCapture(inpath)  
         
         size = (int(videoCapture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
@@ -67,35 +78,40 @@ class Slomo:
         print ('video:',inpath)
         print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
         
-        videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
+        videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (3), self.videoshape )
         print ('output video:',outputvideo,'\nsize:',self.videoshape, '  fps:', fps)
+        
         
         success, frame0= videoCapture.read()
         success, frame1= videoCapture.read()
+        print (frame0)
+        frame0=cv2.resize(frame0, self.videoshape)
         
+        kep=[frame0]
         cnt=2
         while success and (frame1 is not None):
             sttime=time.time()  
-            frame0=cv2.resize(frame0, self.videoshape)
+            
             frame1=cv2.resize(frame1, self.videoshape)
             
+            kep.append(frame1)
             
-            
-            tepimg=self.getframe_inbetween(frame0, frame1)
+            #tepimg=self.getframe_inbetween(frame0, frame1)
             
             #cv2.imshow('t', tepimg)
             #cv2.waitKey()
-            
-            videoWrite.write(frame0) 
-            videoWrite.write(tepimg) 
             
             frame0=frame1
             cnt+=1
             print (cnt,'/',frame_cnt,'  time gap:',time.time()-sttime)
             success, frame1= videoCapture.read()
-            
         
-        videoWrite.write(frame0)
+        for i in range(recursive):
+            print ('recursize:',i)
+            kep=self.insert_list_frames(kep)
+        
+        for i in kep:
+            videoWrite.write(i)
         
         videoWrite.release()
         videoCapture.release()
@@ -126,7 +142,7 @@ class Slomo:
 
 with tf.Session() as sess:
     slomo=Slomo(sess)
-    slomo.process_video(inputvideo, outputvideo)
+    slomo.process_video(3, inputvideo, outputvideo)
     
          
     
