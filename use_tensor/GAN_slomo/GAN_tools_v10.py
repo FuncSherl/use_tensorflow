@@ -439,7 +439,8 @@ def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=Non
         cnn_left_abs2=tf.abs(cnn_ori_left2-cnn_left2)
         
         cnn_left_arg_min=tf.argmin( tf.stack([cnn_left_abs, cnn_left_abs2], 4) , 4)
-        min_datas_left=tf.where( tf.equal(cnn_left_arg_min,0) , cnn_left, cnn_ori_left2)/tf.cast(conv_kernel_left_cnt, tf.float32)
+        #min_datas_left=tf.where( tf.equal(cnn_left_arg_min,0) , cnn_left, cnn_ori_left2)/tf.cast(conv_kernel_left_cnt, tf.float32)
+        min_datas_left=tf.where( tf.equal(cnn_left_arg_min,0) , inputdata, inputdata2)
         
         cnn_left_min=tf.minimum(cnn_left_abs, cnn_left_abs2)  #/tf.cast(conv_kernel_left_cnt, tf.float32)
         #cnn_left_final=cnn_left_min*inputdata+(1-cnn_left_min)*min_datas_left
@@ -462,7 +463,8 @@ def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=Non
         cnn_up_abs2=tf.abs(cnn_ori_up2-cnn_up2)
         
         cnn_up_arg_min=tf.argmin( tf.stack([cnn_up_abs, cnn_up_abs2], 4) , 4)
-        min_datas_up=tf.where( tf.equal(cnn_up_arg_min,0) , cnn_up, cnn_ori_up2)/tf.cast(conv_kernel_up_cnt, tf.float32)
+        #min_datas_up=tf.where( tf.equal(cnn_up_arg_min,0) , cnn_up, cnn_ori_up2)/tf.cast(conv_kernel_up_cnt, tf.float32)
+        min_datas_up=tf.where( tf.equal(cnn_up_arg_min,0) , inputdata, inputdata2)
         
         cnn_up_min=tf.minimum(cnn_up_abs, cnn_up_abs2)  #/tf.cast(conv_kernel_up_cnt, tf.float32)
         #cnn_up_final=cnn_up_min*inputdata+(1-cnn_up_min)*min_datas_up
