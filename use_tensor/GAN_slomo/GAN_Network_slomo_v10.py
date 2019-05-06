@@ -146,7 +146,7 @@ class GAN_Net:
         #self.G_loss_mean_Square=tf.reduce_mean(tf.squared_difference(self.G_net,self.frame1), name='G_clear_square_loss')
         self.G_loss_mean_Square=tf.reduce_mean(\
                                                tf.abs(  self.G_net-self.frame1  )\
-                                               , name='G_clear_square_loss')
+                                               , name='G_clear_l1_loss')
         
         print ('G_loss_mean_Square form finished..')
         #这里对两个D的loss没有特殊处理，只是简单相加
