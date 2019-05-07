@@ -409,7 +409,7 @@ def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=Non
     
     conv_kernel_180=np.zeros([outchannel, filterlen,filterlen, inputshape[-1]])
     conv_kernel_180[:, :int(filterlen/2), :int(filterlen/2),  :]=1
-    conv_kernel_180_cnt=np.count_nonzero(conv_kernel_180)
+    conv_kernel_180_cnt=np.count_nonzero(conv_kernel_180)/inputshape[-1]
     
     
     with tf.variable_scope(scopename,  reuse=reuse) as scope: 
