@@ -117,7 +117,7 @@ class GAN_Net:
         self.frame2=self.imgs_pla[:,:,:,img_channel*2:]
         
         #这里是为了看看第一帧和第3帧的差距，用来给evalte
-        self.frame_0_2_squareloss=tf.reduce_mean(  tf.squared_difference(self.frame0,self.frame2) , [1,2,3], name='frame_0_2_squareloss')
+        self.frame_0_2_squareloss=tf.reduce_mean(  tf.abs(self.frame0-self.frame2) , [1,2,3], name='frame_0_2_squareloss')
         #frame0and2=tf.concat([self.frame0, self.frame2], -1) #在第三维度连接起来
         #print ('after concat:',frame0and2)
         #!!!!!!!!!!here is differs from v1,add to Generator output the ori img will reduce the generator difficulty 
