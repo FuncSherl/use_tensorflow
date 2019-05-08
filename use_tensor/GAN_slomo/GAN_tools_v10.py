@@ -540,7 +540,7 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
         tep2=skipcon2[i]
         
         skipcon=flipconv_method(tep1, tep2, filterlen+int( 2**(layercnt-i) ), 'unet_up_novel_cnn_'+str(i),  training=training)
-        
+        skipcon=tf.concat([tep1, skipcon, tep2], -1) #!!!!!
         tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon,'unet_up_'+str(i), stride=2,  filterlen=filterlen+int( (layercnt-i)/3 ),  training=training,withbias=withbias)
         print (tep)
         
