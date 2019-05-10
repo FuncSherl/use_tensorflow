@@ -56,6 +56,7 @@ G_unet_layercnt=3
 G_filter_len=3
 G_withbias=True
 
+G_optical_channel=4
 #the G_squareloss is reducing,at iter 170000, D_loss=2  but square_loss is 0.03,so there requires a rate to make square_loss more clear
 G_squareloss_rate_globalstep=8000 
 
@@ -105,6 +106,8 @@ class GAN_Net:
         #3个placeholder， img和noise,training 
         self.imgs_pla = tf.placeholder(tf.float32, [batchsize, img_size_h, img_size_w, G_group_img_num*img_channel], name='imgs_in')
         self.training=tf.placeholder(tf.bool, name='training_in')
+        self.timerates_pla=tf.placeholder(tf.float32, [batchsize], name='timerates_in')
+        
         print ('placeholders:\n','img_placeholder:',self.imgs_pla,'\ntraining:',self.training)
         '''
         placeholders:
@@ -121,7 +124,13 @@ class GAN_Net:
         #frame0and2=tf.concat([self.frame0, self.frame2], -1) #在第三维度连接起来
         #print ('after concat:',frame0and2)
         #!!!!!!!!!!here is differs from v1,add to Generator output the ori img will reduce the generator difficulty 
-        self.G_net=self.Generator_net(self.frame0, self.frame2)  #+self.frame0  #注意这里是直接作为生成结果
+        self.G_opticalflow=self.Generator_net(self.frame0, self.frame2)  #注意这里是直接作为optical flow
+        #optical flow[:,:,:,0:2] is frame0->frame2, [2:]is 2->0
+        self.flow_t_2=self.warp_op(self.frame0, self.G_opticalflow, self.timerates_pla)
+        
+        
+        self.G_net=self.warp_op()
+        
         print ('self.G_net:',self.G_net)#self.G_net: Tensor("G_Net/G_tanh:0", shape=(12, 180, 320, 3), dtype=float32)
         
     
@@ -188,7 +197,22 @@ class GAN_Net:
         self.summary_all=tf.summary.merge_all()
         init = tf.global_variables_initializer()#初始化tf.Variable
         self.sess.run(init)
-        
+    
+    
+    
+    def warp_op(self, images, flow, timerates=1):
+        '''
+        tf.contrib.image.dense_image_warp(
+            image,
+            flow,
+            name='dense_image_warp'
+        )
+        pixel value at output[b, j, i, c] is
+          images[b, j - flow[b, j, i, 0], i - flow[b, j, i, 1], c].
+        '''
+        return tf.contrib.image.dense_image_warp(images, flow*timerates)
+    
+    
         
     def img2tanh(self,img):
         #img=tf.cast(img,tf.float32)
@@ -200,13 +224,13 @@ class GAN_Net:
     
     def getbatch_train_imgs(self):
         tepimg=self.sess.run(self.pipline_data_train)
-        tepimg,rate=tepimg[0],tepimg[1]
-        return self.img2tanh(tepimg),rate
+        inimg,rate=tepimg[0],tepimg[1]
+        return self.img2tanh(inimg),rate
     
     def getbatch_test_imgs(self):
         tepimg=self.sess.run(self.pipline_data_test)
-        tepimg,rate=tepimg[0],tepimg[1]
-        return self.img2tanh(tepimg),rate
+        inimg,rate=tepimg[0],tepimg[1]
+        return self.img2tanh(inimg),rate
     
     def D_loss_TandF_logits(self, logits_t, logits_f, summaryname='default'):
         self.D_loss_fir=-logits_t #tf.nn.sigmoid_cross_entropy_with_logits(logits=logits_t, labels=tf.ones_like(logits_t))   #real
@@ -282,7 +306,7 @@ class GAN_Net:
                                                       self.D_linear_net_loss_sum, self.D_loss_all,\
                                                       self.train_G, self.G_loss_mean_D1, self.G_loss_mean_Square, self.G_loss_all,\
                                                       self.summary_all]          , \
-                                                    feed_dict={  self.imgs_pla:tepimgs , self.training:True})
+                                                    feed_dict={  self.imgs_pla:tepimgs ,  self.timerates_pla:time_rates ,self.training:True})
         print ('trained once:')
         print ('lr:',lrrate)
         print ('D1(D_linear) prob T/F --> ',np.mean(D1_T_prob),'/',np.mean( D1_F_prob))
@@ -405,10 +429,12 @@ class GAN_Net:
     def Generator_net(self, inputdata1, inputdata2, withbias=G_withbias, filterlen=G_filter_len, layercnt=G_unet_layercnt):
         with tf.variable_scope("G_Net",  reuse=tf.AUTO_REUSE) as scope:
             #tepimg=my_unet(inputdata,  layercnt=G_unet_layercnt,  filterlen=filterlen,  training=self.training, withbias=withbias)
-            tepimg=my_novel_unet(inputdata1, inputdata2, layercnt=layercnt,  filterlen=filterlen,  training=self.training, withbias=withbias)
+            
+            #
+            self.G_tanh=my_novel_unet(inputdata1, inputdata2, layercnt=layercnt, outchannel=G_optical_channel, filterlen=filterlen,  training=self.training, withbias=withbias)
             #####################################################################################################################################
             #tanh
-            self.G_tanh= tf.nn.tanh(tepimg, name='G_tanh')
+            #self.G_tanh= tf.nn.tanh(self.G_tanh, name='G_tanh')
         
         return self.G_tanh
             

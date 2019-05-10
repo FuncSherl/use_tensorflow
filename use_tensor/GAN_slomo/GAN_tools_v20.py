@@ -314,7 +314,7 @@ pixel value at output[b, j, i, c] is
 '''
 
 
-def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True,  withbias=True):
+def my_novel_unet(inputdata,inputdata2, layercnt=3, outchannel=2,  filterlen=3,training=True,  withbias=True):
     '''
     这里将两个输入图片通过同一个特征网络，并保留中间各自特征
     '''
@@ -379,7 +379,7 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True, 
     print (tep)
     
     #finally channel to 3
-    tep=my_conv(tep, filterlen, channel_init, scopename='unet_up_final_2', stride=1, withbias=withbias)
+    tep=my_conv(tep, filterlen, outchannel, scopename='unet_up_final_2', stride=1, withbias=withbias)
     
     tep=tf.image.resize_images(tep, [inputshape[1],inputshape[2]], method=tf.image.ResizeMethod.BILINEAR)
     print (tep)
