@@ -126,7 +126,12 @@ class GAN_Net:
         #!!!!!!!!!!here is differs from v1,add to Generator output the ori img will reduce the generator difficulty 
         self.G_opticalflow=self.Generator_net(self.frame0, self.frame2)  #注意这里是直接作为optical flow
         #optical flow[:,:,:,0:2] is frame0->frame2, [2:]is 2->0
-        self.flow_t_2=self.warp_op(self.frame0, self.G_opticalflow, self.timerates_pla)
+        #反向光流算中间帧
+        self.img_flow_2_t=self.warp_op(self.frame2, -self.G_opticalflow[:,:,:,:2], 1-self.timerates_pla)
+        self.img_flow_0_t=self.warp_op(self.frame0, -self.G_opticalflow[:,:,:,2:], self.timerates_pla)
+        
+        #利用光流前后帧互相合成
+        self.img_flow_2_0=self.warp_op(self.frame2, self.G_opticalflow[:,:,:,:2], 1-self.timerates_pla)
         
         
         self.G_net=self.warp_op()
