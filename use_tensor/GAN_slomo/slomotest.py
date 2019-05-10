@@ -10,8 +10,8 @@ import os.path as op
 import matplotlib.pyplot as plt
 import cv2,os,time
 
-modelpath=r'/home/sherl/workspaces/git/use_tensorflow/use_tensor/GAN_slomo/logs_v8/GAN_2019-04-12_15-48-20_base_lr-0.000200_batchsize-12_maxstep-2400000'
-meta_name=r'model_keep-467999.meta'
+modelpath=r'/home/sherl/Pictures/GAN_2019-05-08_15-43-50_base_lr-0.000200_batchsize-12_maxstep-240000'
+meta_name=r'model_keep-239999.meta'
 
 testvideodir='./testing_gif'
 inputvideo =op.join(testvideodir, 'original.mp4')
