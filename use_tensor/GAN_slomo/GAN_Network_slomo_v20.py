@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from GAN_tools_v20 import *
-from data import create_dataset as cdata
+from data import create_dataset2 as cdata
 
 #this version change output of g to be img
 #and chagne img-size to v2's 1/2
@@ -200,11 +200,13 @@ class GAN_Net:
     
     def getbatch_train_imgs(self):
         tepimg=self.sess.run(self.pipline_data_train)
-        return self.img2tanh(tepimg)
+        tepimg,rate=tepimg[0],tepimg[1]
+        return self.img2tanh(tepimg),rate
     
     def getbatch_test_imgs(self):
         tepimg=self.sess.run(self.pipline_data_test)
-        return self.img2tanh(tepimg)
+        tepimg,rate=tepimg[0],tepimg[1]
+        return self.img2tanh(tepimg),rate
     
     def D_loss_TandF_logits(self, logits_t, logits_f, summaryname='default'):
         self.D_loss_fir=-logits_t #tf.nn.sigmoid_cross_entropy_with_logits(logits=logits_t, labels=tf.ones_like(logits_t))   #real
@@ -267,7 +269,7 @@ class GAN_Net:
     #tensor 范围外   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     
     def train_once_all(self):
-        tepimgs=self.getbatch_train_imgs()
+        tepimgs,time_rates=self.getbatch_train_imgs()
         
         lrrate,_,_,\
         D1_T_prob, D1_F_prob, \
@@ -296,7 +298,7 @@ class GAN_Net:
        
     
     def Run_G(self, training=False):
-        tepimgs=self.getbatch_test_imgs()
+        tepimgs,time_rates=self.getbatch_test_imgs()
         inerimg, D1_prob, D2_prob, frame0_2_loss=self.sess.run([self.G_net, self.D_linear_net_F, self.G_loss_mean_Square, self.frame_0_2_squareloss], \
                                                                feed_dict={self.imgs_pla:tepimgs, self.training:training})
         
@@ -306,7 +308,7 @@ class GAN_Net:
         '''
         training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
         '''
-        tepimgs=self.getbatch_test_imgs()
+        tepimgs,time_rates=self.getbatch_test_imgs()
         D1_probs,G_loss_Square=self.sess.run([self.D_linear_net_T,self.G_loss_mean_Square], feed_dict={self.imgs_pla:tepimgs, self.training:training})
         return D1_probs,G_loss_Square
     
@@ -316,7 +318,7 @@ class GAN_Net:
         #这里imgs要求是tanh化过的，即归一化到-1~1 
         training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
         ''' 
-        tepimgs=self.getbatch_test_imgs()
+        tepimgs,time_rates=self.getbatch_test_imgs()
         D1_probs,D2_probs=self.sess.run([self.D_linear_net_F,self.G_loss_mean_Square], feed_dict={self.imgs_pla:tepimgs, self.training:training})
         return D1_probs,D2_probs
     

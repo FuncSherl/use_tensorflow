@@ -206,189 +206,6 @@ def my_unet(inputdata, layercnt=3,  filterlen=3,training=True,  withbias=True):
     return tep
 
 
-def my_find_flip(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_REUSE):
-    '''
-    filterlen:用这么大的范围内找对称点
-    '''
-    inputshape=inputdata.get_shape().as_list() #n,h,w,c
-    cnt_ind=int ( inputshape[1]*inputshape[2] )
-    width=int(inputshape[2] )
-    height=int(inputshape[1])
-    shifting=int(filterlen/2)
-    
-    with tf.variable_scope(scopename,  reuse=reuse) as scope: 
-        #ret=tf.Variable(np.zeros(shape= inputshape, dtype=np.float32),dtype=tf.float32, trainable=False)
-        ret=tf.TensorArray(tf.float32, cnt_ind, element_shape=[inputshape[0], inputshape[-1]])
-        
-        #ret=tf.get_variable(scope.name+'_ret_var', inputshape, dtype=tf.float32,  initializer=tf.zeros_initializer(), trainable=False)
-        #ret=tf.transpose(ret, [1,2,0,3]) #[h,w,n,c]
-        #print (ret)
-        
-        ind=tf.constant(0, dtype=tf.int32)
-        loop=[ind,  ret ]
-        
-        def cond(ind, _):
-            return ind<cnt_ind
-            
-        def body(ind, flow):
-            #nonlocal ret
-            #ret=tf.Variable(np.zeros(shape=[inputshape[1], inputshape[2], inputshape[0], inputshape[3]], dtype=np.float32))
-            
-            row=tf.cast( ind/width, tf.int32)
-            col=tf.cast( ind%width, tf.int32)
-            
-            st_row=tf.maximum(row-shifting, 0)
-            ed_row=tf.minimum(row+shifting+1, height)
-            st_col=tf.maximum(col-shifting, 0)
-            ed_col=tf.minimum(col+shifting+1, width)
-            
-            indata1=inputdata[:, st_row:ed_row, st_col:ed_col, :]
-            indata2=inputdata2[:, st_row:ed_row, st_col:ed_col, :]
-            
-            indata2_left=tf.image.flip_left_right(indata2)
-            indata2_up  =tf.image.flip_up_down(indata2)
-            indata2_up_left=tf.image.flip_left_right(indata2_up)
-            
-            indata1_left=tf.abs(indata1-indata2_left)
-            indata1_up  =tf.abs(indata1-indata2_up  )
-            indata1_up_left=tf.abs(indata1-indata2_up_left)
-            
-            #indata1_left_expan=tf.expand_dims(indata1_left, 1)
-            #indata1_up_expan=tf.expand_dims(indata1_up, 1)
-            #indata1_up_left_expan=tf.expand_dims(indata1_up_left, 1)
-            
-            stack_all=tf.stack([indata1_left, indata1_up, indata1_up_left], 1) #[n,3,h,w,c]
-            first_min=tf.reduce_min(stack_all, [1]) #[n,h,w,c]
-            sec_min=tf.reduce_min(first_min, [1,2], keep_dims=True) #[n,1,1,c]
-            
-            min_bool= tf.equal(first_min,sec_min)
-            tep=tf.where(min_bool,indata1 , tf.zeros_like(indata1))
-            nozerocnt=tf.count_nonzero(tep, [1,2])
-            tep=tf.reduce_mean(tep, [1,2])*tf.cast( (ed_row-st_row)*(ed_col-st_col), tf.float32)/tf.cast(nozerocnt, tf.float32) #[n,c]
-            
-            #ret=tf.concat( [ret, tf.expand_dims(tep, 0)], 0 ) 
-            
-            #print (st_row)
-            #tf.scatter_update()
-            
-            #print (ret) #Tensor("test/while/Identity_1:0", shape=(32, 32, 12, 3), dtype=float32)
-            #ret=tf.scatter_nd_update( ret, [[row, col]], [tf.cast(tep, tf.float32)] )
-            '''
-            with tf.control_dependencies([flow]):
-                flow=tf.assign(ret[:,row, col, :],tep)
-            '''
-            #flow=tf.cond(tf.equal(ind, 0),  lambda:tf.expand_dims(tep, 0), lambda:tf.concat( [flow, tf.expand_dims(tep, 0)], 0 ) )
-            flow=flow.write(ind, tep)
-            
-            #flow=tf.tile(sec_min, [1, height, width, 1])
-            #flow=tf.cond(ind<cnt_ind, lambda: tf.assign(ret[:,row, col, :],tep), lambda:ret)
-            
-            return tf.add(ind, 1), flow
-        
-        ind,rett=tf.while_loop(cond, body, loop,  ) #shape_invariants=[tf.TensorShape([]),    tf.TensorShape( [ None, inputshape[0], inputshape[-1] ] )   ] 
-        
-        rett=rett.stack()
-        print (rett) #[h*w, n, c]
-        rett=tf.transpose(rett, [1,0,2] )
-        rett=tf.reshape(rett, inputshape )
-        
-        return rett
-    
-def my_find_flip_no_tensor(inputdata, inputdata2, filterlen,    scopename, reuse=tf.AUTO_REUSE):
-    '''
-    filterlen:用这么大的范围内找对称点
-    '''
-    inputshape=inputdata.get_shape().as_list() #n,h,w,c
-    cnt_ind=int ( inputshape[1]*inputshape[2] )
-    width=int(inputshape[2] )
-    height=int(inputshape[1])
-    shifting=int(filterlen/2)
-    
-    kep_tep=[]
-    debug=[]
-    with tf.variable_scope(scopename,  reuse=reuse) as scope:
-        for ind in range(cnt_ind):
-            row=int( ind/width)
-            col=ind%width
-            st_row=max(row-shifting, 0)
-            ed_row=min(row+shifting+1, height)
-            st_col=max(col-shifting, 0)
-            ed_col=min(col+shifting+1, width)
-            
-            indata1=inputdata[:, st_row:ed_row, st_col:ed_col, :]
-            indata2=inputdata2[:, st_row:ed_row, st_col:ed_col, :]
-            
-            indata2_left=tf.image.flip_left_right(indata2)
-            indata2_up  =tf.image.flip_up_down(indata2)
-            indata2_up_left=tf.image.flip_left_right(indata2_up)
-               
-            indata1_left=tf.abs(indata1-indata2_left)
-            indata1_up  =tf.abs(indata1-indata2_up  )
-            indata1_up_left=tf.abs(indata1-indata2_up_left)
-            
-            
-            stack_all=tf.stack([indata1_left, indata1_up, indata1_up_left], 1) #[n,3,h,w,c]
-            first_min=tf.reduce_min(stack_all, [1]) #[n,h,w,c]
-            
-            sec_min=tf.reduce_min(first_min, [1,2], keep_dims=True) #[n,1,1,c]
-            
-            #debug.append(sec_min)
-                
-            min_bool= tf.equal(first_min, sec_min)
-            
-            #debug.append(min_bool)
-            
-            tep=tf.where(min_bool,indata1 , tf.zeros_like(indata1))
-            
-            nozerocnt=tf.count_nonzero(tep, [1,2])
-            
-            #debug.append(tep)
-            
-            tep=tf.reduce_mean(tep, [1,2])*tf.cast( (ed_row-st_row)*(ed_col-st_col), tf.float32)/tf.cast(nozerocnt, tf.float32)  #[n,c]
-            #debug.append(tep)
-            
-            kep_tep.append(tep)
-            print (ind,'/',cnt_ind,tep)
-            
-        stack_tep=tf.stack(kep_tep, 1)   #[ n,h*w, c]
-        stack_tep=tf.reshape(stack_tep, inputshape) #[n,h,w,c]
-        #stack_tep=tf.transpose(stack_tep, [2,0,1,3])
-        print (stack_tep)
-        return stack_tep
-    
-
-def test_my_find_flip():
-    A=np.array([[[[1,2,3], \
-                [2,1,3],\
-                [6,4,2]]]])
-    
-    C=np.array([[[[1,2,1], \
-                [2,6,4],\
-                [3,4,2]]]])
-    
-    B = np.array([[ [[1], [4],[6]],\
-              [[7],[10],[9]]  ]])
-    
-    A=tf.constant(B, dtype=tf.float32)
-    C=tf.constant(B, dtype=tf.float32)
-    
-    
-    print (A.shape, B.shape)
-    with tf.Session() as sess:  
-        
-        #sess.run(tf.local_variables_initializer())
-        
-        tep=my_find_flip(A,C,2,'test')
-        #tep=my_find_flip_no_tensor(A,C,2,'test')
-        
-        sess.run(tf.global_variables_initializer())
-        
-        print(sess.run(tep)) 
-        #print(sess.run(tep)) 
-        #print(sess.run(tep)) 
-        #print(sess.run(tep)) 
-
-
 
 def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=None, stride=1, padding="SAME", reuse=tf.AUTO_REUSE, withbias=False, training=True):
     '''
@@ -485,6 +302,17 @@ def my_novel_conv(inputdata, inputdata2, filterlen,    scopename, outchannel=Non
             
         return all_final
     
+
+'''
+tf.contrib.image.dense_image_warp(
+    image,
+    flow,
+    name='dense_image_warp'
+)
+pixel value at output[b, j, i, c] is
+  images[b, j - flow[b, j, i, 0], i - flow[b, j, i, 1], c].
+'''
+
 
 def my_novel_unet(inputdata,inputdata2, layercnt=3,  filterlen=3,training=True,  withbias=True):
     '''
