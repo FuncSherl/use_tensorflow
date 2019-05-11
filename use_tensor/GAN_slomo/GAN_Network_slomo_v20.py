@@ -130,11 +130,15 @@ class GAN_Net:
         self.opticalflow_0_2=self.G_opticalflow[:,:,:,:2]
         self.opticalflow_2_0=self.G_opticalflow[:,:,:,2:]
         #反向光流算中间帧
-        self.img_flow_2_t=self.warp_op(self.frame2, -self.opticalflow_0_2, 1-self.timerates_pla)
-        self.img_flow_0_t=self.warp_op(self.frame0, -self.opticalflow_2_0, self.timerates_pla)
+        self.img_flow02_2_t=self.warp_op(self.frame2, -self.opticalflow_0_2, 1-self.timerates_pla)
+        self.img_flow02_0_t=self.warp_op(self.frame0,  self.opticalflow_0_2, self.timerates_pla)
+        
+        self.img_flow20_0_t=self.warp_op(self.frame0, -self.opticalflow_2_0, self.timerates_pla)
+        self.img_flow20_2_t=self.warp_op(self.frame2,  self.opticalflow_2_0, 1-self.timerates_pla)
         
         #利用光流前后帧互相合成
-        self.img_flow_2_0=self.warp_op(self.frame2, self.G_opticalflow[:,:,:,:2], 1-self.timerates_pla)
+        self.img_flow_2_0=self.warp_op(self.frame2, self.opticalflow_2_0)
+        self.img_flow_0_2=self.warp_op(self.frame0, self.opticalflow_0_2)
         
         
         self.G_net=self.warp_op()
