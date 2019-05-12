@@ -107,6 +107,9 @@ class GAN_Net:
         self.imgs_pla = tf.placeholder(tf.float32, [batchsize, img_size_h, img_size_w, G_group_img_num*img_channel], name='imgs_in')
         self.training=tf.placeholder(tf.bool, name='training_in')
         self.timerates_pla=tf.placeholder(tf.float32, [batchsize], name='timerates_in')
+        self.timerates_expand=tf.expand_dims(self.timerates_pla, -1)
+        self.timerates_expand=tf.expand_dims(self.timerates_expand, -1)
+        self.timerates_expand=tf.expand_dims(self.timerates_expand, -1) #12*1*1*1
         
         print ('placeholders:\n','img_placeholder:',self.imgs_pla,'\ntraining:',self.training)
         '''
@@ -130,18 +133,19 @@ class GAN_Net:
         self.opticalflow_0_2=self.G_opticalflow[:,:,:,:2]
         self.opticalflow_2_0=self.G_opticalflow[:,:,:,2:]
         #反向光流算中间帧
-        self.img_flow02_2_t=self.warp_op(self.frame2, -self.opticalflow_0_2, 1-self.timerates_pla)
-        self.img_flow02_0_t=self.warp_op(self.frame0,  self.opticalflow_0_2, self.timerates_pla)
+        self.opticalflow_t_0=-(1-self.timerates_expand)*self.timerates_expand*self.opticalflow_0_2 + self.timerates_expand*self.timerates_expand*self.opticalflow_2_0
+        self.opticalflow_t_2= (1-self.timerates_expand)*(1-self.timerates_expand)*self.opticalflow_0_2 + self.timerates_expand*(self.timerates_expand-1)*self.opticalflow_2_0
         
-        self.img_flow20_0_t=self.warp_op(self.frame0, -self.opticalflow_2_0, self.timerates_pla)
-        self.img_flow20_2_t=self.warp_op(self.frame2,  self.opticalflow_2_0, 1-self.timerates_pla)
+        self.img_flow_2_t=self.warp_op(self.frame2, -self.opticalflow_t_2) #!!!
+        self.img_flow_0_t=self.warp_op(self.frame0, -self.opticalflow_t_0) #!!!
+        
         
         #利用光流前后帧互相合成
-        self.img_flow_2_0=self.warp_op(self.frame2, self.opticalflow_2_0)
-        self.img_flow_0_2=self.warp_op(self.frame0, self.opticalflow_0_2)
+        self.img_flow_2_0=self.warp_op(self.frame2, self.opticalflow_2_0)  #frame2->frame0
+        self.img_flow_0_2=self.warp_op(self.frame0, self.opticalflow_0_2)  #frame0->frame2
         
         
-        self.G_net=self.warp_op()
+        self.G_net=self.timerates_expand*self.img_flow_2_t + (1-self.timerates_expand)*self.img_flow_0_t
         
         print ('self.G_net:',self.G_net)#self.G_net: Tensor("G_Net/G_tanh:0", shape=(12, 180, 320, 3), dtype=float32)
         
@@ -165,11 +169,10 @@ class GAN_Net:
         
         '''
         #self.G_loss_mean_Square=tf.reduce_mean(tf.squared_difference(self.G_net,self.frame1), name='G_clear_square_loss')
-        self.G_loss_mean_Square=tf.reduce_mean(\
-                                               tf.abs(  self.G_net-self.frame1  )\
+        self.G_loss_mean_Square=tf.reduce_mean( tf.abs(  self.G_net-self.frame1  ) + tf.abs(self.img_flow_2_0-self.frame0) + tf.abs(self.img_flow_0_2-self.frame2) \
                                                , name='G_clear_l1_loss')
         
-        print ('G_loss_mean_Square form finished..')
+        print ('G_loss_mean_l1 form finished..')
         #这里对两个D的loss没有特殊处理，只是简单相加
         self.D_loss_all=self.D_linear_net_loss_sum  #+ self.D_clear_net_loss_sum
         
@@ -177,7 +180,7 @@ class GAN_Net:
         self.G_loss_mean_D1=self.G_loss_F_logits(self.D_linear_net_F_logit, 'G_loss_D1')
         #self.G_loss_mean_D2=self.G_loss_F_logits(self.D_clear_net_F_logit, 'G_loss_D2')
         #这里对两个G的loss没有特殊处理，只是简单相加
-        self.G_loss_all=self.G_loss_mean_D1 + self.G_loss_mean_Square * (1+self.global_step/G_squareloss_rate_globalstep)# self.G_loss_mean_D2      
+        self.G_loss_all=self.G_loss_mean_D1 + self.G_loss_mean_Square #* (1+self.global_step/G_squareloss_rate_globalstep)# self.G_loss_mean_D2      
         
         #还是应该以tf.trainable_variables()为主
         t_vars=tf.trainable_variables()
@@ -336,7 +339,7 @@ class GAN_Net:
     def Run_G(self, training=False):
         tepimgs,time_rates=self.getbatch_test_imgs()
         inerimg, D1_prob, D2_prob, frame0_2_loss=self.sess.run([self.G_net, self.D_linear_net_F, self.G_loss_mean_Square, self.frame_0_2_squareloss], \
-                                                               feed_dict={self.imgs_pla:tepimgs, self.training:training})
+                                                               feed_dict={self.imgs_pla:tepimgs, self.training:training, self.timerates_pla:time_rates})
         
         return tepimgs, inerimg, D1_prob, D2_prob, frame0_2_loss
     
@@ -345,7 +348,8 @@ class GAN_Net:
         training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
         '''
         tepimgs,time_rates=self.getbatch_test_imgs()
-        D1_probs,G_loss_Square=self.sess.run([self.D_linear_net_T,self.G_loss_mean_Square], feed_dict={self.imgs_pla:tepimgs, self.training:training})
+        D1_probs,G_loss_Square=self.sess.run([self.D_linear_net_T,self.G_loss_mean_Square], \
+                                             feed_dict={self.imgs_pla:tepimgs, self.training:training, self.timerates_pla:time_rates})
         return D1_probs,G_loss_Square
     
     def Run_D_F(self, training=False):
@@ -355,7 +359,8 @@ class GAN_Net:
         training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
         ''' 
         tepimgs,time_rates=self.getbatch_test_imgs()
-        D1_probs,D2_probs=self.sess.run([self.D_linear_net_F,self.G_loss_mean_Square], feed_dict={self.imgs_pla:tepimgs, self.training:training})
+        D1_probs,D2_probs=self.sess.run([self.D_linear_net_F,self.G_loss_mean_Square], \
+                                        feed_dict={self.imgs_pla:tepimgs, self.training:training, self.timerates_pla:time_rates})
         return D1_probs,D2_probs
     
     
