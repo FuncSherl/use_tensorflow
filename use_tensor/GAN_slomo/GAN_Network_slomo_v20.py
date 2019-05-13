@@ -147,7 +147,7 @@ class GAN_Net:
         
         self.G_net=self.timerates_expand*self.img_flow_2_t + (1-self.timerates_expand)*self.img_flow_0_t
         
-        print ('self.G_net:',self.G_net)#self.G_net: Tensor("G_Net/G_tanh:0", shape=(12, 180, 320, 3), dtype=float32)
+        print ('self.G_net:',self.G_net)#self.G_net: Tensor("add_2:0", shape=(12, 180, 320, 3), dtype=float32)
         
     
         #D_1的输出 
