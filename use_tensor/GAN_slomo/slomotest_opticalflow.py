@@ -98,10 +98,11 @@ class Slomo_flow:
             #print (tep0)
             #print (tep0[1,2])
             
-            tepframe0=cv2.remap(frame0, tep0[:,:,0], tep0[:,:,1],  interpolation=cv2.INTER_LINEAR)
-            tepframe1=cv2.remap(frame2, tep1[:,:,0], tep1[:,:,1],  interpolation=cv2.INTER_LINEAR)
+            tepframe0=cv2.remap(frame0, tep0, None,  interpolation=cv2.INTER_LINEAR)
+            tepframe1=cv2.remap(frame2, tep1, None,  interpolation=cv2.INTER_LINEAR)
             #print (tepframe0[1,2])
-            final=tepframe1*timerates[i]+(1-timerates[i])*tepframe0
+            #final=tepframe1*timerates[i]+(1-timerates[i])*tepframe0
+            final=tepframe1
             out.append(final)
         out=np.array(out, dtype=np.uint8)
     
@@ -185,7 +186,7 @@ class Slomo_flow:
 
 with tf.Session() as sess:
     slomo=Slomo_flow(sess)
-    slomo.process_video(12, inputvideo, outputvideo, keep_shape=False)
+    slomo.process_video(12, inputvideo, outputvideo, keep_shape=True)
     
          
     
