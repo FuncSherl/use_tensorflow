@@ -71,21 +71,44 @@ class Slomo_flow:
         if cnt>self.batch: 
             print ('error:insert frames cnt should <= batchsize:',self.batch)
             return None
-            
+        fshape=frame0.shape
+        resize_sha=(fshape[1], fshape[0]) #width,height
         timerates=[i*1.0/(cnt+1) for i in range(1,self.batch+1)]
         placetep=np.zeros(self.placeimgshape)
         for i in range(cnt):
-            placetep[i,:,:,:3]=frame0
-            placetep[i,:,:,6:]=frame2
+            placetep[i,:,:,:3]=cv2.resize(frame0, self.imgshape)
+            placetep[i,:,:,6:]=cv2.resize(frame2, self.imgshape)
         
         placetep=self.img2tanh(placetep)
         
         flowt_0,flowt_2=self.sess.run([self.optical_t_0, self.optical_t_2], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates})
         
-        
-        return self.tanh2img(out[:cnt])
+        X, Y = np.meshgrid(np.arange(fshape[1]), np.arange(fshape[0]))  #w,h
+        xy=np.array( np.stack([X,Y], -1), dtype=np.float32)
+        #out[x,y]=src[mapx[x,y], mapy[x,y]] or  map[x,y]
+        #print (flowt_0.shape,xy.shape)
+        out=[]
+        for i in range(cnt):
+            tep0=xy-cv2.resize(flowt_0[i], resize_sha)
+            tep1=xy-cv2.resize(flowt_2[i], resize_sha)
+            
+            tep0=tep0.astype(np.float32)
+            tep1=tep1.astype(np.float32)
+            
+            #print (tep0)
+            #print (tep0[1,2])
+            
+            tepframe0=cv2.remap(frame0, tep0[:,:,0], tep0[:,:,1],  interpolation=cv2.INTER_LINEAR)
+            tepframe1=cv2.remap(frame2, tep1[:,:,0], tep1[:,:,1],  interpolation=cv2.INTER_LINEAR)
+            #print (tepframe0[1,2])
+            final=tepframe1*timerates[i]+(1-timerates[i])*tepframe0
+            out.append(final)
+        out=np.array(out, dtype=np.uint8)
     
-    def process_video(self, interpola_cnt=7, inpath=inputvideo, outpath=outputvideo):
+        return out
+    
+    
+    def process_video(self, interpola_cnt=7, inpath=inputvideo, outpath=outputvideo, keep_shape=True):
         videoCapture = cv2.VideoCapture(inpath)  
         
         size = (int(videoCapture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
@@ -95,23 +118,31 @@ class Slomo_flow:
         print ('video:',inpath)
         print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
         
-        videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
-        print ('output video:',outputvideo,'\nsize:',self.videoshape, '  fps:', fps)
-        
+        if not keep_shape:
+            videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
+            print ('output video:',outputvideo,'\nsize:',self.videoshape, '  fps:', fps)
+        else:
+            videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), size )
+            print ('output video:',outputvideo,'\nsize:',size, '  fps:', fps)
         
         success, frame0= videoCapture.read()
-        frame0=cv2.resize(frame0, self.videoshape)
+        if not keep_shape: frame0=cv2.resize(frame0, self.videoshape)
         
         success, frame1= videoCapture.read()
-        frame1=cv2.resize(frame1, self.videoshape)
+        
         
         cnt=0
         while success and (frame1 is not None):
             if frame0 is not None: videoWrite.write(frame0)
-            sttime=time.time()              
-            outimgs=self.getframes_throw_flow(frame0, frame1, interpola_cnt)
             
-            print (outimgs.shape)
+            if not keep_shape: frame1=cv2.resize(frame1, self.videoshape)
+            
+            sttime=time.time()              
+            
+            if not keep_shape: outimgs=self.getframes_throw_flow(frame0, frame1, interpola_cnt)
+            else: outimgs=self.getflow_to_frames(frame0, frame1, interpola_cnt)
+            
+            print ('get iner frame shape:',outimgs.shape, outimgs.dtype)
             for i in outimgs:      
                 print (i.shape) 
                 videoWrite.write(i)
@@ -122,6 +153,7 @@ class Slomo_flow:
             cnt+=1
             print (cnt,'/',frame_cnt,'  time gap:',time.time()-sttime)
             success, frame1= videoCapture.read()
+            
             
         videoWrite.write(frame0)
         
@@ -142,7 +174,6 @@ class Slomo_flow:
         videoCapture.release()
         return size, fps, frame_cnt
     
-
     def img2tanh(self,img):
         #img=tf.cast(img,tf.float32)
         return img*2.0/255-1
@@ -154,7 +185,7 @@ class Slomo_flow:
 
 with tf.Session() as sess:
     slomo=Slomo_flow(sess)
-    slomo.process_video(12, inputvideo, outputvideo)
+    slomo.process_video(12, inputvideo, outputvideo, keep_shape=False)
     
          
     
