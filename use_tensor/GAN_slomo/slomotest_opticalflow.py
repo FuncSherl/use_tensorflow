@@ -84,7 +84,8 @@ class Slomo_flow:
         flowt_0,flowt_2=self.sess.run([self.optical_t_0, self.optical_t_2], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates})
         
         X, Y = np.meshgrid(np.arange(fshape[1]), np.arange(fshape[0]))  #w,h
-        xy=np.array( np.stack([X,Y], -1), dtype=np.float32)
+        xy=np.array( np.stack([Y,X], -1), dtype=np.float32)
+        
         #out[x,y]=src[mapx[x,y], mapy[x,y]] or  map[x,y]
         #print (flowt_0.shape,xy.shape)
         out=[]
@@ -98,11 +99,14 @@ class Slomo_flow:
             #print (tep0)
             #print (tep0[1,2])
             
-            tepframe0=cv2.remap(frame0, tep0, None,  interpolation=cv2.INTER_LINEAR)
-            tepframe1=cv2.remap(frame2, tep1, None,  interpolation=cv2.INTER_LINEAR)
+            #实验中如果是xy=np.array( np.stack([X，Y], -1), dtype=np.float32)，
+            #直接将xy作为map送入remap函数中指定映射，则输出和原图一摸一样的图像，要知道前面xy里的[i,j]处对应的值为[j,i],这是一个cv2里的大坑，即map里的（x，y）分别为宽和高，而不是行列坐标 
+            
+            tepframe0=cv2.remap(frame0, tep0[:,:,1], tep0[:,:,0],  interpolation=cv2.INTER_LINEAR)
+            tepframe1=cv2.remap(frame2, tep1[:,:,1], tep1[:,:,0],  interpolation=cv2.INTER_LINEAR)
             #print (tepframe0[1,2])
-            #final=tepframe1*timerates[i]+(1-timerates[i])*tepframe0
-            final=tepframe1
+            final=tepframe1*timerates[i]+(1-timerates[i])*tepframe0
+            #final=tepframe1
             out.append(final)
         out=np.array(out, dtype=np.uint8)
     
