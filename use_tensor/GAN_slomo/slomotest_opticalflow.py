@@ -27,6 +27,8 @@ class Slomo_flow:
         # get weights
         self.graph = tf.get_default_graph()
         self.outimg = self.graph.get_tensor_by_name("add_2:0")
+        self.optical_t_0=self.graph.get_tensor_by_name("add:0")
+        self.optical_t_2=self.graph.get_tensor_by_name("add_1:0")
         
         self.img_pla= self.graph.get_tensor_by_name('imgs_in:0')
         self.training= self.graph.get_tensor_by_name("training_in:0")
@@ -61,8 +63,27 @@ class Slomo_flow:
         placetep=self.img2tanh(placetep)
         out=self.sess.run(self.outimg, feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates})
         return self.tanh2img(out[:cnt])
+    
+    def getflow_to_frames(self, frame0, frame2, cnt):
+        '''
+        #这里先resize光流，在合成帧，保持原视频分辨率
+        '''
+        if cnt>self.batch: 
+            print ('error:insert frames cnt should <= batchsize:',self.batch)
+            return None
+            
+        timerates=[i*1.0/(cnt+1) for i in range(1,self.batch+1)]
+        placetep=np.zeros(self.placeimgshape)
+        for i in range(cnt):
+            placetep[i,:,:,:3]=frame0
+            placetep[i,:,:,6:]=frame2
         
-
+        placetep=self.img2tanh(placetep)
+        
+        flowt_0,flowt_2=self.sess.run([self.optical_t_0, self.optical_t_2], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates})
+        
+        
+        return self.tanh2img(out[:cnt])
     
     def process_video(self, interpola_cnt=7, inpath=inputvideo, outpath=outputvideo):
         videoCapture = cv2.VideoCapture(inpath)  

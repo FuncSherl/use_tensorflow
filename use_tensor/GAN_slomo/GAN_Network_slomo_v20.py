@@ -136,6 +136,8 @@ class GAN_Net:
         self.opticalflow_t_0=-(1-self.timerates_expand)*self.timerates_expand*self.opticalflow_0_2 + self.timerates_expand*self.timerates_expand*self.opticalflow_2_0
         self.opticalflow_t_2= (1-self.timerates_expand)*(1-self.timerates_expand)*self.opticalflow_0_2 + self.timerates_expand*(self.timerates_expand-1)*self.opticalflow_2_0
         
+        print ('two optical flow:',self.opticalflow_t_0, self.opticalflow_t_2) #Tensor("add:0", shape=(12, 180, 320, 2), dtype=float32) Tensor("add_1:0", shape=(12, 180, 320, 2),
+        
         self.img_flow_2_t=self.warp_op(self.frame2, -self.opticalflow_t_2) #!!!
         self.img_flow_0_t=self.warp_op(self.frame0, -self.opticalflow_t_0) #!!!
         
