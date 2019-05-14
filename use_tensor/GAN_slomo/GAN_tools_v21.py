@@ -246,7 +246,7 @@ def my_novel_conv_withweight(inputdata, inputdata2, filterlen,    scopename, out
             ano_channel=tf.nn.bias_add(ano_channel, bias)
             
             
-        return tf.concat( [one_channel,ano_channel], -1)
+        return one_channel,ano_channel
 
 
 
@@ -400,8 +400,8 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3, outchannel=2,  filterlen=3,t
     
     ##################连接两个部分
     #concating two middle feature
-    tep=flipconv_method(input1_fea, input2_fea, filterlen, 'middle_novel_cnn', training=training)
-    #tep=tf.concat( [tep_f1, tep_f2], -1)
+    tep_f1, tep_f2=flipconv_method(input1_fea, input2_fea, filterlen, 'middle_novel_cnn', training=training)
+    tep=tf.concat( [tep_f1, tep_f2], -1)
     print (tep)
     
     ######################################################up
@@ -409,9 +409,12 @@ def my_novel_unet(inputdata,inputdata2, layercnt=3, outchannel=2,  filterlen=3,t
     for i in reversed(range(layercnt)):
         tep1=skipcon1[i]
         tep2=skipcon2[i]
+        tep_f1, tep_f2=tep1, tep2
         
-        skipcon=flipconv_method(tep1, tep2, filterlen+int( 2*(layercnt-i-1) ), 'unet_up_novel_cnn_'+str(i),  training=training)
-        skipcon=tf.concat([tep1, skipcon, tep2], -1) #!!!!!
+        for j in range(layercnt-i):  #分别为1，2，3层
+            tep_f1, tep_f2=flipconv_method(tep_f1, tep_f2, filterlen+int( 2*(layercnt-i-1) ), 'unet_up_novel_cnn_'+str(i),  training=training)
+        
+        skipcon=tf.concat([tep1, tep_f1, tep_f2, tep2], -1) #!!!!!
         tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon,'unet_up_'+str(i), stride=2,  filterlen=filterlen+int( 2*(layercnt-i-1) ),  training=training,withbias=withbias)
         print (tep)
         
