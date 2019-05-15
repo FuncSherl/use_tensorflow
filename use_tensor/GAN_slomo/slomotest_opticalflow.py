@@ -90,8 +90,8 @@ class Slomo_flow:
         #print (flowt_0.shape,xy.shape)
         out=[]
         for i in range(cnt):
-            tep0=xy-cv2.resize(flowt_0[i], resize_sha)
-            tep1=xy-cv2.resize(flowt_2[i], resize_sha)
+            tep0=xy+cv2.resize(flowt_0[i], resize_sha)
+            tep1=xy+cv2.resize(flowt_2[i], resize_sha)
             
             tep0=tep0.astype(np.float32)
             tep1=tep1.astype(np.float32)
