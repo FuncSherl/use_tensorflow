@@ -10,7 +10,7 @@ import os.path as op
 import matplotlib.pyplot as plt
 import cv2,os,time
 
-modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-12_15-44-41_base_lr-0.000200_batchsize-12_maxstep-240000'
+modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
 meta_name=r'model_keep-239999.meta'
 
 testvideodir='./testing_gif'
