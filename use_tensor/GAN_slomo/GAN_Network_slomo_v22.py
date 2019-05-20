@@ -56,7 +56,7 @@ G_unet_layercnt=3
 G_filter_len=3
 G_withbias=True
 
-G_optical_channel=4
+G_optical_channel=5
 #the G_squareloss is reducing,at iter 170000, D_loss=2  but square_loss is 0.03,so there requires a rate to make square_loss more clear
 G_squareloss_rate_globalstep=8000 
 
@@ -131,7 +131,8 @@ class GAN_Net:
         
         #optical flow[:,:,:,0:2] is frame0->frame2(get frame2 from frame0), [2:]is 2->0
         self.opticalflow_0_2=self.G_opticalflow[:,:,:,:2]
-        self.opticalflow_2_0=self.G_opticalflow[:,:,:,2:]
+        self.prob_flow1=  tf.nn.sigmoid( self.G_opticalflow[:,:,:,2] )
+        self.opticalflow_2_0=self.G_opticalflow[:,:,:,3:]
         #反向光流算中间帧
         self.opticalflow_t_0=-(1-self.timerates_expand)*self.timerates_expand*self.opticalflow_0_2 + self.timerates_expand*self.timerates_expand*self.opticalflow_2_0
         self.opticalflow_t_2= (1-self.timerates_expand)*(1-self.timerates_expand)*self.opticalflow_0_2 + self.timerates_expand*(self.timerates_expand-1)*self.opticalflow_2_0
