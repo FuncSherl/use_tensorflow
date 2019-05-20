@@ -29,6 +29,8 @@ class Slomo_flow:
         self.outimg = self.graph.get_tensor_by_name("add_2:0")
         self.optical_t_0=self.graph.get_tensor_by_name("add:0")
         self.optical_t_2=self.graph.get_tensor_by_name("add_1:0")
+        self.optical_0_1=self.graph.get_tensor_by_name("strided_slice_3:0")
+        self.optical_1_0=self.graph.get_tensor_by_name("strided_slice_4:0")
         
         self.img_pla= self.graph.get_tensor_by_name('imgs_in:0')
         self.training= self.graph.get_tensor_by_name("training_in:0")
@@ -81,7 +83,7 @@ class Slomo_flow:
         
         placetep=self.img2tanh(placetep)
         
-        flowt_0,flowt_2=self.sess.run([self.optical_t_0, self.optical_t_2], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates})
+        flowt_0,flowt_2, flow0_1, flow1_0=self.sess.run([self.optical_t_0, self.optical_t_2, self.optical_0_1, self.optical_1_0], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates})
         
         X, Y = np.meshgrid(np.arange(fshape[1]), np.arange(fshape[0]))  #w,h
         xy=np.array( np.stack([Y,X], -1), dtype=np.float32)
@@ -186,6 +188,23 @@ class Slomo_flow:
     def tanh2img(self,tanhd):
         tep= (tanhd+1)*255//2
         return tep.astype(np.uint8)  
+    
+    def flow_bgr(self, flow):
+        # Use Hue, Saturation, Value colour model 
+        h, w = flow.shape[:2]
+        hsv = np.zeros((h, w, 3), np.uint8)
+        hsv[..., 1] = 255
+        
+        mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+        hsv[..., 0] = ang * 180 / np.pi / 2
+        hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+        bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        '''
+        cv2.imshow("colored flow", bgr)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        '''
+        return bgr
 
 
 with tf.Session() as sess:

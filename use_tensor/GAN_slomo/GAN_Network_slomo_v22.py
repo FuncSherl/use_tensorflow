@@ -11,7 +11,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from GAN_tools_v21 import *
+from GAN_tools_v20 import *
 from data import create_dataset2 as cdata
 
 #this version change output of g to be img
@@ -74,7 +74,7 @@ G_group_img_num=3
 img_channel=3
 eval_step=int (test_size/batchsize/G_group_img_num)
 
-logdir="./logs_v21/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
+logdir="./logs_v20/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 
 bigimgsdir=op.join(logdir, 'randomimgs')
 if not op.exists(bigimgsdir): os.makedirs(bigimgsdir)
@@ -132,8 +132,6 @@ class GAN_Net:
         #optical flow[:,:,:,0:2] is frame0->frame2(get frame2 from frame0), [2:]is 2->0
         self.opticalflow_0_2=self.G_opticalflow[:,:,:,:2]
         self.opticalflow_2_0=self.G_opticalflow[:,:,:,2:]
-        print ('original flow:',self.opticalflow_0_2, self.opticalflow_2_0)
-        #original flow: Tensor("strided_slice_3:0", shape=(12, 180, 320, 2), dtype=float32) Tensor("strided_slice_4:0", shape=(12, 180, 320, 2), dtype=float32)
         #反向光流算中间帧
         self.opticalflow_t_0=-(1-self.timerates_expand)*self.timerates_expand*self.opticalflow_0_2 + self.timerates_expand*self.timerates_expand*self.opticalflow_2_0
         self.opticalflow_t_2= (1-self.timerates_expand)*(1-self.timerates_expand)*self.opticalflow_0_2 + self.timerates_expand*(self.timerates_expand-1)*self.opticalflow_2_0
@@ -173,9 +171,7 @@ class GAN_Net:
         
         '''
         #self.G_loss_mean_Square=tf.reduce_mean(tf.squared_difference(self.G_net,self.frame1), name='G_clear_square_loss')
-        self.G_loss_mean_Square=tf.reduce_mean(tf.abs(  self.img_flow_0_t-self.frame1  ) + tf.abs(  self.img_flow_2_t-self.frame1  ) \
-                                               + tf.abs(self.img_flow_2_0-self.frame0) + tf.abs(self.img_flow_0_2-self.frame2) \
-                                               #+ tf.abs(self.opticalflow_0_2   self.opticalflow_2_0)
+        self.G_loss_mean_Square=tf.reduce_mean( tf.abs(  self.G_net-self.frame1  ) + tf.abs(self.img_flow_2_0-self.frame0) + tf.abs(self.img_flow_0_2-self.frame2) \
                                                , name='G_clear_l1_loss')
         
         print ('G_loss_mean_l1 form finished..')
