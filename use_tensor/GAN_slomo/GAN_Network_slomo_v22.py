@@ -131,7 +131,7 @@ class GAN_Net:
         
         #optical flow[:,:,:,0:2] is frame0->frame2(get frame2 from frame0), [2:]is 2->0
         self.opticalflow_0_2=self.G_opticalflow[:,:,:,:2]
-        self.prob_flow1=  tf.nn.sigmoid( self.G_opticalflow[:,:,:,2] )
+        self.prob_flow1=  tf.nn.sigmoid( self.G_opticalflow[:,:,:,2] )  #这里添加了一个置信度，用来选择光流
         self.opticalflow_2_0=self.G_opticalflow[:,:,:,3:]
         #反向光流算中间帧
         self.opticalflow_t_0=-(1-self.timerates_expand)*self.timerates_expand*self.opticalflow_0_2 + self.timerates_expand*self.timerates_expand*self.opticalflow_2_0
