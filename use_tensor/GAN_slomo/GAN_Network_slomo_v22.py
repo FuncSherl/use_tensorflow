@@ -320,6 +320,7 @@ class GAN_Net:
         # Use Hue, Saturation, Value colour model 
         h, w = flow.shape[:2]
         hsv = np.zeros((h, w, 3), np.uint8)
+        print (hsv.shape)
         hsv[..., 1] = 255
         
         mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
@@ -442,7 +443,9 @@ class GAN_Net:
             
             #加上光流图像
             for indki,ki in enumerate(opticalflow):
-                tepflow=self.flow_bgr(ki)
+                #print (ki[tep,...][0].shape)
+                #这里注意ki[tep].shape=(1, 180, 320, 2) 很诡异
+                tepflow=self.flow_bgr(ki[tep][0])
                 st_x= (indki+G_group_img_num)*(img_size_w+cnt) #列
                 st_y= i*(img_size_h+cnt) #行
                 bigimg_bests[st_y:st_y+img_size_h, st_x:st_x+img_size_w,:]=tepflow
