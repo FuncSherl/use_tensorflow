@@ -325,7 +325,7 @@ class GAN_Net:
         #黑色代表无运动
         h, w = flow.shape[:2]
         hsv = np.zeros((h, w, 3), np.uint8)
-        print (hsv.shape)
+        #print (hsv.shape)
         hsv[..., 1] = 255
         
         mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
