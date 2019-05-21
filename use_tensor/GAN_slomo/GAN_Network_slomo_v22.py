@@ -129,30 +129,35 @@ class GAN_Net:
         #!!!!!!!!!!here is differs from v1,add to Generator output the ori img will reduce the generator difficulty 
         self.G_opticalflow=self.Generator_net(self.frame0, self.frame2)  #注意这里是直接作为optical flow
         
+        #下面将结果中的代表各个意义分开
         #optical flow[:,:,:,0:2] is frame0->frame2(get frame2 from frame0), [2:]is 2->0
-        self.opticalflow_0_2=self.G_opticalflow[:,:,:,:2]
-        self.prob_flow1=  tf.nn.sigmoid( self.G_opticalflow[:,:,:,2] )  #这里添加了一个置信度，用来选择光流,即相信F0->1还是相信F1->0
-        self.opticalflow_2_0=self.G_opticalflow[:,:,:,3:]
+        self.opticalflow_0_2=tf.slice(self.G_opticalflow, [0, 0, 0, 0], [-1, -1, -1, 2], name='G_opticalflow_0_2') #self.G_opticalflow[:,:,:,:2]
+        self.prob_flow1=  tf.nn.sigmoid( self.G_opticalflow[:,:,:,2] , name='prob_flow1_sigmoid')  #这里添加了一个置信度，用来选择光流,即相信F0->1还是相信F1->0
+        self.opticalflow_2_0=tf.slice(self.G_opticalflow, [0, 0, 0, 3], [-1, -1, -1, 2], name='G_opticalflow_2_0') #       self.G_opticalflow[:,:,:,3:]
         print ('original flow:',self.opticalflow_0_2, self.prob_flow1, self.opticalflow_2_0)
+        #original flow: Tensor("G_opticalflow_0_2:0", shape=(12, 180, 320, 2), dtype=float32) Tensor("prob_flow1_sigmoid:0", shape=(12, 180, 320), dtype=float32) Tensor("G_opticalflow_2_0:0", shape=(12, 180, 320, 2), dtype=float32)
         
         #反向光流算中间帧
-        self.opticalflow_0_t= self.timerates_expand*self.opticalflow_0_2 +  self.timerates_expand*self.opticalflow_2_0
-        self.opticalflow_2_t= (1-self.timerates_expand)*self.opticalflow_0_2 + (self.timerates_expand-1)*self.opticalflow_2_0
+        self.opticalflow_t_0=-(1-self.timerates_expand)*self.timerates_expand*self.opticalflow_0_2 + self.timerates_expand*self.timerates_expand*self.opticalflow_2_0
+        self.opticalflow_t_2= (1-self.timerates_expand)*(1-self.timerates_expand)*self.opticalflow_0_2 + self.timerates_expand*(self.timerates_expand-1)*self.opticalflow_2_0
         
-        print ('two optical flow:',self.opticalflow_t_0, self.opticalflow_t_2) #Tensor("add:0", shape=(12, 180, 320, 2), dtype=float32) Tensor("add_1:0", shape=(12, 180, 320, 2),
+        print ('two optical flow:',self.opticalflow_t_0, self.opticalflow_t_2) 
+        #two optical flow: Tensor("add:0", shape=(12, 180, 320, 2), dtype=float32) Tensor("add_1:0", shape=(12, 180, 320, 2),
         
         self.img_flow_2_t=self.warp_op(self.frame2, -self.opticalflow_t_2) #!!!
         self.img_flow_0_t=self.warp_op(self.frame0, -self.opticalflow_t_0) #!!!
-        
         
         #利用光流前后帧互相合成
         self.img_flow_2_0=self.warp_op(self.frame2, self.opticalflow_2_0)  #frame2->frame0
         self.img_flow_0_2=self.warp_op(self.frame0, self.opticalflow_0_2)  #frame0->frame2
         
         
-        self.G_net=self.timerates_expand*self.img_flow_2_t + (1-self.timerates_expand)*self.img_flow_0_t
+        #self.G_net=self.timerates_expand*self.img_flow_2_t + (1-self.timerates_expand)*self.img_flow_0_t
+        tep_prob_flow1=tf.expand_dims(self.prob_flow1, -1)
+        tep_prob_flow1=tf.tile(tep_prob_flow1, [1,1,1,3])
+        self.G_net=tf.where( tf.greater_equal(tep_prob_flow1, 0.5),  self.img_flow_0_2, self.img_flow_2_0, name='G_net_generate')
         
-        print ('self.G_net:',self.G_net)#self.G_net: Tensor("add_2:0", shape=(12, 180, 320, 3), dtype=float32)
+        print ('self.G_net:',self.G_net)#self.G_net: Tensor("G_net_generate:0", shape=(12, 180, 320, 3), dtype=float32)
         
     
         #D_1的输出 
@@ -311,6 +316,22 @@ class GAN_Net:
     
     
     #tensor 范围外   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    def flow_bgr(self, flow):
+        # Use Hue, Saturation, Value colour model 
+        h, w = flow.shape[:2]
+        hsv = np.zeros((h, w, 3), np.uint8)
+        hsv[..., 1] = 255
+        
+        mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+        hsv[..., 0] = ang * 180 / np.pi / 2
+        hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+        bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        '''
+        cv2.imshow("colored flow", bgr)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        '''
+        return bgr
     
     def train_once_all(self):
         tepimgs,time_rates=self.getbatch_train_imgs()
@@ -343,10 +364,10 @@ class GAN_Net:
     
     def Run_G(self, training=False):
         tepimgs,time_rates=self.getbatch_test_imgs()
-        inerimg, D1_prob, D2_prob, frame0_2_loss=self.sess.run([self.G_net, self.D_linear_net_F, self.G_loss_mean_Square, self.frame_0_2_squareloss], \
+        inerimg, D1_prob, D2_prob, frame0_2_loss, optical_0_2, optical_2_0=self.sess.run([self.G_net, self.D_linear_net_F, self.G_loss_mean_Square, self.frame_0_2_squareloss, self.opticalflow_0_2, self.opticalflow_2_0], \
                                                                feed_dict={self.imgs_pla:tepimgs, self.training:training, self.timerates_pla:time_rates})
         
-        return tepimgs, inerimg, D1_prob, D2_prob, frame0_2_loss
+        return tepimgs, inerimg, D1_prob, D2_prob, frame0_2_loss,optical_0_2, optical_2_0
     
     def Run_D_T(self, training=False):
         '''
@@ -372,19 +393,17 @@ class GAN_Net:
     def eval_G_once(self, step=0):
         desdir=op.join(logdir, str(step))
         #os.makedirs(desdir, exist_ok=True)
-    
-        
-        #这里cnt不应该大于batchsize(64)
         cnt=16
-        
+        col_cnt=G_group_img_num+1+2  #3个原始图像+1个生成+2个光流
         #中间用cnt像素的黑色线分隔图片
-        bigimg_len=[ img_size_h*cnt+(cnt-1)*cnt, img_size_w*(G_group_img_num+1)+(G_group_img_num)*cnt]  #     img_size*cnt+(cnt-1)*cnt
+        bigimg_len=[ img_size_h*cnt+(cnt-1)*cnt, img_size_w*(col_cnt)+(col_cnt-1)*cnt]  #     img_size*cnt+(cnt-1)*cnt
         bigimg_bests=np.zeros([bigimg_len[0],bigimg_len[1],img_channel], dtype=np.uint8)
         
         for i in range(cnt):
-            tepimgs, inerimg, D1_prob, D2_prob, frame0_2_loss=self.Run_G()
-            inerimg=self.tanh2img(inerimg)
-            #保存原图
+            tepimgs, inerimg, D1_prob, D2_prob, frame0_2_loss, optical_0_2, optical_2_0=self.Run_G()
+            opticalflow=[optical_0_2, optical_2_0]
+            
+            #保存原图,这里已经弃用了
             for ind,j in enumerate(tepimgs[:int(cnt/4) ]):  
                 #print (j[0][0][0])
                 j=self.tanh2img(j) 
@@ -403,7 +422,8 @@ class GAN_Net:
             tep=list(range(batchsize))
             tep=random.sample(tep, 1) #随机取1个图
             #print (tep)
-            #every line is frame1,2,3,fake img
+            #every line is [frame1,flow1, frame2,flow2, frame3,fake img] total 6 imgs
+            #加上原来的3帧
             for ki in range(G_group_img_num):
                 st_x= ki*(img_size_w+cnt) #列
                 st_y= i*(img_size_h+cnt) #行
@@ -419,8 +439,18 @@ class GAN_Net:
                 '''
                 
                 bigimg_bests[st_y:st_y+img_size_h, st_x:st_x+img_size_w,:]=pre_imgs
-            st_x= G_group_img_num*(img_size_w+cnt) #列
+            
+            #加上光流图像
+            for indki,ki in enumerate(opticalflow):
+                tepflow=self.flow_bgr(ki)
+                st_x= (indki+G_group_img_num)*(img_size_w+cnt) #列
+                st_y= i*(img_size_h+cnt) #行
+                bigimg_bests[st_y:st_y+img_size_h, st_x:st_x+img_size_w,:]=tepflow
+            
+            #加上生成图像
+            st_x= (G_group_img_num+len(opticalflow))*(img_size_w+cnt) #列
             st_y= i*(img_size_h+cnt) #行
+            inerimg=self.tanh2img(inerimg)
             bigimg_bests[st_y:st_y+img_size_h, st_x:st_x+img_size_w,:]=inerimg[tep]
         
         bigimg_name='step-'+str(step)+'_cnt-'+str(cnt)+'_batchsize-'+str(batchsize)+'.png'
