@@ -318,6 +318,11 @@ class GAN_Net:
     #tensor 范围外   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     def flow_bgr(self, flow):
         # Use Hue, Saturation, Value colour model 
+        #色调（H），饱和度（S），明度（V）
+        #这里色调<->方向
+        #饱和度 =255
+        #明度<->运动长度
+        #黑色代表无运动
         h, w = flow.shape[:2]
         hsv = np.zeros((h, w, 3), np.uint8)
         print (hsv.shape)
