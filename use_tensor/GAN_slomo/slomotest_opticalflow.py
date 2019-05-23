@@ -9,13 +9,17 @@ import numpy as np
 import os.path as op
 import matplotlib.pyplot as plt
 import cv2,os,time
+from datetime import datetime
 
-modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
+modelpath="/home/sherl/Pictures/v22_GAN_2019-05-21_21-38-30_base_lr-0.000200_batchsize-12_maxstep-240000_selectChannelWillLeadToNoise"
+#modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
 meta_name=r'model_keep-239999.meta'
+
+TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 testvideodir='./testing_gif'
 inputvideo =op.join(testvideodir, 'original.mp4')
-outputvideo=op.join( testvideodir, 'myslomo.avi')
+outputvideo=op.join( testvideodir, TIMESTAMP+'_myslomo.avi')
 os.makedirs(testvideodir,  exist_ok=True)
 
 class Slomo_flow:
@@ -26,11 +30,11 @@ class Slomo_flow:
         
         # get weights
         self.graph = tf.get_default_graph()
-        self.outimg = self.graph.get_tensor_by_name("add_2:0")
+        self.outimg = self.graph.get_tensor_by_name("G_net_generate:0")
         self.optical_t_0=self.graph.get_tensor_by_name("add:0")
         self.optical_t_2=self.graph.get_tensor_by_name("add_1:0")
-        self.optical_0_1=self.graph.get_tensor_by_name("strided_slice_3:0")
-        self.optical_1_0=self.graph.get_tensor_by_name("strided_slice_4:0")
+        self.optical_0_1=self.graph.get_tensor_by_name("G_opticalflow_0_2:0")
+        self.optical_1_0=self.graph.get_tensor_by_name("G_opticalflow_2_0:0")
         
         self.img_pla= self.graph.get_tensor_by_name('imgs_in:0')
         self.training= self.graph.get_tensor_by_name("training_in:0")
@@ -209,7 +213,7 @@ class Slomo_flow:
 
 with tf.Session() as sess:
     slomo=Slomo_flow(sess)
-    slomo.process_video(12, inputvideo, outputvideo, keep_shape=True)
+    slomo.process_video(12, inputvideo, outputvideo, keep_shape=False)
     
          
     

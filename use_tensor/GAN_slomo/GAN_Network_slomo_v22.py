@@ -143,21 +143,23 @@ class GAN_Net:
         
         print ('two optical flow:',self.opticalflow_t_0, self.opticalflow_t_2) 
         #two optical flow: Tensor("add:0", shape=(12, 180, 320, 2), dtype=float32) Tensor("add_1:0", shape=(12, 180, 320, 2),
-        
+
+        #2种方法合成t时刻的帧
         self.img_flow_2_t=self.warp_op(self.frame2, -self.opticalflow_t_2) #!!!
         self.img_flow_0_t=self.warp_op(self.frame0, -self.opticalflow_t_0) #!!!
-        
-        #利用光流前后帧互相合成
-        self.img_flow_2_0=self.warp_op(self.frame2, self.opticalflow_2_0)  #frame2->frame0
-        self.img_flow_0_2=self.warp_op(self.frame0, self.opticalflow_0_2)  #frame0->frame2
-        
         
         #self.G_net=self.timerates_expand*self.img_flow_2_t + (1-self.timerates_expand)*self.img_flow_0_t
         tep_prob_flow1=tf.expand_dims(self.prob_flow1, -1)
         tep_prob_flow1=tf.tile(tep_prob_flow1, [1,1,1,3])
-        self.G_net=tf.where( tf.greater_equal(tep_prob_flow1, 0.5),  self.img_flow_0_2, self.img_flow_2_0, name='G_net_generate')
+        self.G_net=tf.where( tf.greater_equal(tep_prob_flow1, 0.5),  self.img_flow_0_t, self.img_flow_2_t, name='G_net_generate')
+        #self.G_net=tf.add(self.img_flow_0_t*tep_prob_flow1, (1-tep_prob_flow1)*self.img_flow_2_t, , name='G_net_generate')
         
         print ('self.G_net:',self.G_net)#self.G_net: Tensor("G_net_generate:0", shape=(12, 180, 320, 3), dtype=float32)
+        
+        
+        #利用光流前后帧互相合成
+        self.img_flow_2_0=self.warp_op(self.frame2, self.opticalflow_2_0)  #frame2->frame0
+        self.img_flow_0_2=self.warp_op(self.frame0, self.opticalflow_0_2)  #frame0->frame2
         
     
         #D_1的输出 
