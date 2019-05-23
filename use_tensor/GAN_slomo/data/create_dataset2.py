@@ -179,9 +179,9 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3):
         
         #生成的值遵循范围内的均匀分布 [minval, maxval)。下限minval包含在范围内，而上限maxval则被排除在外。
         #对于浮点数，默认范围是[0, 1)。对于int，至少maxval必须明确指定。
-        randnum_start=tf.random_uniform([1],minval=0, maxval=num_ori_group-6, dtype=tf.int64)[0]
-        randnum_mid=tf.random_uniform([1],minval=randnum_start+1, maxval=num_ori_group-3, dtype=tf.int64)[0]
-        randnum_r=tf.random_uniform([1],minval=randnum_mid+1, maxval=num_ori_group  , dtype=tf.int64)[0]
+        randnum_start=tf.random_uniform([1],minval=0, maxval=int(num_ori_group/3), dtype=tf.int64)[0]
+        randnum_mid=tf.random_uniform([1],minval=int(num_ori_group/3), maxval=2*int(num_ori_group/3), dtype=tf.int64)[0]
+        randnum_r=tf.random_uniform([1],minval=2*int(num_ori_group/3), maxval=num_ori_group  , dtype=tf.int64)[0]
         
         frame0=image[:,:, randnum_start*img_channel: (randnum_start+1)*img_channel]
         frame1=image[:,:, randnum_mid*img_channel:(randnum_mid+1)*img_channel]
