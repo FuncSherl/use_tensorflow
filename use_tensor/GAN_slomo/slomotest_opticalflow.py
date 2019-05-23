@@ -36,6 +36,7 @@ class Slomo_flow:
         self.optical_0_1=self.graph.get_tensor_by_name("G_opticalflow_0_2:0")
         self.optical_1_0=self.graph.get_tensor_by_name("G_opticalflow_2_0:0")
         
+        #placeholders
         self.img_pla= self.graph.get_tensor_by_name('imgs_in:0')
         self.training= self.graph.get_tensor_by_name("training_in:0")
         self.timerates= self.graph.get_tensor_by_name("timerates_in:0")
