@@ -599,9 +599,11 @@ if __name__ == '__main__':
 
 
         begin_t=time.time()
-        for i in range(maxstep):            
+        for i in range(maxstep):     
+            print ('\n',"{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now()))
+                   
             if ((i+1)%2000==0):#一次测试
-                print ('\nbegining to eval D:')
+                print ('begining to eval D:')
                 real,fake=gan.evla_D_once()
                 print ('mean prob of real/fake:',real,fake)
                 
@@ -626,7 +628,7 @@ if __name__ == '__main__':
             
             
             stt=time.time()
-            print ('\n%d/%d  start train_once...'%(i,maxstep))
+            print ('%d/%d  start train_once...'%(i,maxstep))
             #lost,sum_log=vgg.train_once(sess) #这里每次训练都run一个summary出来
             sum_log=gan.train_once_all()
             #写入日志
