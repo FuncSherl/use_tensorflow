@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import cv2,os,time
 from datetime import datetime
 
-modelpath="/home/sherl/Pictures/v22_GAN_2019-05-21_21-38-30_base_lr-0.000200_batchsize-12_maxstep-240000_selectChannelWillLeadToNoise"
+modelpath="/home/sherl/Pictures/v22_GAN_2019-05-23_15-39-53_base_lr-0.000200_batchsize-12_maxstep-240000_select-channe-to-flowl"
 #modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
 meta_name=r'model_keep-239999.meta'
 
@@ -214,7 +214,7 @@ class Slomo_flow:
 
 with tf.Session() as sess:
     slomo=Slomo_flow(sess)
-    slomo.process_video(12, inputvideo, outputvideo, keep_shape=False)
+    slomo.process_video(12, inputvideo, outputvideo, keep_shape=True)
     
          
     
