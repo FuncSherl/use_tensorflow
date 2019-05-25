@@ -38,7 +38,7 @@ base_lr=0.0002 #基础学习率
 beta1=0.5
 dropout_rate=0.5
 
-maxstep=240000 #训练多少次
+maxstep=240000*2 #训练多少次
 
 decay_steps=12000
 decay_rate=0.99
@@ -151,8 +151,8 @@ class GAN_Net:
         #self.G_net=self.timerates_expand*self.img_flow_2_t + (1-self.timerates_expand)*self.img_flow_0_t
         tep_prob_flow1=tf.expand_dims(self.prob_flow1, -1)
         tep_prob_flow1=tf.tile(tep_prob_flow1, [1,1,1,3])
-        self.G_net=tf.where( tf.greater_equal(tep_prob_flow1, 0.5),  self.img_flow_0_t, self.img_flow_2_t, name='G_net_generate') #这里认为>0.5就是相信frame0
-        #self.G_net=tf.add(self.img_flow_0_t*tep_prob_flow1, (1-tep_prob_flow1)*self.img_flow_2_t,  name='G_net_generate')
+        #self.G_net=tf.where( tf.greater_equal(tep_prob_flow1, 0.5),  self.img_flow_0_t, self.img_flow_2_t, name='G_net_generate') #这里认为>0.5就是相信frame0
+        self.G_net=tf.add(self.img_flow_0_t*tep_prob_flow1, (1-tep_prob_flow1)*self.img_flow_2_t,  name='G_net_generate')
         
         print ('self.G_net:',self.G_net)#self.G_net: Tensor("G_net_generate:0", shape=(12, 180, 320, 3), dtype=float32)
         
