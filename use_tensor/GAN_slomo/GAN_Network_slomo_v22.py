@@ -132,7 +132,10 @@ class GAN_Net:
         #下面将结果中的代表各个意义分开
         #optical flow[:,:,:,0:2] is frame0->frame2(get frame2 from frame0), [2:]is 2->0
         self.opticalflow_0_2=tf.slice(self.G_opticalflow, [0, 0, 0, 0], [-1, -1, -1, 2], name='G_opticalflow_0_2') #self.G_opticalflow[:,:,:,:2]
+        
+        #self.prob_flow1=tf.clip_by_value(self.G_opticalflow[:,:,:,2],0,1 , name='prob_flow1_sigmoid')
         self.prob_flow1=  tf.nn.sigmoid( self.G_opticalflow[:,:,:,2] , name='prob_flow1_sigmoid')  #这里添加了一个置信度，用来选择光流,即相信F0->1还是相信F1->0
+        
         self.opticalflow_2_0=tf.slice(self.G_opticalflow, [0, 0, 0, 3], [-1, -1, -1, 2], name='G_opticalflow_2_0') #       self.G_opticalflow[:,:,:,3:]
         print ('original flow:',self.opticalflow_0_2, self.prob_flow1, self.opticalflow_2_0)
         #original flow: Tensor("G_opticalflow_0_2:0", shape=(12, 180, 320, 2), dtype=float32) Tensor("prob_flow1_sigmoid:0", shape=(12, 180, 320), dtype=float32) Tensor("G_opticalflow_2_0:0", shape=(12, 180, 320, 2), dtype=float32)

@@ -210,11 +210,27 @@ class Slomo_flow:
         cv2.destroyAllWindows()
         '''
         return bgr
+    
+    def after_process(self, kernel_size=10):
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
+        #erosion = cv2.erode(img, kernel)  # 腐蚀
+        #dilation = cv2.dilate(img, kernel)  # 膨胀
+        '''
+        先腐蚀后膨胀叫开运算
+        opening = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)  # 开运算
+        closing = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)  # 闭运算
+        '''
+    
 
-
-with tf.Session() as sess:
-    slomo=Slomo_flow(sess)
-    slomo.process_video(12, inputvideo, outputvideo, keep_shape=True)
+if __name__=='__main__':
+    with tf.Session() as sess:
+        slomo=Slomo_flow(sess)
+        slomo.process_video(12, inputvideo, outputvideo, keep_shape=True)
+        
+        
+        
+        
+        
     
          
     
