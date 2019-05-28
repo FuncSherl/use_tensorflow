@@ -136,10 +136,13 @@ def frames2tfrec(frame_dir, tfrecdir, group_num=12, groups_perfile=300, img_shap
     print ('for all: write to ',tfrecdir,'->',cnt_num,' groups done!!')
     return cnt_num
 
-def preprocess_img(image,outlen):
+def preprocess_img(image,outlen, outchannel=9):
     #这里将图片
     ''''''
-    image=tf.image.resize_images(image, tuple(outlen))
+    image=tf.image.resize_images(image, tuple(  [outlen[0]+10, outlen[1]+10 ]   )  )
+    image=tf.image.random_flip_left_right(image)
+    image=tf.image.random_crop(image, [outlen[0], outlen[1], outchannel ])
+    
     image=tf.cast(image, dtype=tf.float32)
     
     #image = tf.image.resize_image_with_crop_or_pad(image, 230, 230)
@@ -181,10 +184,11 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3):
         frame0=image[:,:, (randnum_mid-randnum_r)*img_channel: (randnum_mid-randnum_r+1)*img_channel]
         frame1=image[:,:, randnum_mid*img_channel:(randnum_mid+1)*img_channel]
         frame2=image[:,:, (randnum_mid+randnum_r)*img_channel: (randnum_mid+randnum_r+1)*img_channel]
-        image=tf.concat([frame0, frame1, frame2], -1)
+        tepframes=[frame0, frame1, frame2] ###!!!
+        image=tf.concat(tepframes, -1)
         
         ###############################################################################################
-        image=preprocess_img(image, imgsize)
+        image=preprocess_img(image, imgsize, len(tepframes)*img_channel)
         
         return image
     

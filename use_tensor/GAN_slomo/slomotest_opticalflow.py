@@ -11,15 +11,15 @@ import matplotlib.pyplot as plt
 import cv2,os,time
 from datetime import datetime
 
-modelpath="/home/sherl/Pictures/v22_GAN_2019-05-23_15-39-53_base_lr-0.000200_batchsize-12_maxstep-240000_select-channe-to-flowl"
+modelpath="/home/sherl/Pictures/v22_GAN_2019-05-25_13-28-37_base_lr-0.000200_batchsize-12_maxstep-480000-notSelectButWeight"
 #modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
-meta_name=r'model_keep-239999.meta'
+meta_name=r'model_keep-407999.meta'
 
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 testvideodir='./testing_gif'
 inputvideo =op.join(testvideodir, 'original.mp4')
-outputvideo=op.join( testvideodir, TIMESTAMP+'_myslomo.avi')
+outputvideo=op.join( testvideodir, TIMESTAMP+'_myslomo.mp4')
 os.makedirs(testvideodir,  exist_ok=True)
 
 class Slomo_flow:
@@ -131,7 +131,7 @@ class Slomo_flow:
         print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
         
         if not keep_shape:
-            videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
+            videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 1, self.videoshape )
             print ('output video:',outputvideo,'\nsize:',self.videoshape, '  fps:', fps)
         else:
             videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), size )
@@ -211,7 +211,7 @@ class Slomo_flow:
         '''
         return bgr
     
-    def after_process(self, kernel_size=10):
+    def after_process(self,img, kernel_size=10):
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
         #erosion = cv2.erode(img, kernel)  # 腐蚀
         #dilation = cv2.dilate(img, kernel)  # 膨胀
@@ -225,7 +225,7 @@ class Slomo_flow:
 if __name__=='__main__':
     with tf.Session() as sess:
         slomo=Slomo_flow(sess)
-        slomo.process_video(12, inputvideo, outputvideo, keep_shape=True)
+        slomo.process_video(12, inputvideo, outputvideo, keep_shape=False)
         
         
         
