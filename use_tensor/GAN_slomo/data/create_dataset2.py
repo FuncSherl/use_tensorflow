@@ -139,12 +139,15 @@ def frames2tfrec(frame_dir, tfrecdir, group_num=group_cnt_images, groups_perfile
     print ('for all: write to ',tfrecdir,'->',cnt_num,' groups done!!')
     return cnt_num
 
-def preprocess_img(image,outlen, outchannel=9):
+def preprocess_img(image,outlen, outchannel=9, training=True):
     #这里将图片
     ''''''
-    image=tf.image.resize_images(image, tuple(  [outlen[0]+10, outlen[1]+10 ]   )  )
-    image=tf.image.random_flip_left_right(image)
-    image=tf.image.random_crop(image, [outlen[0], outlen[1], outchannel ])
+    if training:
+        image=tf.image.resize_images(image, tuple(  [outlen[0]+10, outlen[1]+10 ]   )  )
+        image=tf.image.random_flip_left_right(image)
+        image=tf.image.random_crop(image, [outlen[0], outlen[1], outchannel ])
+    else:
+        image=tf.image.resize_images(image, tuple( outlen   )  )
     
     image=tf.cast(image, dtype=tf.float32)
     
@@ -154,7 +157,7 @@ def preprocess_img(image,outlen, outchannel=9):
     #image = tf.image.random_flip_left_right(image)
     return image
 
-def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3):
+def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3, training=True):
     '''
     imgsize:[new_height, new_width]
     '''
@@ -193,7 +196,7 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3):
         image=tf.concat(tepframes, -1)
         
         ###############################################################################################
-        image=preprocess_img(image, imgsize, len(tepframes)*img_channel)
+        image=preprocess_img(image, imgsize, len(tepframes)*img_channel, training)
         
         #这里t_rate指的是中间帧距离前帧的距离/后一帧与前一帧的距离，位于(0,1)
         t_rate= tf.cast(randnum_mid-randnum_start, tf.float32) / tf.cast(randnum_r-randnum_start, tf.float32)
@@ -211,10 +214,10 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3):
     return image_batch
 
 def get_pipline_data_train(imgsize, batchsize):
-    return read_tfrecord_batch(tfrec_dir_train, imgsize, batchsize)
+    return read_tfrecord_batch(tfrec_dir_train, imgsize, batchsize, training=True)
 
 def get_pipline_data_test(imgsize, batchsize):
-    return read_tfrecord_batch(tfrec_dir_test, imgsize, batchsize)
+    return read_tfrecord_batch(tfrec_dir_test, imgsize, batchsize, training=False)
 
 def test_showtfimgs(tfdir, batchsize):
     tep=read_tfrecord_batch(tfdir, [360, 640], batchsize)
