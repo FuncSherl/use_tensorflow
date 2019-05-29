@@ -143,7 +143,7 @@ def preprocess_img(image,outlen, outchannel=9, training=True):
     #这里将图片
     ''''''
     if training:
-        image=tf.image.resize_images(image, tuple(  [outlen[0]+10, outlen[1]+10 ]   )  )
+        image=tf.image.resize_images(image, tuple(  [outlen[0]+6, outlen[1]+6 ]   )  )
         image=tf.image.random_flip_left_right(image)
         image=tf.image.random_crop(image, [outlen[0], outlen[1], outchannel ])
     else:
