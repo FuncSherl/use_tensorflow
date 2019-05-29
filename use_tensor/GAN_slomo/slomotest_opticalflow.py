@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import cv2,os,time
 from datetime import datetime
 
-modelpath="/home/sherl/Pictures/v22_GAN_2019-05-25_13-28-37_base_lr-0.000200_batchsize-12_maxstep-480000-notSelectButWeight"
+modelpath="/home/sherl/Pictures/v22/v22_GAN_2019-05-25_13-28-37_base_lr-0.000200_batchsize-12_maxstep-480000-notSelectButWeight"
 #modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
 meta_name=r'model_keep-407999.meta'
 
@@ -31,8 +31,8 @@ class Slomo_flow:
         # get weights
         self.graph = tf.get_default_graph()
         self.outimg = self.graph.get_tensor_by_name("G_net_generate:0")
-        self.optical_t_0=self.graph.get_tensor_by_name("add:0")
-        self.optical_t_2=self.graph.get_tensor_by_name("add_1:0")
+        self.optical_t_0=self.graph.get_tensor_by_name("G_opticalflow_t_0:0")
+        self.optical_t_2=self.graph.get_tensor_by_name("G_opticalflow_t_2:0")
         self.optical_0_1=self.graph.get_tensor_by_name("G_opticalflow_0_2:0")
         self.optical_1_0=self.graph.get_tensor_by_name("G_opticalflow_2_0:0")
         
@@ -131,7 +131,7 @@ class Slomo_flow:
         print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
         
         if not keep_shape:
-            videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 1, self.videoshape )
+            videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
             print ('output video:',outputvideo,'\nsize:',self.videoshape, '  fps:', fps)
         else:
             videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), size )
@@ -211,7 +211,7 @@ class Slomo_flow:
         '''
         return bgr
     
-    def after_process(self,img, kernel_size=10):
+    def after_process(self, img, kernel_size=10):
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
         #erosion = cv2.erode(img, kernel)  # 腐蚀
         #dilation = cv2.dilate(img, kernel)  # 膨胀
@@ -219,7 +219,13 @@ class Slomo_flow:
         先腐蚀后膨胀叫开运算
         opening = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)  # 开运算
         closing = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)  # 闭运算
+        膨胀：求局部最大值
+        腐蚀：局部最小值(与膨胀相反)
         '''
+        
+        img = cv2.dilate(img, kernel, iterations=1)
+        img = cv2.erode(img, kernel, iterations=1)
+        return img
     
 
 if __name__=='__main__':

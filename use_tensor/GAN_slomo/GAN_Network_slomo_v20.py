@@ -130,13 +130,22 @@ class GAN_Net:
         self.G_opticalflow=self.Generator_net(self.frame0, self.frame2)  #注意这里是直接作为optical flow
         
         #optical flow[:,:,:,0:2] is frame0->frame2(get frame2 from frame0), [2:]is 2->0
-        self.opticalflow_0_2=self.G_opticalflow[:,:,:,:2]
-        self.opticalflow_2_0=self.G_opticalflow[:,:,:,2:]
-        #反向光流算中间帧
-        self.opticalflow_t_0=-(1-self.timerates_expand)*self.timerates_expand*self.opticalflow_0_2 + self.timerates_expand*self.timerates_expand*self.opticalflow_2_0
-        self.opticalflow_t_2= (1-self.timerates_expand)*(1-self.timerates_expand)*self.opticalflow_0_2 + self.timerates_expand*(self.timerates_expand-1)*self.opticalflow_2_0
+        self.opticalflow_0_2=tf.slice(self.G_opticalflow, [0, 0, 0, 0], [-1, -1, -1, 2], name='G_opticalflow_0_2') #self.G_opticalflow[:,:,:,:2]
         
-        print ('two optical flow:',self.opticalflow_t_0, self.opticalflow_t_2) #Tensor("add:0", shape=(12, 180, 320, 2), dtype=float32) Tensor("add_1:0", shape=(12, 180, 320, 2),
+        self.opticalflow_2_0=tf.slice(self.G_opticalflow, [0, 0, 0, 2], [-1, -1, -1, 2], name='G_opticalflow_2_0') #       self.G_opticalflow[:,:,:,3:]
+        print ('original flow:',self.opticalflow_0_2, self.opticalflow_2_0)
+        #original flow: Tensor("G_opticalflow_0_2:0", shape=(12, 180, 320, 2), dtype=float32) 
+        #Tensor("G_opticalflow_2_0:0", shape=(12, 180, 320, 2), dtype=float32)
+        
+        #反向光流算中间帧
+        self.opticalflow_t_0=tf.add( -(1-self.timerates_expand)*self.timerates_expand*self.opticalflow_0_2 ,\
+                                      self.timerates_expand*self.timerates_expand*self.opticalflow_2_0 , name="G_opticalflow_t_0")
+        self.opticalflow_t_2=tf.add( (1-self.timerates_expand)*(1-self.timerates_expand)*self.opticalflow_0_2 ,\
+                                      self.timerates_expand*(self.timerates_expand-1)*self.opticalflow_2_0 ,name="G_opticalflow_t_2")
+        
+        print ('two optical flow:',self.opticalflow_t_0, self.opticalflow_t_2) 
+        #two optical flow: Tensor("G_opticalflow_t_0:0", shape=(12, 180, 320, 2), dtype=float32) 
+        #Tensor("G_opticalflow_t_2:0", shape=(12, 180, 320, 2), dtype=float32)
         
         self.img_flow_2_t=self.warp_op(self.frame2, -self.opticalflow_t_2) #!!!
         self.img_flow_0_t=self.warp_op(self.frame0, -self.opticalflow_t_0) #!!!
@@ -147,10 +156,10 @@ class GAN_Net:
         self.img_flow_0_2=self.warp_op(self.frame0, self.opticalflow_0_2)  #frame0->frame2
         
         
-        self.G_net=self.timerates_expand*self.img_flow_2_t + (1-self.timerates_expand)*self.img_flow_0_t
+        self.G_net=tf.add(self.timerates_expand*self.img_flow_2_t , (1-self.timerates_expand)*self.img_flow_0_t, name="G_net_generate" )
         
-        print ('self.G_net:',self.G_net)#self.G_net: Tensor("add_2:0", shape=(12, 180, 320, 3), dtype=float32)
-        
+        print ('self.G_net:',self.G_net)
+        #self.G_net: Tensor("G_net_generate:0", shape=(12, 180, 320, 3), dtype=float32)
     
         #D_1的输出 
         frame0_False_2=tf.concat([self.frame0, self.G_net,self.frame2], -1)

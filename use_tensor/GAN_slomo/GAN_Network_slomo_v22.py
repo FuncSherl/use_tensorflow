@@ -138,14 +138,19 @@ class GAN_Net:
         
         self.opticalflow_2_0=tf.slice(self.G_opticalflow, [0, 0, 0, 3], [-1, -1, -1, 2], name='G_opticalflow_2_0') #       self.G_opticalflow[:,:,:,3:]
         print ('original flow:',self.opticalflow_0_2, self.prob_flow1, self.opticalflow_2_0)
-        #original flow: Tensor("G_opticalflow_0_2:0", shape=(12, 180, 320, 2), dtype=float32) Tensor("prob_flow1_sigmoid:0", shape=(12, 180, 320), dtype=float32) Tensor("G_opticalflow_2_0:0", shape=(12, 180, 320, 2), dtype=float32)
+        #original flow: Tensor("G_opticalflow_0_2:0", shape=(12, 180, 320, 2), dtype=float32) 
+        #Tensor("prob_flow1_sigmoid:0", shape=(12, 180, 320), dtype=float32) 
+        #Tensor("G_opticalflow_2_0:0", shape=(12, 180, 320, 2), dtype=float32)
         
         #反向光流算中间帧
-        self.opticalflow_t_0=-(1-self.timerates_expand)*self.timerates_expand*self.opticalflow_0_2 + self.timerates_expand*self.timerates_expand*self.opticalflow_2_0
-        self.opticalflow_t_2= (1-self.timerates_expand)*(1-self.timerates_expand)*self.opticalflow_0_2 + self.timerates_expand*(self.timerates_expand-1)*self.opticalflow_2_0
+        self.opticalflow_t_0=tf.add( -(1-self.timerates_expand)*self.timerates_expand*self.opticalflow_0_2 ,\
+                                      self.timerates_expand*self.timerates_expand*self.opticalflow_2_0 , name="G_opticalflow_t_0")
+        self.opticalflow_t_2=tf.add( (1-self.timerates_expand)*(1-self.timerates_expand)*self.opticalflow_0_2 ,\
+                                      self.timerates_expand*(self.timerates_expand-1)*self.opticalflow_2_0, name="G_opticalflow_t_2")
         
         print ('two optical flow:',self.opticalflow_t_0, self.opticalflow_t_2) 
-        #two optical flow: Tensor("add:0", shape=(12, 180, 320, 2), dtype=float32) Tensor("add_1:0", shape=(12, 180, 320, 2),
+        #two optical flow: Tensor("G_opticalflow_t_0:0", shape=(12, 180, 320, 2), dtype=float32) 
+        #Tensor("G_opticalflow_t_2:0", shape=(12, 180, 320, 2), dtype=float32),
 
         #2种方法合成t时刻的帧
         self.img_flow_2_t=self.warp_op(self.frame2, -self.opticalflow_t_2) #!!!
