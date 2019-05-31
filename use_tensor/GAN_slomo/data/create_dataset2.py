@@ -142,19 +142,15 @@ def frames2tfrec(frame_dir, tfrecdir, group_num=group_cnt_images, groups_perfile
 def preprocess_img(image,outlen, outchannel=9, training=True):
     #这里将图片
     ''''''
-    if training:
-        image=tf.image.resize_images(image, tuple(  [outlen[0]+6, outlen[1]+6 ]   )  )
-        image=tf.image.random_flip_left_right(image)
-        image=tf.image.random_crop(image, [outlen[0], outlen[1], outchannel ])
-    else:
-        image=tf.image.resize_images(image, tuple( outlen   )  )
+    
+    image=tf.image.resize_images(image, tuple(  [outlen[0]+6, outlen[1]+6 ]   )  )
+    image=tf.image.random_flip_left_right(image)
+    image=tf.image.random_crop(image, [outlen[0], outlen[1], outchannel ])
+    
+    #image=tf.image.resize_images(image, tuple( outlen   )  )
     
     image=tf.cast(image, dtype=tf.float32)
     
-    #image = tf.image.resize_image_with_crop_or_pad(image, 230, 230)
-    #image = tf.random_crop(image, [outlen, outlen, 3])
-
-    #image = tf.image.random_flip_left_right(image)
     return image
 
 def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3, training=True):
