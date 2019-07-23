@@ -141,7 +141,7 @@ class GAN_Net:
         #original flow: Tensor("G_opticalflow_0_2:0", shape=(12, 180, 320, 2), dtype=float32) 
         #Tensor("prob_flow1_sigmoid:0", shape=(12, 180, 320), dtype=float32) 
         #Tensor("G_opticalflow_2_0:0", shape=(12, 180, 320, 2), dtype=float32)
-        '''
+        
         #反向光流算中间帧
         self.opticalflow_t_0=tf.add( -(1-self.timerates_expand)*self.timerates_expand*self.opticalflow_0_2 ,\
                                       self.timerates_expand*self.timerates_expand*self.opticalflow_2_0 , name="G_opticalflow_t_0")
@@ -151,7 +151,7 @@ class GAN_Net:
         print ('two optical flow:',self.opticalflow_t_0, self.opticalflow_t_2) 
         #two optical flow: Tensor("G_opticalflow_t_0:0", shape=(12, 180, 320, 2), dtype=float32) 
         #Tensor("G_opticalflow_t_2:0", shape=(12, 180, 320, 2), dtype=float32),
-        '''
+        
         #2种方法合成t时刻的帧
         self.img_flow_2_t=self.warp_op(self.frame2, -self.opticalflow_t_2) #!!!
         self.img_flow_0_t=self.warp_op(self.frame0, -self.opticalflow_t_0) #!!!
