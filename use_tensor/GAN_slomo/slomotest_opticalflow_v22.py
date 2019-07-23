@@ -36,6 +36,8 @@ class Slomo_flow:
         self.optical_0_1=self.graph.get_tensor_by_name("G_opticalflow_0_2:0")
         self.optical_1_0=self.graph.get_tensor_by_name("G_opticalflow_2_0:0")
         
+        self.occu_mask=self.graph.get_tensor_by_name("prob_flow1_sigmoid:0")
+        
         #placeholders
         self.img_pla= self.graph.get_tensor_by_name('imgs_in:0')
         self.training= self.graph.get_tensor_by_name("training_in:0")
@@ -108,6 +110,10 @@ class Slomo_flow:
             
             #实验中如果是xy=np.array( np.stack([X，Y], -1), dtype=np.float32)，
             #直接将xy作为map送入remap函数中指定映射，则输出和原图一摸一样的图像，要知道前面xy里的[i,j]处对应的值为[j,i],这是一个cv2里的大坑，即map里的（x，y）分别为宽和高，而不是行列坐标 
+            '''
+            cv2.remap(src, map1, map2, interpolation[, dst[, borderMode[, borderValue]]]) → ds
+            dst(x,y)=src(map1(x,y), map2(x,y))
+            '''
             
             tepframe0=cv2.remap(frame0, tep0[:,:,1], tep0[:,:,0],  interpolation=cv2.INTER_LINEAR)
             tepframe1=cv2.remap(frame2, tep1[:,:,1], tep1[:,:,0],  interpolation=cv2.INTER_LINEAR)
