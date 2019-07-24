@@ -90,7 +90,7 @@ class Slomo_flow:
         
         placetep=self.img2tanh(placetep)
         
-        flowt_0,flowt_2, flow0_1, flow1_0=self.sess.run([self.optical_t_0, self.optical_t_2, self.optical_0_1, self.optical_1_0], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates})
+        flowt_0,flowt_2,occumask ,flow0_1, flow1_0=self.sess.run([self.optical_t_0, self.optical_t_2, self.occu_mask, self.optical_0_1, self.optical_1_0], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates})
         
         X, Y = np.meshgrid(np.arange(fshape[1]), np.arange(fshape[0]))  #w,h
         xy=np.array( np.stack([Y,X], -1), dtype=np.float32)
@@ -115,10 +115,16 @@ class Slomo_flow:
             dst(x,y)=src(map1(x,y), map2(x,y))
             '''
             
-            tepframe0=cv2.remap(frame0, tep0[:,:,1], tep0[:,:,0],  interpolation=cv2.INTER_LINEAR)
-            tepframe1=cv2.remap(frame2, tep1[:,:,1], tep1[:,:,0],  interpolation=cv2.INTER_LINEAR)
+            tepframe0=cv2.remap(frame0, tep0[:,:,1], tep0[:,:,0],  interpolation=cv2.INTER_LINEAR) #self.img_flow_0_t*tep_prob_flow1
+            tepframe1=cv2.remap(frame2, tep1[:,:,1], tep1[:,:,0],  interpolation=cv2.INTER_LINEAR) #(1-tep_prob_flow1)*self.img_flow_2_t
             #print (tepframe0[1,2])
-            final=tepframe1*timerates[i]+(1-timerates[i])*tepframe0
+            
+            #self.occu_mask
+            #final=tepframe1*timerates[i]+(1-timerates[i])*tepframe0
+            occumask=np.expand_dims(occumask, -1)
+            #occumask=np.tile(occumask, [1,1,1,3])
+            final=occumask*tepframe0+(1-occumask)*tepframe1
+            
             #final=tepframe1
             out.append(final)
         out=np.array(out, dtype=np.uint8)
@@ -237,7 +243,7 @@ class Slomo_flow:
 if __name__=='__main__':
     with tf.Session() as sess:
         slomo=Slomo_flow(sess)
-        slomo.process_video(12, inputvideo, outputvideo, keep_shape=False)
+        slomo.process_video(12, inputvideo, outputvideo, keep_shape=True)
         
         
         
