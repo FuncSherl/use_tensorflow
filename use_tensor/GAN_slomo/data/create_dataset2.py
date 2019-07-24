@@ -12,15 +12,15 @@ test_txt=r'./adobe240fps/test_list.txt'
 
 pc_id=2
 
-if pc_id==0: 
+if pc_id==0: #
     videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
     extratdir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\extracted_videos' 
     tfrec_dir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\tfrecords'
-elif pc_id==1: 
+elif pc_id==1: #lab pc
     videodir=r'/media/sherl/本地磁盘1/data_DL/Adobe240fps/original_high_fps_videos' #
     extratdir=r'/media/sherl/本地磁盘1/data_DL/Adobe240fps/extracted_videos' #
     tfrec_dir=r'/media/sherl/本地磁盘1/data_DL/Adobe240fps/tfrecords' #
-elif pc_id==2: 
+elif pc_id==2: #server
     videodir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/original_high_fps_videos'
     extratdir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/extracted_videos'
     tfrec_dir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/tfrecords'
@@ -142,7 +142,8 @@ def frames2tfrec(frame_dir, tfrecdir, group_num=group_cnt_images, groups_perfile
 def preprocess_img(image,outlen, outchannel=9, training=True):
     #这里将图片
     ''''''
-    
+    #这里利用resize后的图片训练可能会导致在真实情况下效果由于与训练时的图片缩放比例不一样导致的问题
+    #tf.image.resize_image_with_crop_or_pad()
     image=tf.image.resize_images(image, tuple(  [outlen[0]+6, outlen[1]+6 ]   )  )
     image=tf.image.random_flip_left_right(image)
     image=tf.image.random_crop(image, [outlen[0], outlen[1], outchannel ])
