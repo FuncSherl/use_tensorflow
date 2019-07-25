@@ -189,6 +189,12 @@ class GAN_Net:
         
         '''
         #self.G_loss_mean_Square=tf.reduce_mean(tf.squared_difference(self.G_net,self.frame1), name='G_clear_square_loss')
+        #contex loss
+        print ("conx loss：")
+        print (tf.keras.applications.VGG16(include_top=False, input_tensor=self.G_net).get_layer("block4_conv3"))
+        #tf.keras.applications.VGG16(include_top=False, input_tensor=self.frame1).get_layer("block4_conv3")
+        
+        #final loss
         self.G_loss_mean_Square=tf.reduce_mean( tf.abs(  self.G_net-self.frame1  ) + tf.abs(self.img_flow_2_0-self.frame0) + tf.abs(self.img_flow_0_2-self.frame2) \
                                                , name='G_clear_l1_loss')
         
