@@ -123,7 +123,7 @@ class GAN_Net:
         self.frame2=self.imgs_pla[:,:,:,img_channel*2:]
         
         #这里是为了看看第一帧和第3帧的差距，用来给evalte
-        self.frame_0_2_squareloss=tf.reduce_mean(  tf.abs(self.frame0-self.frame2) , [1,2,3], name='frame_0_2_squareloss')
+        self.frame_0_2_L1loss=tf.reduce_mean(  tf.abs(self.frame0-self.frame2) , [1,2,3], name='frame_0_2_L1loss')
         #frame0and2=tf.concat([self.frame0, self.frame2], -1) #在第三维度连接起来
         #print ('after concat:',frame0and2)
         #!!!!!!!!!!here is differs from v1,add to Generator output the ori img will reduce the generator difficulty 
@@ -189,24 +189,34 @@ class GAN_Net:
         
         '''
         #self.G_loss_mean_Square=tf.reduce_mean(tf.squared_difference(self.G_net,self.frame1), name='G_clear_square_loss')
-        #contex loss
-        print ("conx loss：")
-        print (tf.keras.applications.VGG16(include_top=False, input_tensor=self.G_net).get_layer("block4_conv3"))
-        #tf.keras.applications.VGG16(include_top=False, input_tensor=self.frame1).get_layer("block4_conv3")
+        #1、contex loss
+        print ("forming conx loss：")
+        tep_G_shape=self.G_net.get_shape().as_list()[1:]
         
-        #final loss
-        self.G_loss_mean_Square=tf.reduce_mean( tf.abs(  self.G_net-self.frame1  ) + tf.abs(self.img_flow_2_0-self.frame0) + tf.abs(self.img_flow_0_2-self.frame2) \
-                                               , name='G_clear_l1_loss')
+        self.contex_Genera =tf.keras.applications.VGG16(include_top=False, input_tensor=self.G_net,  input_shape=tep_G_shape).get_layer("block4_conv3").output
+        self.contex_frame1 =tf.keras.applications.VGG16(include_top=False, input_tensor=self.frame1, input_shape=tep_G_shape).get_layer("block4_conv3").output
         
+        self.contex_loss=   tf.reduce_mean(tf.squared_difference( self.contex_frame1, self.contex_Genera), name='G_Contex_loss')
+        print ('G_loss_mean_contex form finished..')
+        
+        #2、L1 loss
+        print ("forming L1 loss:生成帧与GT、frame2->frame0与frame0、frame0->frame2与frame2")
+        self.L1_loss_interframe =tf.reduce_mean(tf.abs(  self.G_net-self.frame1  ))
+        self.L1_loss_all        =tf.reduce_mean(tf.abs(  self.G_net-self.frame1  ) + \
+                                                tf.abs(self.img_flow_2_0-self.frame0) + \
+                                                tf.abs(self.img_flow_0_2-self.frame2), name='G_clear_l1_loss')
+        #self.G_loss_mean_Square=  self.contex_loss*1 + self.L1_loss_all
         print ('G_loss_mean_l1 form finished..')
-        #这里对两个D的loss没有特殊处理，只是简单相加
-        self.D_loss_all=self.D_linear_net_loss_sum  #+ self.D_clear_net_loss_sum
         
-        #下面是G的loss
+        #3、下面是G的loss
         self.G_loss_mean_D1=self.G_loss_F_logits(self.D_linear_net_F_logit, 'G_loss_D1')
         #self.G_loss_mean_D2=self.G_loss_F_logits(self.D_clear_net_F_logit, 'G_loss_D2')
-        #这里对两个G的loss没有特殊处理，只是简单相加
-        self.G_loss_all=self.G_loss_mean_D1 + self.G_loss_mean_Square #* (1+self.global_step/G_squareloss_rate_globalstep)# self.G_loss_mean_D2      
+        
+        #训练生成器的总LOSS   这里对G的loss没有特殊处理，只是简单相加
+        self.G_loss_all=self.G_loss_mean_D1 + self.contex_loss + self.L1_loss_all   #* (1+self.global_step/G_squareloss_rate_globalstep)# self.G_loss_mean_D2      
+        
+        #训练判别器D的loss    这里对D的loss没有特殊处理，只是简单相加,利用contex loss代替clear的对抗loss
+        self.D_loss_all=self.D_linear_net_loss_sum  #+ self.D_clear_net_loss_sum
         
         #还是应该以tf.trainable_variables()为主
         t_vars=tf.trainable_variables()
@@ -361,13 +371,13 @@ class GAN_Net:
         lrrate,_,_,\
         D1_T_prob, D1_F_prob, \
         D1_loss, D_loss_sum_all,\
-        _ , G_loss_D1, G_loss_Square, G_loss_sum_all, \
+        _ , G_loss_D1, G_loss_L1, G_loss_contex, G_loss_sum_all, \
         summary =\
                                        self.sess.run([self.lr_rate, self.train_D , self.clip_D,\
                                                       self.D_linear_net_T, self.D_linear_net_F,\
                                                       #self.D_clear_net_T, self.D_clear_net_F,  \
                                                       self.D_linear_net_loss_sum, self.D_loss_all,\
-                                                      self.train_G, self.G_loss_mean_D1, self.G_loss_mean_Square, self.G_loss_all,\
+                                                      self.train_G, self.G_loss_mean_D1, self.L1_loss_all, self.contex_loss, self.G_loss_all,\
                                                       self.summary_all]          , \
                                                     feed_dict={  self.imgs_pla:tepimgs ,  self.timerates_pla:time_rates ,self.training:True})
         print ('trained once:')
@@ -378,7 +388,8 @@ class GAN_Net:
         #print ('D2 loss_all:',D2_loss)
         print ('>>D_loss_sum_all:',D_loss_sum_all)
         print ('G_loss_D1:',G_loss_D1)
-        print ('G_loss_square:',G_loss_Square)
+        print ('G_loss_L1:',G_loss_L1)
+        print ('G_loss_contex:',G_loss_contex)
         print ('>>G_loss_sum_all:',G_loss_sum_all)
         
         return summary   
@@ -386,30 +397,29 @@ class GAN_Net:
     
     def Run_G(self, training=False):
         tepimgs,time_rates=self.getbatch_test_imgs()
-        inerimg, D1_prob, D2_prob, frame0_2_loss, optical_0_2, optical_2_0=self.sess.run([self.G_net, self.D_linear_net_F, self.G_loss_mean_Square, self.frame_0_2_squareloss, self.opticalflow_0_2, self.opticalflow_2_0], \
-                                                               feed_dict={self.imgs_pla:tepimgs, self.training:training, self.timerates_pla:time_rates})
         
-        return tepimgs, inerimg, D1_prob, D2_prob, frame0_2_loss,optical_0_2, optical_2_0
+        inerimg, \
+        D1_prob_F, D1_prob_T, \
+        frame0_2_loss, interframe_GT_L1loss,\
+        optical_0_2, optical_2_0=self.sess.run([self.G_net, \
+                                                self.D_linear_net_F, self.D_linear_net_T, \
+                                                self.frame_0_2_L1loss, self.L1_loss_interframe,\
+                                                self.opticalflow_0_2, self.opticalflow_2_0], \
+                                                feed_dict={self.imgs_pla:tepimgs, self.training:training, self.timerates_pla:time_rates})
+        
+        return tepimgs, inerimg, [D1_prob_F, D1_prob_T],interframe_GT_L1loss,  frame0_2_loss,  optical_0_2, optical_2_0
     
-    def Run_D_T(self, training=False):
-        '''
-        training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
-        '''
-        tepimgs,time_rates=self.getbatch_test_imgs()
-        D1_probs,G_loss_Square=self.sess.run([self.D_linear_net_T,self.G_loss_mean_Square], \
-                                             feed_dict={self.imgs_pla:tepimgs, self.training:training, self.timerates_pla:time_rates})
-        return D1_probs,G_loss_Square
     
-    def Run_D_F(self, training=False):
+    def Run_D_TandF(self, training=False):
           
         '''
         #这里imgs要求是tanh化过的，即归一化到-1~1 
         training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
         ''' 
         tepimgs,time_rates=self.getbatch_test_imgs()
-        D1_probs,D2_probs=self.sess.run([self.D_linear_net_F,self.G_loss_mean_Square], \
+        D1_probs_T, D1_probs_F, interframe_GT_L1 = self.sess.run([self.D_linear_net_T, self.D_linear_net_F,self.L1_loss_interframe], \
                                         feed_dict={self.imgs_pla:tepimgs, self.training:training, self.timerates_pla:time_rates})
-        return D1_probs,D2_probs
+        return D1_probs_T,D1_probs_F, interframe_GT_L1
     
     
     def eval_G_once(self, step=0):
@@ -422,7 +432,7 @@ class GAN_Net:
         bigimg_bests=np.zeros([bigimg_len[0],bigimg_len[1],img_channel], dtype=np.uint8)
         
         for i in range(cnt):
-            tepimgs, inerimg, D1_prob, D2_prob, frame0_2_loss, optical_0_2, optical_2_0=self.Run_G()
+            tepimgs, inerimg, D1_prob, interframe_GT_L1loss, frame0_2_loss, optical_0_2, optical_2_0=self.Run_G()
             opticalflow=[optical_0_2, optical_2_0]
             
             #保存原图,这里已经弃用了
@@ -451,8 +461,8 @@ class GAN_Net:
                 st_y= i*(img_size_h+cnt) #行
                 #pre process images
                 pre_imgs=self.tanh2img(tepimgs[tep, :,:, ki*img_channel:(ki+1)*img_channel])[0]
-                if ki==0: pre_imgs=cv2.putText(pre_imgs,'frame0_2_loss:'+str(frame0_2_loss[tep]),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
-                elif ki==1:  pre_imgs=cv2.putText(pre_imgs,'gan_loss_mean_batch:'+str(D2_prob),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
+                if ki==0:    pre_imgs=cv2.putText(pre_imgs,'frame0_2_loss:'+str(frame0_2_loss[tep]),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
+                elif ki==1:  pre_imgs=cv2.putText(pre_imgs,'gan_loss_mean_batch:'+str(interframe_GT_L1loss),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
                 '''
                 print (type(pre_imgs))
                 print (pre_imgs.shape)
@@ -486,20 +496,17 @@ class GAN_Net:
         
     def evla_D_once(self,eval_step=eval_step):
         cnt_real1=0
-        cnt_real2=0
         cnt_fake1=0
-        cnt_fake2=0
+        cnt_L1loss=0
         for i in range(eval_step):
-            prob1,G_loss_squ_F=self.Run_D_F()
+            prob_T,prob_F,G_loss_squ_F=self.Run_D_TandF()
             #print ('show prob shape:',probs.shape)  #[32,1]
-            cnt_fake1+=np.mean(prob1)
-            cnt_fake2+=np.mean(G_loss_squ_F)
-        
-        for i in range(eval_step):
-            prob1,G_loss_squ_T=self.Run_D_T()
-            cnt_real1+=np.mean(prob1)
-            cnt_real2+=np.mean(G_loss_squ_T)
-        return [cnt_real1/eval_step,cnt_real2/eval_step], [cnt_fake1/eval_step, cnt_fake2/eval_step]
+            cnt_fake1+=np.mean(prob_F)
+            cnt_L1loss+=np.mean(G_loss_squ_F)
+            
+            cnt_real1+=np.mean(prob_T)
+            
+        return cnt_real1/eval_step,cnt_L1loss/eval_step,cnt_fake1/eval_step
         
     
     def Generator_net(self, inputdata1, inputdata2, withbias=G_withbias, filterlen=G_filter_len, layercnt=G_unet_layercnt):
@@ -618,15 +625,16 @@ if __name__ == '__main__':
                    
             if ((i+1)%2000==0):#一次测试
                 print ('begining to eval D:')
-                real,fake=gan.evla_D_once()
-                print ('mean prob of real/fake:',real,fake)
+                prob_T,L1loss,prob_F=gan.evla_D_once()
+                print ('mean prob of real/fake:',prob_T,prob_F)
                 
                 #自己构建summary
                 tsummary = tf.Summary()
-                tsummary.value.add(tag='mean prob of real1', simple_value=real[0])
-                tsummary.value.add(tag='mean prob of fake1', simple_value=fake[0])
-                tsummary.value.add(tag='mean prob of real2', simple_value=real[1])
-                tsummary.value.add(tag='mean prob of fake2', simple_value=fake[1])
+                tsummary.value.add(tag='mean prob of real1', simple_value=prob_T)
+                tsummary.value.add(tag='mean prob of fake1', simple_value=prob_F)
+                tsummary.value.add(tag='mean L1_loss of G and GT', simple_value=L1loss)
+                #tsummary.value.add(tag='mean prob of real2', simple_value=real[1])
+                #tsummary.value.add(tag='mean prob of fake2', simple_value=fake[1])
                 #tsummary.value.add(tag='test epoch loss:', simple_value=tloss)
                 #写入日志
                 logwriter.add_summary(tsummary, i)
