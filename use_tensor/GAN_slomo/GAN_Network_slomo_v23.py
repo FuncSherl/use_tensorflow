@@ -212,11 +212,13 @@ class GAN_Net:
         self.G_loss_mean_D1=self.G_loss_F_logits(self.D_linear_net_F_logit, 'G_loss_D1')
         #self.G_loss_mean_D2=self.G_loss_F_logits(self.D_clear_net_F_logit, 'G_loss_D2')
         
-        #训练生成器的总LOSS   这里对G的loss没有特殊处理，只是简单相加
-        self.G_loss_all=self.G_loss_mean_D1 + self.contex_loss + self.L1_loss_all   #* (1+self.global_step/G_squareloss_rate_globalstep)# self.G_loss_mean_D2      
+        #训练生成器的总LOSS   这里将G的loss和contex loss与前面G的loss做一个归一化，这样当D的loss大的时候，说明这时D不可靠，需要多训练D，而相应的减小该D对G的训练影响
+        self.G_loss_all=self.G_loss_mean_D1/(self.G_loss_mean_D1 + self.contex_loss + self.D_linear_net_loss_sum) + \
+                        self.contex_loss/(self.G_loss_mean_D1 + self.contex_loss + self.D_linear_net_loss_sum) + \
+                        self.L1_loss_all   #* (1+self.global_step/G_squareloss_rate_globalstep)# self.G_loss_mean_D2      
         
-        #训练判别器D的loss    这里对D的loss没有特殊处理，只是简单相加,利用contex loss代替clear的对抗loss
-        self.D_loss_all=self.D_linear_net_loss_sum  #+ self.D_clear_net_loss_sum
+        #训练判别器D的loss    这里将d的loss与前面G的loss和contex loss做一个归一化，这样当这里D的loss大的时候，说明这时D不可靠，需要多训练D，而相应的减小该D对G的训练影响
+        self.D_loss_all=self.D_linear_net_loss_sum/(self.G_loss_mean_D1 + self.contex_loss + self.D_linear_net_loss_sum)  #+ self.D_clear_net_loss_sum
         
         #还是应该以tf.trainable_variables()为主
         t_vars=tf.trainable_variables()
@@ -659,8 +661,8 @@ if __name__ == '__main__':
             
             #######################
             
-            real,fake=gan.evla_D_once(1)
-            print ('once prob of [D1, D2] real/fake:',real,'/',fake)
+            prob_TT,L1_loss,prob_FF=gan.evla_D_once(1)
+            print ('once prob of [D1, D2] real/fake:',prob_TT,'/',prob_FF)
             
             print ('time used:',time.time()-stt,' to be ',1.0/(time.time()-stt),' iters/s', ' left time:',(time.time()-stt)*(maxstep-i)/60/60,' hours')
             
