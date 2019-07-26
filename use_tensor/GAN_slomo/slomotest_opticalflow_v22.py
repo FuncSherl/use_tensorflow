@@ -11,9 +11,9 @@ import matplotlib.pyplot as plt
 import cv2,os,time
 from datetime import datetime
 
-modelpath="/home/sherl/Pictures/v22/v22_GAN_2019-05-25_13-28-37_base_lr-0.000200_batchsize-12_maxstep-480000-notSelectButWeight"
+modelpath="/home/sherl/Pictures/v23/GAN_2019-07-24_11-38-59_base_lr-0.000200_batchsize-12_maxstep-240000无大改进_重新跑v22"
 #modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
-meta_name=r'model_keep-407999.meta'
+meta_name=r'model_keep-239999.meta'
 
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
@@ -53,6 +53,7 @@ class Slomo_flow:
         
     def getframes_throw_flow(self, frame0, frame2, cnt):
         '''
+        这里是第一种方法获取中间帧，直接获得通过网络G输出的帧而不是光流，但这样帧的大小是固定的
         cnt:中间插入几帧
         '''
         if cnt>self.batch: 
@@ -75,6 +76,7 @@ class Slomo_flow:
     
     def getflow_to_frames(self, frame0, frame2, cnt):
         '''
+        第二种方式合成帧，这里获取的是中间的光流，先resize光流，然后用warp加上原网络中的时间等一系列合成操作，这样能获得任意大小帧，但是要注意拿到光流后的处理要和原网络一样，否则会有问题
         #这里先resize光流，在合成帧，保持原视频分辨率
         '''
         if cnt>self.batch: 
@@ -243,7 +245,7 @@ class Slomo_flow:
 if __name__=='__main__':
     with tf.Session() as sess:
         slomo=Slomo_flow(sess)
-        slomo.process_video(12, inputvideo, outputvideo, keep_shape=True)
+        slomo.process_video(12, inputvideo, outputvideo, keep_shape=False)
         
         
         
