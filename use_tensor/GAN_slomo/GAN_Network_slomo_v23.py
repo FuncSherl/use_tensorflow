@@ -419,9 +419,9 @@ class GAN_Net:
         training 为false时，bn会用学习的参数bn，因此在训练时的prob和测试时的prob又很大差异
         ''' 
         tepimgs,time_rates=self.getbatch_test_imgs()
-        D1_probs_T, D1_probs_F, interframe_GT_L1 = self.sess.run([self.D_linear_net_T, self.D_linear_net_F,self.L1_loss_interframe], \
+        D1_probs_T, D1_probs_F, interframe_GT_L1 , L1loss_all= self.sess.run([self.D_linear_net_T, self.D_linear_net_F,self.L1_loss_interframe, self.L1_loss_all], \
                                         feed_dict={self.imgs_pla:tepimgs, self.training:training, self.timerates_pla:time_rates})
-        return D1_probs_T,D1_probs_F, interframe_GT_L1
+        return D1_probs_T,D1_probs_F, interframe_GT_L1, L1loss_all
     
     
     def eval_G_once(self, step=0):
@@ -500,15 +500,16 @@ class GAN_Net:
         cnt_real1=0
         cnt_fake1=0
         cnt_L1loss=0
+        cnt_L1loss_all=0
         for i in range(eval_step):
-            prob_T,prob_F,G_loss_squ_F=self.Run_D_TandF()
+            prob_T,prob_F,G_loss_squ_F,L1loss_all=self.Run_D_TandF()
             #print ('show prob shape:',probs.shape)  #[32,1]
             cnt_fake1+=np.mean(prob_F)
             cnt_L1loss+=np.mean(G_loss_squ_F)
-            
+            cnt_L1loss_all+=np.mean(L1loss_all)
             cnt_real1+=np.mean(prob_T)
             
-        return cnt_real1/eval_step,cnt_L1loss/eval_step,cnt_fake1/eval_step
+        return cnt_real1/eval_step,cnt_fake1/eval_step,cnt_L1loss/eval_step,cnt_L1loss_all/eval_step
         
     
     def Generator_net(self, inputdata1, inputdata2, withbias=G_withbias, filterlen=G_filter_len, layercnt=G_unet_layercnt):
@@ -627,7 +628,7 @@ if __name__ == '__main__':
                    
             if ((i+1)%2000==0):#一次测试
                 print ('begining to eval D:')
-                prob_T,L1loss,prob_F=gan.evla_D_once()
+                prob_T,prob_F,L1loss,L1_loss_all=gan.evla_D_once()
                 print ('mean prob of real/fake:',prob_T,prob_F)
                 
                 #自己构建summary
@@ -635,7 +636,7 @@ if __name__ == '__main__':
                 tsummary.value.add(tag='mean prob of real1', simple_value=prob_T)
                 tsummary.value.add(tag='mean prob of fake1', simple_value=prob_F)
                 tsummary.value.add(tag='mean L1_loss of G and GT', simple_value=L1loss)
-                #tsummary.value.add(tag='mean prob of real2', simple_value=real[1])
+                tsummary.value.add(tag='mean L1_loss_all of I0->I2', simple_value=L1_loss_all)
                 #tsummary.value.add(tag='mean prob of fake2', simple_value=fake[1])
                 #tsummary.value.add(tag='test epoch loss:', simple_value=tloss)
                 #写入日志
@@ -660,14 +661,15 @@ if __name__ == '__main__':
             #print ('write summary done!')
             
             #######################
-            
-            prob_TT,L1_loss,prob_FF=gan.evla_D_once(1)
-            print ('once prob of [D1, D2] real/fake:',prob_TT,'/',prob_FF)
-            
+            if (i+1)%5==0:#偶尔测试一次
+                prob_TT,prob_FF,L1_loss,L1_loss__all=gan.evla_D_once(1)
+                print ('once prob of D1 real/fake:',prob_TT,'/',prob_FF)
+                print ("once L1 loss of inter frame/all l1 loss:",L1_loss,'/',L1_loss__all)
+                
             print ('time used:',time.time()-stt,' to be ',1.0/(time.time()-stt),' iters/s', ' left time:',(time.time()-stt)*(maxstep-i)/60/60,' hours')
             
         
-        print ('Training done!!!-->time used:',(time.time()-begin_t),'s = ',(time.time()-begin_t)/60,' min')
+        print ('Training done!!!-->time used:',(time.time()-begin_t),'s = ',(time.time()-begin_t)/60/60,' hours')
 
 
 
