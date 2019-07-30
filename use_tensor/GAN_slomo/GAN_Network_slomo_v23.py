@@ -160,7 +160,9 @@ class GAN_Net:
         tep_prob_flow1=tf.expand_dims(self.prob_flow1, -1)
         tep_prob_flow1=tf.tile(tep_prob_flow1, [1,1,1,3])
         #self.G_net=tf.where( tf.greater_equal(tep_prob_flow1, 0.5),  self.img_flow_0_t, self.img_flow_2_t, name='G_net_generate') #这里认为>0.5就是相信frame0
-        self.G_net=tf.add(self.img_flow_0_t*tep_prob_flow1, (1-tep_prob_flow1)*self.img_flow_2_t,  name='G_net_generate')
+        tep_sujm=tep_prob_flow1*(1-self.timerates_expand)+(1-tep_prob_flow1)*self.timerates_expand
+        self.G_net=tf.add(self.img_flow_0_t*tep_prob_flow1*(1-self.timerates_expand)/tep_sujm, \
+                          self.img_flow_2_t*(1-tep_prob_flow1)*self.timerates_expand/tep_sujm,  name='G_net_generate')
         
         print ('self.G_net:',self.G_net)#self.G_net: Tensor("G_net_generate:0", shape=(12, 180, 320, 3), dtype=float32)
         
