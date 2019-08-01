@@ -222,12 +222,12 @@ class GAN_Net:
         self.local_var_loss_all=tf.add(self.local_var_loss_0_2, self.local_var_loss_2_0, name="local_var_add")
         
         #训练生成器的总LOSS   这里将G的loss和contex loss与前面G的loss做一个归一化，这样当D的loss大的时候，说明这时D不可靠，需要多训练D，而相应的减小该D对G的训练影响
-        tep_serer_loss=(self.G_loss_mean_D1 + self.contex_loss + self.D_linear_net_loss_sum+self.local_var_loss_all)*2  #后面的数限制了总的loss大小，为5时为1/5=0.2
+        tep_serer_loss=(self.G_loss_mean_D1 + self.contex_loss + self.D_linear_net_loss_sum)*2  #后面的数限制了总的loss大小，为5时为1/5=0.2
         
         self.G_loss_all=self.G_loss_mean_D1/tep_serer_loss + \
                         self.contex_loss/tep_serer_loss + \
                         self.L1_loss_all +\
-                        self.local_var_loss_all/tep_serer_loss 
+                        self.local_var_loss_all 
                         
                         #* (1+self.global_step/G_squareloss_rate_globalstep)# self.G_loss_mean_D2     
                         #W ./tensorflow/core/grappler/optimizers/graph_optimizer_stage.h:241] Failed to run optimizer ArithmeticOptimizer, stage HoistCommonFactor node 
