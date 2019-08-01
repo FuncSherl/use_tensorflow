@@ -227,7 +227,7 @@ class GAN_Net:
         self.G_loss_all=self.G_loss_mean_D1/tep_serer_loss + \
                         self.contex_loss/tep_serer_loss + \
                         self.L1_loss_all +\
-                        self.local_var_loss_all 
+                        self.local_var_loss_all *10
                         
                         #* (1+self.global_step/G_squareloss_rate_globalstep)# self.G_loss_mean_D2     
                         #W ./tensorflow/core/grappler/optimizers/graph_optimizer_stage.h:241] Failed to run optimizer ArithmeticOptimizer, stage HoistCommonFactor node 
