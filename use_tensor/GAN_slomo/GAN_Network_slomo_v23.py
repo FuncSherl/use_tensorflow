@@ -217,14 +217,18 @@ class GAN_Net:
         #4 local var loss
         self.local_var_loss_0_2=self.local_var_loss(self.opticalflow_0_2)
         self.local_var_loss_2_0=self.local_var_loss(self.opticalflow_2_0)
+        #print ("local _var loss:",self.local_var_loss_0_2,  self.G_loss_mean_D1)
+        #local _var loss: Tensor("mean_local_var:0", shape=(), dtype=float32) Tensor("Mean_3:0", shape=(), dtype=float32)
         self.local_var_loss_all=tf.add(self.local_var_loss_0_2, self.local_var_loss_2_0, name="local_var_add")
         
         #训练生成器的总LOSS   这里将G的loss和contex loss与前面G的loss做一个归一化，这样当D的loss大的时候，说明这时D不可靠，需要多训练D，而相应的减小该D对G的训练影响
-        tep_serer_loss=(self.G_loss_mean_D1 + self.contex_loss + self.D_linear_net_loss_sum)*5  #后面的数限制了总的loss大小，为5时为1/5=0.2
+        tep_serer_loss=(self.G_loss_mean_D1 + self.contex_loss + self.D_linear_net_loss_sum+self.local_var_loss_all)*2  #后面的数限制了总的loss大小，为5时为1/5=0.2
         
         self.G_loss_all=self.G_loss_mean_D1/tep_serer_loss + \
                         self.contex_loss/tep_serer_loss + \
-                        self.L1_loss_all + self.local_var_loss_all*100
+                        self.L1_loss_all +\
+                        self.local_var_loss_all/tep_serer_loss 
+                        
                         #* (1+self.global_step/G_squareloss_rate_globalstep)# self.G_loss_mean_D2     
                         #W ./tensorflow/core/grappler/optimizers/graph_optimizer_stage.h:241] Failed to run optimizer ArithmeticOptimizer, stage HoistCommonFactor node 
                         #add_8. Error: Node ArithmeticOptimizer/HoistCommonFactor_Add_add_7 is missing output properties at position :0 (num_outputs=0)
@@ -286,7 +290,7 @@ class GAN_Net:
         '''
         flow_shape=flow.get_shape().as_list()
         #[filter_height, filter_width, in_channels, channel_multiplier]
-        common_kernel=tf.ones([kernel_size, kernel_size, flow_shape[-1], 1])
+        common_kernel=tf.ones([kernel_size, kernel_size, 2, 1])
         flow_squ=tf.square(flow)
         #E xi^2
         E_flow_squ=tf.nn.depthwise_conv2d(flow_squ, common_kernel, strides=[1,stride,stride,1], padding="VALID")/(kernel_size*kernel_size)
