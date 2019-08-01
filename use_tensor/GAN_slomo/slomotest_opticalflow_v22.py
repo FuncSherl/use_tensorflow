@@ -13,6 +13,7 @@ from datetime import datetime
 
 modelpath="/home/sherl/Pictures/v23/GAN_2019-07-24_11-38-59_base_lr-0.000200_batchsize-12_maxstep-240000无大改进_重新跑v22"
 modelpath="/home/sherl/Pictures/v23/GAN_2019-07-26_12-30-11_base_lr-0.000200_batchsize-12_maxstep-240000_加入contexloss_L1_loss_all等于原来的loss"
+modelpath="/home/sherl/Pictures/v23/GAN_2019-07-30_15-40-22_base_lr-0.000200_batchsize-12_maxstep-240000_合成prob时加上时序"
 #modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
 meta_name=r'model_keep-239999.meta'
 
@@ -104,6 +105,7 @@ class Slomo_flow:
         for i in range(cnt):
             tep0=xy+cv2.resize(flowt_0[i], resize_sha)
             tep1=xy+cv2.resize(flowt_2[i], resize_sha)
+            occu_resize=cv2.resize(occumask[i], resize_sha)
             
             tep0=tep0.astype(np.float32)
             tep1=tep1.astype(np.float32)
@@ -124,9 +126,10 @@ class Slomo_flow:
             
             #self.occu_mask
             #final=tepframe1*timerates[i]+(1-timerates[i])*tepframe0
-            occumask=np.expand_dims(occumask, -1)
+            occu_resize=np.expand_dims(occu_resize, -1)
             #occumask=np.tile(occumask, [1,1,1,3])
-            final=occumask*tepframe0+(1-occumask)*tepframe1
+            time_rate_tep=timerates[i]*(1-occu_resize)+(1-timerates[i])*occu_resize
+            final=(1-timerates[i])*occu_resize*tepframe0/time_rate_tep  +  timerates[i]*(1-occu_resize)*tepframe1/time_rate_tep
             
             #final=tepframe1
             out.append(final)
@@ -246,7 +249,7 @@ class Slomo_flow:
 if __name__=='__main__':
     with tf.Session() as sess:
         slomo=Slomo_flow(sess)
-        slomo.process_video(12, inputvideo, outputvideo, keep_shape=False)
+        slomo.process_video(12, inputvideo, outputvideo, keep_shape=True)
         
         
         

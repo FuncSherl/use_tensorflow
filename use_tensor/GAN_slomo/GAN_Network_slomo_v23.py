@@ -268,6 +268,9 @@ class GAN_Net:
         return tf.contrib.image.dense_image_warp(images, flow*timerates)
     
     
+    def local_varance_loss(self, flow):
+        
+    
         
     def img2tanh(self,img):
         #img=tf.cast(img,tf.float32)
