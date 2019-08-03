@@ -14,6 +14,7 @@ from datetime import datetime
 modelpath="/home/sherl/Pictures/v23/GAN_2019-07-24_11-38-59_base_lr-0.000200_batchsize-12_maxstep-240000无大改进_重新跑v22"
 modelpath="/home/sherl/Pictures/v23/GAN_2019-07-26_12-30-11_base_lr-0.000200_batchsize-12_maxstep-240000_加入contexloss_L1_loss_all等于原来的loss"
 modelpath="/home/sherl/Pictures/v23/GAN_2019-07-30_15-40-22_base_lr-0.000200_batchsize-12_maxstep-240000_合成prob时加上时序"
+modelpath="/home/sherl/Pictures/v23/GAN_2019-08-01_19-44-32_base_lr-0.000200_batchsize-12_maxstep-240000_加入了localVarLoss"
 #modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
 meta_name=r'model_keep-239999.meta'
 
@@ -249,7 +250,7 @@ class Slomo_flow:
 if __name__=='__main__':
     with tf.Session() as sess:
         slomo=Slomo_flow(sess)
-        slomo.process_video(12, inputvideo, outputvideo, keep_shape=True)
+        slomo.process_video(12, inputvideo, outputvideo, keep_shape=False)
         
         
         
