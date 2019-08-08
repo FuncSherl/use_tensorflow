@@ -221,13 +221,19 @@ class GAN_Net:
         #local _var loss: Tensor("mean_local_var:0", shape=(), dtype=float32) Tensor("Mean_3:0", shape=(), dtype=float32)
         self.local_var_loss_all=tf.add(self.local_var_loss_0_2, self.local_var_loss_2_0, name="local_var_add")
         
+        #5 global var loss
+        self.global_var_loss_0_2=self.global_var_loss(self.opticalflow_0_2)
+        self.global_var_loss_2_0=self.global_var_loss(self.opticalflow_2_0)
+        self.global_var_loss_all=tf.add(self.global_var_loss_0_2, self.global_var_loss_2_0, name="global_var_add")
+        
         #训练生成器的总LOSS   这里将G的loss和contex loss与前面G的loss做一个归一化，这样当D的loss大的时候，说明这时D不可靠，需要多训练D，而相应的减小该D对G的训练影响
         tep_serer_loss=(self.G_loss_mean_D1 + self.contex_loss + self.D_linear_net_loss_sum)*2  #后面的数限制了总的loss大小，为5时为1/5=0.2
         
         self.G_loss_all=self.G_loss_mean_D1/tep_serer_loss + \
                         self.contex_loss/tep_serer_loss + \
                         self.L1_loss_all +\
-                        self.local_var_loss_all *10
+                        self.global_var_loss_all *10
+                        #self.local_var_loss_all *10
                         
                         #* (1+self.global_step/G_squareloss_rate_globalstep)# self.G_loss_mean_D2     
                         #W ./tensorflow/core/grappler/optimizers/graph_optimizer_stage.h:241] Failed to run optimizer ArithmeticOptimizer, stage HoistCommonFactor node 
@@ -306,6 +312,10 @@ class GAN_Net:
         mean_local_var=tf.reduce_mean(local_var, name="mean_local_var")
         
         return mean_local_var
+    
+    def global_var_loss(self, flow):
+        tep=tf.reduce_mean( tf.abs(flow[:, :-1, :, :]-flow[:, 1:, :, :]) )+tf.reduce_mean( tf.abs(flow[:, :, :-1, :]-flow[:, :, 1:, :]) )
+        return tep
         
     def img2tanh(self,img):
         #img=tf.cast(img,tf.float32)
@@ -413,13 +423,13 @@ class GAN_Net:
         lrrate,_,_,\
         D1_T_prob, D1_F_prob, \
         D1_loss, D_loss_sum_all,\
-        _ , G_loss_D1, G_loss_L1, G_loss_contex,G_loss_localvar, G_loss_sum_all, \
+        _ , G_loss_D1, G_loss_L1, G_loss_contex,G_loss_localvar, G_loss_globalvar, G_loss_sum_all, \
         summary =\
                                        self.sess.run([self.lr_rate, self.train_D , self.clip_D,\
                                                       self.D_linear_net_T, self.D_linear_net_F,\
                                                       #self.D_clear_net_T, self.D_clear_net_F,  \
                                                       self.D_linear_net_loss_sum, self.D_loss_all,\
-                                                      self.train_G, self.G_loss_mean_D1, self.L1_loss_all, self.contex_loss,self.local_var_loss_all, self.G_loss_all,\
+                                                      self.train_G, self.G_loss_mean_D1, self.L1_loss_all, self.contex_loss,self.local_var_loss_all,self.global_var_loss_all, self.G_loss_all,\
                                                       self.summary_all]          , \
                                                     feed_dict={  self.imgs_pla:tepimgs ,  self.timerates_pla:time_rates ,self.training:True})
         print ('trained once:')
@@ -433,6 +443,7 @@ class GAN_Net:
         print ('G_loss_L1:',G_loss_L1)
         print ('G_loss_contex:',G_loss_contex)
         print ('G_loss_localvar:',G_loss_localvar)
+        print ('G_loss_globalvar:',G_loss_globalvar)
         print ('>>G_loss_sum_all:',G_loss_sum_all)
         
         return summary   
