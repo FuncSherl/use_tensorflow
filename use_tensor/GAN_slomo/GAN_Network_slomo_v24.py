@@ -55,8 +55,8 @@ weightclip_max=0.01
 G_unet_layercnt=3
 G_filter_len=3
 G_withbias=True
-
-G_optical_channel=5
+#G的输出的channel，如果只有双向光流则为4，加上一个mask的话为5
+G_optical_channel=4
 #the G_squareloss is reducing,at iter 170000, D_loss=2  but square_loss is 0.03,so there requires a rate to make square_loss more clear
 G_squareloss_rate_globalstep=8000 
 
@@ -134,10 +134,10 @@ class GAN_Net:
         self.opticalflow_0_2=tf.slice(self.G_opticalflow, [0, 0, 0, 0], [-1, -1, -1, 2], name='G_opticalflow_0_2') #self.G_opticalflow[:,:,:,:2]
         
         #self.prob_flow1=tf.clip_by_value(self.G_opticalflow[:,:,:,2],0,1 , name='prob_flow1_sigmoid')
-        self.prob_flow1=  tf.nn.sigmoid( self.G_opticalflow[:,:,:,2] , name='prob_flow1_sigmoid')  #这里添加了一个置信度，用来选择光流,即相信F0->1还是相信F1->0
+        #self.prob_flow1=  tf.nn.sigmoid( self.G_opticalflow[:,:,:,2] , name='prob_flow1_sigmoid')  #这里添加了一个置信度，用来选择光流,即相信F0->1还是相信F1->0
         
-        self.opticalflow_2_0=tf.slice(self.G_opticalflow, [0, 0, 0, 3], [-1, -1, -1, 2], name='G_opticalflow_2_0') #       self.G_opticalflow[:,:,:,3:]
-        print ('original flow:',self.opticalflow_0_2, self.prob_flow1, self.opticalflow_2_0)
+        self.opticalflow_2_0=tf.slice(self.G_opticalflow, [0, 0, 0, 2], [-1, -1, -1, 2], name='G_opticalflow_2_0') #       self.G_opticalflow[:,:,:,3:]
+        print ('original flow:',self.opticalflow_0_2, self.opticalflow_2_0)
         #original flow: Tensor("G_opticalflow_0_2:0", shape=(12, 180, 320, 2), dtype=float32) 
         #Tensor("prob_flow1_sigmoid:0", shape=(12, 180, 320), dtype=float32) 
         #Tensor("G_opticalflow_2_0:0", shape=(12, 180, 320, 2), dtype=float32)
@@ -156,14 +156,16 @@ class GAN_Net:
         self.img_flow_2_t=self.warp_op(self.frame2, -self.opticalflow_t_2) #!!!
         self.img_flow_0_t=self.warp_op(self.frame0, -self.opticalflow_t_0) #!!!
         
-        #self.G_net=self.timerates_expand*self.img_flow_2_t + (1-self.timerates_expand)*self.img_flow_0_t
+        self.G_net=tf.add(self.timerates_expand*self.img_flow_2_t , (1-self.timerates_expand)*self.img_flow_0_t, name="G_net_generate" )
+        
+        '''
         tep_prob_flow1=tf.expand_dims(self.prob_flow1, -1)
         tep_prob_flow1=tf.tile(tep_prob_flow1, [1,1,1,3])
         #self.G_net=tf.where( tf.greater_equal(tep_prob_flow1, 0.5),  self.img_flow_0_t, self.img_flow_2_t, name='G_net_generate') #这里认为>0.5就是相信frame0
         tep_sujm=tep_prob_flow1*(1-self.timerates_expand)+(1-tep_prob_flow1)*self.timerates_expand
         self.G_net=tf.add(self.img_flow_0_t*tep_prob_flow1*(1-self.timerates_expand)/tep_sujm, \
                           self.img_flow_2_t*(1-tep_prob_flow1)*self.timerates_expand/tep_sujm,  name='G_net_generate')
-        
+        '''
         print ('self.G_net:',self.G_net)#self.G_net: Tensor("G_net_generate:0", shape=(12, 180, 320, 3), dtype=float32)
         
         
@@ -232,8 +234,8 @@ class GAN_Net:
         self.G_loss_all=self.G_loss_mean_D1/tep_serer_loss + \
                         self.contex_loss/tep_serer_loss + \
                         self.L1_loss_all +\
-                        self.global_var_loss_all *10
-                        #self.local_var_loss_all *10
+                        self.local_var_loss_all *0.02
+                        #self.global_var_loss_all /10
                         
                         #* (1+self.global_step/G_squareloss_rate_globalstep)# self.G_loss_mean_D2     
                         #W ./tensorflow/core/grappler/optimizers/graph_optimizer_stage.h:241] Failed to run optimizer ArithmeticOptimizer, stage HoistCommonFactor node 
