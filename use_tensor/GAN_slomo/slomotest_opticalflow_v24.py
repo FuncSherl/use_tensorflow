@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import cv2,os,time
 from datetime import datetime
 
-modelpath="/home/sherl/Pictures/v24"
+modelpath="/home/sherl/Pictures/v24/GAN_2019-08-12_15-55-54_base_lr-0.000200_batchsize-12_maxstep-240000_rid_prob_with contex loss"
 
 #modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
 meta_name=r'model_keep-239999.meta'
@@ -20,7 +20,7 @@ TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 testvideodir='./testing_gif'
 inputvideo =op.join(testvideodir, 'original.mp4')
-outputvideo=op.join( testvideodir, TIMESTAMP+'_myslomo.mp4')
+outputvideo=op.join( testvideodir, 'V24'+TIMESTAMP+'_myslomo.mp4')
 os.makedirs(testvideodir,  exist_ok=True)
 
 class Slomo_flow:
