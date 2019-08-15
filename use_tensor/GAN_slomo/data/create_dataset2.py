@@ -32,6 +32,7 @@ tfrec_dir_train=op.join(tfrec_dir, 'train')
 tfrec_dir_test=op.join(tfrec_dir, 'test')
 
 group_cnt_images=12
+mean_dataset=[0,0,0]
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 '''
 def get_trainframe_dirs():
@@ -151,6 +152,7 @@ def preprocess_img(image,outlen, outchannel=9, training=True):
     #image=tf.image.resize_images(image, tuple( outlen   )  )
     
     image=tf.cast(image, dtype=tf.float32)
+    image-=mean_dataset
     
     return image
 
