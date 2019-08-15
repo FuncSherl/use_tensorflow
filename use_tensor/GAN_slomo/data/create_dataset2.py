@@ -152,7 +152,7 @@ def preprocess_img(image,outlen, outchannel=9, training=True):
     #image=tf.image.resize_images(image, tuple( outlen   )  )
     
     image=tf.cast(image, dtype=tf.float32)
-    image-=mean_dataset
+    image-=mean_dataset   #这里 不知道brocatcast是否好用
     
     return image
 
