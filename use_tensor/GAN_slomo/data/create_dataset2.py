@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'
 
-pc_id=2
+pc_id=1
 
 if pc_id==0: #
     videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
@@ -236,12 +236,52 @@ def gen_tfrecords():
     frames2tfrec(extratdir_train, tfrec_dir_train)
     frames2tfrec(extratdir_test, tfrec_dir_test)
     
+def get_dataset_mean():
+    '''
+    该函数读取分解成帧的video的文件夹，所以要先生成tfrecord之后再计算mean，且存放中间分成帧的目录不要删除
+    '''
+    R=0.0
+    G=0.0
+    B=0.0
+    cnt_frame=0
+    
+    for indi,i in enumerate(os.listdir(extratdir)):
+        teplen=len(os.listdir(extratdir))
+        teppath=op.join(extratdir, i)
+        for indj,j in enumerate(os.listdir(teppath)):
+            videolen=len(os.listdir(teppath))
+            videopath=op.join(teppath, j)
+            for indk,k in enumerate(os.listdir(videopath)):
+                framelen=len(os.listdir(videopath))
+                framepath=op.join(videopath, k)
+                
+                print ('\n',indi,"/",teplen," ",indj,"/",videolen," ",indk,"/",framelen,"->",framepath)
+                
+                img=cv2.imread(framepath)  #notice:cv2.imread is BGR mode
+                h=img.shape[0]
+                w=img.shape[1]
+                #print (img.shape, img.dtype)  #(720, 1280, 3)
+                
+                B+=np.sum(img[:,:,0])*1.0/(h*w)
+                G+=np.sum(img[:,:,1])*1.0/(h*w)
+                R+=np.sum(img[:,:,2])*1.0/(h*w)
+                cnt_frame+=1
+                print ([B,G,R], cnt_frame)
+    mean=[B/cnt_frame, G/cnt_frame, R/cnt_frame]
+    print ("finally the mean is:", mean)
+    return mean
+            
+                
+        
+    
+    
     
 if __name__ == '__main__':
     #txt2frames(train_txt ,extratdir_train)
     #txt2frames(test_txt, extratdir_test)
     #gen_tfrecords()
-    test_showtfimgs(tfrec_dir_train, 2)
+    #test_showtfimgs(tfrec_dir_train, 2)
+    get_dataset_mean()
             
             
             
