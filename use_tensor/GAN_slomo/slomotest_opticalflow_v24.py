@@ -12,6 +12,7 @@ import cv2,os,time
 from datetime import datetime
 
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-12_15-55-54_base_lr-0.000200_batchsize-12_maxstep-240000_rid_prob_with contex loss"
+modelpath="/home/sherl/Pictures/v24/GAN_2019-08-14_14-04-50_base_lr-0.000200_batchsize-12_maxstep-240000_reset_loss_mode"
 
 #modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
 meta_name=r'model_keep-239999.meta'
@@ -20,7 +21,7 @@ TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 testvideodir='./testing_gif'
 inputvideo =op.join(testvideodir, 'original.mp4')
-outputvideo=op.join( testvideodir, 'V24'+TIMESTAMP+'_myslomo.mp4')
+outputvideo=op.join( testvideodir, 'V24_'+TIMESTAMP+'_myslomo.mp4')
 os.makedirs(testvideodir,  exist_ok=True)
 mean_dataset=[102.1, 109.9, 110.0]
 
@@ -61,9 +62,6 @@ class Slomo_flow:
         if cnt>self.batch: 
             print ('error:insert frames cnt should <= batchsize:',self.batch)
             return None
-        
-        frame0-=mean_dataset
-        frame2-=mean_dataset
             
         timerates=[i*1.0/(cnt+1) for i in range(1,self.batch+1)]
         
@@ -208,10 +206,15 @@ class Slomo_flow:
     
     def img2tanh(self,img):
         #img=tf.cast(img,tf.float32)
+        img-=mean_dataset*3
         return img*2.0/255-1
-
+    
     def tanh2img(self,tanhd):
         tep= (tanhd+1)*255//2
+        #print ('tep.shape:',tep.shape)  #tep.shape: (180, 320, 9)
+        multly=int(tep.shape[-1]/len(mean_dataset))
+        #print ('expanding:',multly)
+        tep+=mean_dataset*multly
         return tep.astype(np.uint8)  
     
     def flow_bgr(self, flow):
