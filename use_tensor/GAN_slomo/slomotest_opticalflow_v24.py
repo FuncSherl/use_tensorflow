@@ -22,6 +22,7 @@ testvideodir='./testing_gif'
 inputvideo =op.join(testvideodir, 'original.mp4')
 outputvideo=op.join( testvideodir, 'V24'+TIMESTAMP+'_myslomo.mp4')
 os.makedirs(testvideodir,  exist_ok=True)
+mean_dataset=[102.1, 109.9, 110.0]
 
 class Slomo_flow:
     def __init__(self,sess):
@@ -60,6 +61,9 @@ class Slomo_flow:
         if cnt>self.batch: 
             print ('error:insert frames cnt should <= batchsize:',self.batch)
             return None
+        
+        frame0-=mean_dataset
+        frame2-=mean_dataset
             
         timerates=[i*1.0/(cnt+1) for i in range(1,self.batch+1)]
         

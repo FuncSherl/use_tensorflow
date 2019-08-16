@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'
 
-pc_id=1
+pc_id=2
 
 if pc_id==0: #
     videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
@@ -32,7 +32,7 @@ tfrec_dir_train=op.join(tfrec_dir, 'train')
 tfrec_dir_test=op.join(tfrec_dir, 'test')
 
 group_cnt_images=12
-mean_dataset=[0,0,0]
+mean_dataset=[102.1, 109.9, 110.0]  #0->1 is [0.4, 0.43, 0.43]
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 '''
 def get_trainframe_dirs():
@@ -152,7 +152,8 @@ def preprocess_img(image,outlen, outchannel=9, training=True):
     #image=tf.image.resize_images(image, tuple( outlen   )  )
     
     image=tf.cast(image, dtype=tf.float32)
-    image-=mean_dataset   #这里 不知道brocatcast是否好用
+    #print (image)  #Tensor("random_crop:0", shape=(180, 320, 9), dtype=float32)
+    #image-=mean_dataset*int(outchannel/3)   #这里 不知道brocatcast是否好用
     
     return image
 
@@ -270,7 +271,7 @@ def get_dataset_mean():
                 cnt_frame+=1
                 print ([B,G,R], cnt_frame)
     mean=[B/cnt_frame, G/cnt_frame, R/cnt_frame]
-    print ("finally the mean is:", mean)
+    print ("finally the mean is:", mean)  #[102.102762984439, 109.85845376864695, 110.03368690364164]
     return mean
             
                 

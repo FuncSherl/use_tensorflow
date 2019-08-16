@@ -73,6 +73,7 @@ D_2_withbias=True
 G_group_img_num=3
 img_channel=3
 eval_step=int (test_size/batchsize/G_group_img_num)
+mean_dataset=[102.1, 109.9, 110.0]  #0->1 is [0.4, 0.43, 0.43]
 
 logdir="./logs_v24/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
 
@@ -321,10 +322,15 @@ class GAN_Net:
         
     def img2tanh(self,img):
         #img=tf.cast(img,tf.float32)
+        img-=mean_dataset*3
         return img*2.0/255-1
     
     def tanh2img(self,tanhd):
         tep= (tanhd+1)*255//2
+        #print ('tep.shape:',tep.shape)  #tep.shape: (180, 320, 9)
+        multly=int(tep.shape[-1]/len(mean_dataset))
+        #print ('expanding:',multly)
+        tep+=mean_dataset*multly
         return tep.astype(np.uint8)  
     
     def getbatch_train_imgs(self):
