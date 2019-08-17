@@ -462,8 +462,8 @@ class GAN_Net:
         print ('G_loss_contex:',G_loss_contex)
         print ('G_loss_localvar:',G_loss_localvar)
         print ('G_loss_globalvar:',G_loss_globalvar)
-        print ('G_loss_ssim:',np.mean(ssim))
-        print ('G_loss_psnr:',np.mean(psnr))
+        print ('G_loss_ssim:',np.mean(ssim))  #target:->1
+        print ('G_loss_psnr:',np.mean(psnr))  #target:>30
         print ('>>G_loss_sum_all:',G_loss_sum_all)
         
         return summary   
