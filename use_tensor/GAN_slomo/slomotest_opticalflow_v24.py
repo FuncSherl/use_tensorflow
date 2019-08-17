@@ -18,12 +18,16 @@ modelpath="/home/sherl/Pictures/v24/GAN_2019-08-14_14-04-50_base_lr-0.000200_bat
 #modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
 meta_name=r'model_keep-239999.meta'
 
-TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
+version='V24_'
 
-testvideodir='./testing_gif'
-inputvideo =op.join(testvideodir, 'original.mp4')
-outputvideo=op.join( testvideodir, 'V24_'+TIMESTAMP+'_myslomo.mp4')
-os.makedirs(testvideodir,  exist_ok=True)
+inputvideodir='./testing_gif'
+outputvideodir='./outputvideos'   #输出的video的路径，会在该路径下新建文件夹
+video_lists=os.listdir(inputvideodir)  #['original.mp4', 'car-turn.mp4']  #
+inputvideo = [op.join(inputvideodir, i.strip()) for i in video_lists ]  #这里保存所有需要测的video的fullpath，后面根据这里的list进行测试
+
+os.makedirs(inputvideodir,  exist_ok=True)
+os.makedirs(outputvideodir,  exist_ok=True)
+
 mean_dataset=[102.1, 109.9, 110.0]
 
 class Slomo_flow:
@@ -138,8 +142,24 @@ class Slomo_flow:
     
         return out
     
+    def process_video_list(self, invideolist, outdir, interpola_cnt=7, keep_shape=True):
+        TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
+        outputdir=op.join(outdir, version+TIMESTAMP)
+        os.makedirs(outputdir,  exist_ok=True)
+        
+        for ind,i in enumerate(invideolist):
+            fpath,fname=op.split(i.strip())
+            outputvideo=op.join( outputdir, "slomo_"+fname)
+            print ('video:',ind,"/",len(invideolist),"  ",i,'->', outputvideo)
+            self.process_one_video(interpola_cnt, i, outputvideo, keep_shape)
     
-    def process_video(self, interpola_cnt=7, inpath=inputvideo, outpath=outputvideo, keep_shape=True):
+    
+    def process_one_video(self, interpola_cnt, inpath, outpath, keep_shape=True):
+        '''
+        inpath:inputvideo's full path
+        outpath:output video's full path
+        keep_shape:if use direct G's output or calculate with optical flow to resize images
+        '''
         videoCapture = cv2.VideoCapture(inpath)  
         
         size = (int(videoCapture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
@@ -151,10 +171,10 @@ class Slomo_flow:
         
         if not keep_shape:
             videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
-            print ('output video:',outputvideo,'\nsize:',self.videoshape, '  fps:', fps)
+            print ('output video:',outpath,'\nsize:',self.videoshape, '  fps:', fps)
         else:
             videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), size )
-            print ('output video:',outputvideo,'\nsize:',size, '  fps:', fps)
+            print ('output video:',outpath,'\nsize:',size, '  fps:', fps)
         
         success, frame0= videoCapture.read()
         if not keep_shape: frame0=cv2.resize(frame0, self.videoshape)
@@ -173,9 +193,9 @@ class Slomo_flow:
             if not keep_shape: outimgs=self.getframes_throw_flow(frame0, frame1, interpola_cnt)
             else: outimgs=self.getflow_to_frames(frame0, frame1, interpola_cnt)
             
-            print ('get iner frame shape:',outimgs.shape, outimgs.dtype)
+            #print ('get iner frame shape:',outimgs.shape, outimgs.dtype)
             for i in outimgs:      
-                print (i.shape) 
+                #print (i.shape) 
                 videoWrite.write(i)
             #cv2.imshow('t', tepimg)
             #cv2.waitKey()
@@ -255,7 +275,8 @@ class Slomo_flow:
 if __name__=='__main__':
     with tf.Session() as sess:
         slomo=Slomo_flow(sess)
-        slomo.process_video(12, inputvideo, outputvideo, keep_shape=False)
+        slomo.process_video_list(inputvideo, outputvideodir, 12, False)
+
         
         
         
