@@ -10,6 +10,7 @@ import os.path as op
 import matplotlib.pyplot as plt
 import cv2,os,time
 from datetime import datetime
+import skimage
 
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-12_15-55-54_base_lr-0.000200_batchsize-12_maxstep-240000_rid_prob_with contex loss"
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-14_14-04-50_base_lr-0.000200_batchsize-12_maxstep-240000_reset_loss_mode"
