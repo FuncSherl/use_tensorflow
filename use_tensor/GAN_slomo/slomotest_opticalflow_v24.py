@@ -14,7 +14,7 @@ import skimage
 
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-12_15-55-54_base_lr-0.000200_batchsize-12_maxstep-240000_rid_prob_with contex loss"
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-14_14-04-50_base_lr-0.000200_batchsize-12_maxstep-240000_reset_loss_mode"
-
+modelpath="/home/sherl/Pictures/v24/GAN_2019-08-16_13-53-36_base_lr-0.000200_batchsize-12_maxstep-240000_add_sub_dataset_mean"
 #modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
 meta_name=r'model_keep-239999.meta'
 
@@ -142,16 +142,21 @@ class Slomo_flow:
     
         return out
     
-    def process_video_list(self, invideolist, outdir, interpola_cnt=7, keep_shape=True):
+    def process_video_list(self, invideolist, outdir, interpola_cnt=7, directout=True, keep_shape=True):
         TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
         outputdir=op.join(outdir, version+TIMESTAMP)
         os.makedirs(outputdir,  exist_ok=True)
         
         for ind,i in enumerate(invideolist):
             fpath,fname=op.split(i.strip())
-            outputvideo=op.join( outputdir, "slomo_"+fname)
-            print ('video:',ind,"/",len(invideolist),"  ",i,'->', outputvideo)
-            self.process_one_video(interpola_cnt, i, outputvideo, keep_shape)
+            if directout:
+                outputvideo=op.join( outputdir, "180p_slomo_"+fname)
+                print ('video:',ind,"/",len(invideolist),"  ",i,'->', outputvideo)
+                self.process_one_video(interpola_cnt, i, outputvideo, False)
+            if keep_shape: 
+                outputvideo=op.join( outputdir, "origin_slomo_"+fname)
+                print ('video:',ind,"/",len(invideolist),"  ",i,'->', outputvideo)
+                self.process_one_video(interpola_cnt, i, outputvideo, True)
     
     
     def process_one_video(self, interpola_cnt, inpath, outpath, keep_shape=True):
@@ -275,8 +280,8 @@ class Slomo_flow:
 if __name__=='__main__':
     with tf.Session() as sess:
         slomo=Slomo_flow(sess)
-        slomo.process_video_list(inputvideo, outputvideodir, 12, False)
-
+        slomo.process_video_list(inputvideo, outputvideodir, 12, True, True)
+       
         
         
         
