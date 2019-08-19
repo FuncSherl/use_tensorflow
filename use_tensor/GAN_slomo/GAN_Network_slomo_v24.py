@@ -492,8 +492,8 @@ class GAN_Net:
         ''' 
         tepimgs,time_rates=self.getbatch_test_imgs()
         D1_probs_T, D1_probs_F, interframe_GT_L1 , L1loss_all,\
-        ssim,psnr= self.sess.run([self.D_linear_net_T, self.D_linear_net_F,self.L1_loss_interframe, self.L1_loss_all], \
-                                  self.ssim,self.psnr,
+        ssim,psnr= self.sess.run([self.D_linear_net_T, self.D_linear_net_F,self.L1_loss_interframe, self.L1_loss_all, \
+                                  self.ssim,self.psnr], \
                                         feed_dict={self.imgs_pla:tepimgs, self.training:training, self.timerates_pla:time_rates})
         return D1_probs_T,D1_probs_F, interframe_GT_L1, L1loss_all,ssim,psnr
     
