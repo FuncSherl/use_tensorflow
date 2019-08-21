@@ -100,15 +100,43 @@ class Slomo_flow:
         
         placetep=self.img2tanh(placetep)
         
-        flowt_0,flowt_2,flow0_1, flow1_0=self.sess.run([self.optical_t_0, self.optical_t_2, self.optical_0_1, self.optical_1_0], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates})
+        flowt_0,flowt_2,flow0_2, flow2_0=self.sess.run([self.optical_t_0, self.optical_t_2, self.optical_0_1, self.optical_1_0], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates})
+        #!!!!!!!!!!!!
+        return self.frameandflow2frames(frame0, frame2, flow0_2, flow2_0, cnt)
+    
+    
+    def frameandflow2frames(self, frame0, frame2, flow0_2, flow2_0, cnt):
+        '''
+        frame0:一帧，前帧
+        frame2:一帧，后帧
+        flow0_2/flow2_0:光流
+        cnt:中间插入几帧
         
-        X, Y = np.meshgrid(np.arange(fshape[1]), np.arange(fshape[0]))  #w,h
+        return:cnt 个中间帧[cnt, h, w, 3]
+        '''
+        timerates=[i*1.0/(cnt+1) for i in range(1,cnt+1)]
+        fshape=frame0.shape
+        resize_sha=(fshape[1], fshape[0])
+        '''
+        x,y=np.meshgrid([0,1,2],[0,1])
+        >>> x
+        array([[0, 1, 2],
+               [0, 1, 2]])
+        >>> y
+        array([[0, 0, 0],
+               [1, 1, 1]])
+        '''
+        X, Y = np.meshgrid(np.arange(fshape[1]), np.arange(fshape[0]))  #w,h 这里X里面代表列，Y代表行号
         xy=np.array( np.stack([Y,X], -1), dtype=np.float32)
         
         #out[x,y]=src[mapx[x,y], mapy[x,y]] or  map[x,y]
         #print (flowt_0.shape,xy.shape)
         out=[]
         for i in range(cnt):
+            #这里应该与训练中保持一致
+            flowt_0=-(1-timerates[i])*timerates[i]*flow0_2 +  timerates[i]*timerates[i]*flow2_0
+            flowt_2=(1-timerates[i])*(1-timerates[i])*flow0_2 + timerates[i]*(timerates[i]-1)*flow2_0
+        
             tep0=xy+cv2.resize(flowt_0[i], resize_sha)
             tep1=xy+cv2.resize(flowt_2[i], resize_sha)
             #occu_resize=cv2.resize(occumask[i], resize_sha)
@@ -141,6 +169,9 @@ class Slomo_flow:
         out=np.array(out, dtype=np.uint8)
     
         return out
+        
+    
+    
     
     def process_video_list(self, invideolist, outdir, interpola_cnt=7, directout=True, keep_shape=True):
         TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
@@ -238,7 +269,7 @@ class Slomo_flow:
     def tanh2img(self,tanhd):
         tep= (tanhd+1)*255//2
         #print ('tep.shape:',tep.shape)  #tep.shape: (180, 320, 9)
-        multly=int(tep.shape[-1]/len(mean_dataset))
+        multly=int(tep.shape[-1]/len(mean_dataset))  #这里由于tep的channel不确定(3or9)，这里需要判断一下，对mean_dataset进行broadcast
         #print ('expanding:',multly)
         tep+=mean_dataset*multly
         return tep.astype(np.uint8)  
@@ -280,7 +311,7 @@ class Slomo_flow:
 if __name__=='__main__':
     with tf.Session() as sess:
         slomo=Slomo_flow(sess)
-        slomo.process_video_list(inputvideo, outputvideodir, 12, True, True)
+        slomo.process_video_list(inputvideo, outputvideodir, 12, False, True)
        
         
         
