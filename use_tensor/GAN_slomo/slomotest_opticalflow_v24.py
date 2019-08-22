@@ -383,12 +383,28 @@ class Step_two(Slomo_flow):
         self.show_video_info( outpath)
         
     
-    def second_step(self, frames, inter_cnt, framecnt, varscop='default'):
+    def second_step(self, frames, inter_cnt, framecnt, varscope='default'):
         #self.optical_0_1  self.optical_1_0
         #self.optical_flow_shape
+        lr=0.2
         
+        pairs=len(frames)-1
+        timerates=[i*1.0/(inter_cnt+1) for i in range(1,self.batch+1)]
+        X, Y = np.meshgrid(np.arange(self.optical_flow_shape[2]), np.arange(self.optical_flow_shape[1]))  #w,h 这里X里面代表列，Y代表行号
+        row_col=np.array( np.stack([Y,X], -1), dtype=np.float32)
         
-    
+        placetep=np.zeros(self.placeimgshape)
+        for i in range(len(frames)-1):
+            placetep[i,:,:,:3]=cv2.resize(frames[i], self.imgshape)
+            placetep[i,:,:,6:]=cv2.resize(frames[i+1], self.imgshape)
+        
+        placetep=self.img2tanh(placetep)
+        flow0_2, flow2_0=self.sess.run([ self.optical_0_1, self.optical_1_0], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates})
+        print ('return flow_s shape:',flow0_2.shape)
+        
+        mid_tep_x=self.weight_x[2]*framecnt*framecnt + self.weight_x[1]*framecnt + self.weight_x[0]
+        mid_tep_y=self.weight_y[2]*framecnt*framecnt + self.weight_y[1]*framecnt + self.weight_y[0]
+        
         
         
 
