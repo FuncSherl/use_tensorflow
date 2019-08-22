@@ -107,6 +107,7 @@ class Slomo_flow:
     
     def frameandflow2frames(self, frame0, frame2, flow0_2, flow2_0, cnt):
         '''
+        由前后帧和光流合成中间的cnt帧
         frame0:一帧，前帧
         frame2:一帧，后帧
         flow0_2/flow2_0:光流
@@ -171,6 +172,12 @@ class Slomo_flow:
         return out
         
     
+    def second_step(self):
+        #self.optical_0_1  self.optical_1_0
+        flowshape=self.optical_0_1.get_shape().as_list()
+        with tf.variable_scope("Opt",  reuse=tf.AUTO_REUSE) as scope:
+            kernel_x=tf.get_variable('weights_x', [], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=0.01))
+            kernel_y=tf.get_variable('weights_y', [], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=0.01))
     
     
     def process_video_list(self, invideolist, outdir, interpola_cnt=7, directout=True, keep_shape=True):
