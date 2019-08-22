@@ -15,6 +15,7 @@ import skimage
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-12_15-55-54_base_lr-0.000200_batchsize-12_maxstep-240000_rid_prob_with contex loss"
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-14_14-04-50_base_lr-0.000200_batchsize-12_maxstep-240000_reset_loss_mode"
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-16_13-53-36_base_lr-0.000200_batchsize-12_maxstep-240000_add_sub_dataset_mean"
+modelpath="/home/sherl/Pictures/v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
 #modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
 meta_name=r'model_keep-239999.meta'
 
@@ -51,7 +52,8 @@ class Slomo_flow:
         self.training= self.graph.get_tensor_by_name("training_in:0")
         self.timerates= self.graph.get_tensor_by_name("timerates_in:0")
         
-        
+        self.optical_flow_shape=self.optical_0_1.get_shape().as_list() #[12, 180, 320, 2]
+        #print (self.optical_flow_shape)
         self.placeimgshape=self.img_pla.get_shape().as_list() #[12, 180, 320, 9]
         self.batch=self.placeimgshape[0]
         self.imgshape=(self.placeimgshape[2], self.placeimgshape[1]) #w*h
@@ -172,13 +174,7 @@ class Slomo_flow:
         return out
         
     
-    def second_step(self):
-        #self.optical_0_1  self.optical_1_0
-        flowshape=self.optical_0_1.get_shape().as_list()
-        with tf.variable_scope("Opt",  reuse=tf.AUTO_REUSE) as scope:
-            kernel_x=tf.get_variable('weights_x', [], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=0.01))
-            kernel_y=tf.get_variable('weights_y', [], dtype=tf.float32, initializer=tf.random_normal_initializer(stddev=0.01))
-    
+            
     
     def process_video_list(self, invideolist, outdir, interpola_cnt=7, directout=True, keep_shape=True):
         TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
@@ -313,12 +309,93 @@ class Slomo_flow:
         img = cv2.dilate(img, kernel, iterations=1)
         img = cv2.erode(img, kernel, iterations=1)
         return img
+
+
+class Step_two(Slomo_flow):      
+    def process_video_list(self, invideolist, outdir, interpola_cnt=7):
+        TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
+        outputdir=op.join(outdir, version+TIMESTAMP)
+        os.makedirs(outputdir,  exist_ok=True)
+        
+        for ind,i in enumerate(invideolist):
+            fpath,fname=op.split(i.strip())            
+            outputvideo=op.join( outputdir, "step2_slomo_"+fname)
+            print ('video:',ind,"/",len(invideolist),"  ",i,'->', outputvideo)
+            self.process_one_video_with_step2(interpola_cnt, i, outputvideo)
     
+    def process_one_video_with_step2(self, interpola_cnt, inpath, outpath):
+        '''
+        inpath:inputvideo's full path
+        outpath:output video's full path
+        '''
+        #这里先构建待会要用到的二次函数的系数矩阵，想办法处理
+        self.talor_cnt=2  #二次展开
+        self.weight_x=np.random.normal(loc=0.0, scale=1.0, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1]) #[180, 320, 3]
+        self.weight_y=np.random.normal(loc=0.0, scale=1.0, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1])
+        
+        #处理video
+        videoname=op.splitext(  op.split(inpath)[-1]  )[0]
+        videoCapture = cv2.VideoCapture(inpath)  
+        
+        size = (int(videoCapture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        fps=int (videoCapture.get(cv2.CAP_PROP_FPS) )
+        frame_cnt=videoCapture.get(cv2.CAP_PROP_FRAME_COUNT) 
+        
+        print ('video:',inpath)
+        print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
+        
+        
+        videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
+        print ('output video:',outpath,'\nsize:',self.videoshape, '  fps:', fps)
+       
+        
+        success=True
+        frame=True
+        frame_list=[]
+        cnt=0
+        while success and frame is not None:
+            #if frame is not None: videoWrite.write(frame)
+            success, frame= videoCapture.read()
+            frame=cv2.resize(frame, self.videoshape)
+            
+            if success and frame is not None:
+                frame_list.append(frame)
+                cnt+=1
+                if len(frame_list)<=self.batch: continue
+            
+            sttime=time.time()              
+            
+            #这里要求返回值里面包含原来的帧和新加的帧
+            outimgs=self.second_step(frame_list, interpola_cnt, cnt-len(frame_list), videoname)
+            #print ('get iner frame shape:',outimgs.shape, outimgs.dtype)
+            for i in outimgs:      
+                #print (i.shape) 
+                videoWrite.write(i)
+                
+            print (cnt,'/',frame_cnt,'  time gap:',time.time()-sttime)
+            frame_list=[ frame_list[-1] ]
+            
+            
+        videoWrite.write(frame_list[-1])
+        
+        videoWrite.release()
+        videoCapture.release()
+        self.show_video_info( outpath)
+        
+    
+    def second_step(self, frames, inter_cnt, framecnt, varscop='default'):
+        #self.optical_0_1  self.optical_1_0
+        #self.optical_flow_shape
+        
+        
+    
+        
+        
 
 if __name__=='__main__':
     with tf.Session() as sess:
         slomo=Slomo_flow(sess)
-        slomo.process_video_list(inputvideo, outputvideodir, 12, False, True)
+        slomo.process_video_list(inputvideo, outputvideodir, 12)
        
         
         
