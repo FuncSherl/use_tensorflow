@@ -391,7 +391,7 @@ class Step_two(Slomo_flow):
         '''
         frames:list of frames,max length is batchsize+1
         inter_cnt:hao many frames to insert
-        framecnt:
+        framecnt:当前进行到第几个frame，是一个时间代表
         '''
         lr=0.2
         
