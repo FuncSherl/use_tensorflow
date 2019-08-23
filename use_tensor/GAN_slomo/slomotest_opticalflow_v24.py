@@ -397,7 +397,7 @@ class Slomo_flow:
 class Step_two(Slomo_flow):      
     def process_video_list(self, invideolist, outdir, interpola_cnt=7):
         TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
-        outputdir=op.join(outdir, version+TIMESTAMP)
+        outputdir=op.join(outdir, version+"Using_STEP2_"+TIMESTAMP)
         os.makedirs(outputdir,  exist_ok=True)
         
         for ind,i in enumerate(invideolist):
@@ -455,7 +455,7 @@ class Step_two(Slomo_flow):
             sttime=time.time()              
             
             #这里要求返回值里面包含原来的帧和新加的帧
-            outimgs=self.second_step(frame_list, interpola_cnt, cnt-len(frame_list), videoname)
+            outimgs=self.second_step(frame_list, interpola_cnt, cnt-len(frame_list), frame_cnt)
             #print ('get iner frame shape:',outimgs.shape, outimgs.dtype)
             for i in outimgs:      
                 #print (type(i), i.shape,i.dtype) 
@@ -471,14 +471,22 @@ class Step_two(Slomo_flow):
         videoCapture.release()
         self.show_video_info( outpath)
         
+        outgifpath=op.splitext(outpath)[0]+'.gif'
+        print ('for convent, converting mp4->gif:',outpath,'->',outgifpath)
+        self.convert_mp42gif(outpath, outgifpath)
+        
+        print ("for ppt show,merging two videos:")
+        outgifpath=op.splitext(outpath)[0]+'_merged.gif'
+        self.merge_two_videos(inpath, outpath, outgifpath)
+        
     
-    def second_step(self, frames, inter_cnt, framecnt, varscope='default'):
+    def second_step(self, frames, inter_cnt, framecnt, videoframes):
         '''
         frames:list of frames,max length is batchsize+1
         inter_cnt:hao many frames to insert
         framecnt:当前进行到第几个frame，是一个时间代表
         '''
-        lr=0.2
+        lr=0.001
         
         pairs=len(frames)-1
         timerates=[i*1.0/(inter_cnt+1) for i in range(1,self.batch+1)]
@@ -499,14 +507,15 @@ class Step_two(Slomo_flow):
             print ("frame cnt:",i,'/',pairs)
             ret.append(frames[i])
 
-            timecnt=framecnt+i
+            timecnt=(framecnt+i)*1.0/videoframes
+            timecnt_next=(framecnt+i+1)*1.0/videoframes
             #first process 0->2
             tep0_1=row_col-flow0_2[i]
             self.weight0_1_x=cv2.remap(self.weight0_1_x, tep0_1[:,:,1], tep0_1[:,:,0],  interpolation=cv2.INTER_LINEAR)
             self.weight0_1_y=cv2.remap(self.weight0_1_y, tep0_1[:,:,1], tep0_1[:,:,0],  interpolation=cv2.INTER_LINEAR)
             
-            self.weight0_1_x=self.optimize(self.weight0_1_x, timecnt+1, row_col[:,:,1], lr)
-            self.weight0_1_y=self.optimize(self.weight0_1_y, timecnt+1, row_col[:,:,0], lr)
+            self.weight0_1_x=self.optimize(self.weight0_1_x, timecnt_next, row_col[:,:,1], lr)
+            self.weight0_1_y=self.optimize(self.weight0_1_y, timecnt_next, row_col[:,:,0], lr)
             
             self.weight0_1_x=self.optimize(self.weight0_1_x, timecnt, row_col[:,:,1]-flow0_2[i,:,:,1], lr)
             self.weight0_1_y=self.optimize(self.weight0_1_y, timecnt, row_col[:,:,0]-flow0_2[i,:,:,0], lr)
@@ -519,15 +528,16 @@ class Step_two(Slomo_flow):
             self.weight1_0_x=self.optimize(self.weight1_0_x, timecnt, row_col[:,:,1], lr)
             self.weight1_0_y=self.optimize(self.weight1_0_y, timecnt, row_col[:,:,0], lr)
             
-            self.weight1_0_x=self.optimize(self.weight1_0_x, timecnt+1, row_col[:,:,1]-flow2_0[i,:,:,1], lr)
-            self.weight1_0_y=self.optimize(self.weight1_0_y, timecnt+1, row_col[:,:,0]-flow2_0[i,:,:,0], lr)
+            self.weight1_0_x=self.optimize(self.weight1_0_x, timecnt_next, row_col[:,:,1]-flow2_0[i,:,:,1], lr)
+            self.weight1_0_y=self.optimize(self.weight1_0_y, timecnt_next, row_col[:,:,0]-flow2_0[i,:,:,0], lr)
             
             print ("optimize self.weight1_0_x and self.weight1_0_y done...")
             
             for ci in range(inter_cnt):
                 print ("begin interpolate:",ci,'/',inter_cnt)
                 
-                time_this=timerates[ci]+timecnt
+                time_this=timerates[ci]*(1.0/videoframes)+timecnt
+                
                 time_this_flow_t_1=self.get_time_flow(self.weight1_0_y, self.weight1_0_x, time_this)
                 time_this_flow_t_0=self.get_time_flow(self.weight1_0_y, self.weight1_0_x, time_this)
                 
@@ -559,10 +569,15 @@ class Step_two(Slomo_flow):
         mid_tep=weight[:,:,2]*(timecnt)**2 + weight[:,:,1]*(timecnt) + weight[:,:,0]
         
         loss=mid_tep-label
+        print ("loss:",loss[3:4,3:5])
+        print ("first weight:",weight[3:4,3:5])
         
-        weight[:,:,2]-=loss*lr*(timecnt)**2
+        weight[:,:,2]-=loss*lr*(timecnt)**2 
         weight[:,:,1]-=loss*lr*(timecnt)
         weight[:,:,0]-=loss*lr
+        
+        print ("second weight:",weight[3:4,3:5])
+        
         return weight
     
     def re_flow(self,  flowout):
