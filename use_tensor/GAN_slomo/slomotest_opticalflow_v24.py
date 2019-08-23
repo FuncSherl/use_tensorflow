@@ -446,7 +446,7 @@ class Step_two(Slomo_flow):
             frame=cv2.resize(frame, self.videoshape)
             
             if success and frame is not None:
-                frame_list.append(frame)
+                frame_list.append(cv2.resize(frame, self.videoshape))
                 cnt+=1
                 if len(frame_list)<=self.batch: continue
             
@@ -458,7 +458,7 @@ class Step_two(Slomo_flow):
             outimgs=self.second_step(frame_list, interpola_cnt, cnt-len(frame_list), videoname)
             #print ('get iner frame shape:',outimgs.shape, outimgs.dtype)
             for i in outimgs:      
-                #print (i.shape) 
+                #print (type(i), i.shape,i.dtype) 
                 videoWrite.write(i)
                 
             print (cnt,'/',frame_cnt,'  time gap:',time.time()-sttime)
@@ -492,9 +492,11 @@ class Step_two(Slomo_flow):
         
         placetep=self.img2tanh(placetep)
         flow0_2, flow2_0=self.sess.run([ self.optical_0_1, self.optical_1_0], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates})
-        print ('return flow_s shape:',flow0_2.shape)
+        
+        print ('one batch flows 0<->2 get,return flow_s shape:',flow0_2.shape)
         ret=[]
         for i in range(pairs):
+            print ("frame cnt:",i,'/',pairs)
             ret.append(frames[i])
 
             timecnt=framecnt+i
@@ -509,7 +511,7 @@ class Step_two(Slomo_flow):
             self.weight0_1_x=self.optimize(self.weight0_1_x, timecnt, row_col[:,:,1]-flow0_2[i,:,:,1], lr)
             self.weight0_1_y=self.optimize(self.weight0_1_y, timecnt, row_col[:,:,0]-flow0_2[i,:,:,0], lr)
             
-                       
+            print ("optimize self.weight0_1_x and self.weight0_1_y done...")
             #then 2->0
             tep1_0=row_col-flow2_0[i]
             re_tep0_1=self.re_flow(tep1_0)  #由于2->0的光流方向与进行方向相反，这里需要将逆向flow反过来
@@ -520,19 +522,25 @@ class Step_two(Slomo_flow):
             self.weight1_0_x=self.optimize(self.weight1_0_x, timecnt+1, row_col[:,:,1]-flow2_0[i,:,:,1], lr)
             self.weight1_0_y=self.optimize(self.weight1_0_y, timecnt+1, row_col[:,:,0]-flow2_0[i,:,:,0], lr)
             
+            print ("optimize self.weight1_0_x and self.weight1_0_y done...")
+            
             for ci in range(inter_cnt):
+                print ("begin interpolate:",ci,'/',inter_cnt)
+                
                 time_this=timerates[ci]+timecnt
                 time_this_flow_t_1=self.get_time_flow(self.weight1_0_y, self.weight1_0_x, time_this)
                 time_this_flow_t_0=self.get_time_flow(self.weight1_0_y, self.weight1_0_x, time_this)
                 
-                time_this_flow_1_t=self.re_flow(time_this_flow_t_1)
-                time_this_flow_0_t=self.re_flow(time_this_flow_t_0)
+                time_this_flow_1_t=self.re_flow(time_this_flow_t_1).astype(np.float32)
+                time_this_flow_0_t=self.re_flow(time_this_flow_t_0).astype(np.float32)                
+                
+                #print ("time_this_flow_1_t:",type(time_this_flow_1_t), time_this_flow_1_t.dtype)
                 
                 tepframe0=cv2.remap(frames[i],   time_this_flow_0_t[:,:,1], time_this_flow_0_t[:,:,0],  interpolation=cv2.INTER_LINEAR)
                 tepframe1=cv2.remap(frames[i+1], time_this_flow_1_t[:,:,1], time_this_flow_1_t[:,:,0],  interpolation=cv2.INTER_LINEAR)
                 
                 final=timerates[ci]*tepframe1 + tepframe0*(1-timerates[ci])
-                ret.append(final)
+                ret.append(final.astype(np.uint8))
             
             self.weight1_0_x=cv2.remap(self.weight1_0_x, re_tep0_1[:,:,1], re_tep0_1[:,:,0],  interpolation=cv2.INTER_LINEAR)
             self.weight1_0_y=cv2.remap(self.weight1_0_y, re_tep0_1[:,:,1], re_tep0_1[:,:,0],  interpolation=cv2.INTER_LINEAR)
@@ -576,7 +584,8 @@ class Step_two(Slomo_flow):
 
 if __name__=='__main__':
     with tf.Session() as sess:
-        slomo=Slomo_flow(sess)
+        #slomo=Slomo_flow(sess)
+        slomo=Step_two(sess)
         slomo.process_video_list(inputvideo, outputvideodir, 12)
        
         
