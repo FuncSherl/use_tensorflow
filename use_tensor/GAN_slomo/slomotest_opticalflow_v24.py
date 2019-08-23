@@ -388,8 +388,11 @@ class Step_two(Slomo_flow):
         
     
     def second_step(self, frames, inter_cnt, framecnt, varscope='default'):
-        #self.optical_0_1  self.optical_1_0
-        #self.optical_flow_shape
+        '''
+        frames:list of frames,max length is batchsize+1
+        inter_cnt:hao many frames to insert
+        framecnt:
+        '''
         lr=0.2
         
         pairs=len(frames)-1
@@ -408,8 +411,7 @@ class Step_two(Slomo_flow):
         ret=[]
         for i in range(pairs):
             ret.append(frames[i])
-            flowlist_t_1=[]
-            flowlist_t_0=[]
+
             timecnt=framecnt+i
             #first process 0->2
             tep0_1=row_col-flow0_2[i]
@@ -441,10 +443,15 @@ class Step_two(Slomo_flow):
                 time_this_flow_1_t=self.re_flow(time_this_flow_t_1)
                 time_this_flow_0_t=self.re_flow(time_this_flow_t_0)
                 
+                tepframe0=cv2.remap(frames[i],   time_this_flow_0_t[:,:,1], time_this_flow_0_t[:,:,0],  interpolation=cv2.INTER_LINEAR)
+                tepframe1=cv2.remap(frames[i+1], time_this_flow_1_t[:,:,1], time_this_flow_1_t[:,:,0],  interpolation=cv2.INTER_LINEAR)
                 
+                final=timerates[ci]*tepframe1 + tepframe0*(1-timerates[ci])
+                ret.append(final)
             
             self.weight1_0_x=cv2.remap(self.weight1_0_x, re_tep0_1[:,:,1], re_tep0_1[:,:,0],  interpolation=cv2.INTER_LINEAR)
             self.weight1_0_y=cv2.remap(self.weight1_0_y, re_tep0_1[:,:,1], re_tep0_1[:,:,0],  interpolation=cv2.INTER_LINEAR)
+        return ret
             
     def get_time_flow(self, weight_row, weight_col, timecnt):
         mid_tep_row=weight_row[:,:,2]*(timecnt)**2 + weight_row[:,:,1]*(timecnt) + weight_row[:,:,0]
@@ -477,8 +484,8 @@ class Step_two(Slomo_flow):
                 oriind_row=flowout[i][j][0]
                 oriind_col=flowout[i][j][1]
                 if oriind_row>=0 and oriind_col>=0 and oriind_row<shape[0] and oriind_col<shape[1]:
-                    out[int(oriind_row)][int(oriind_col)][0]=max(0, i-( oriind_row-int(oriind_row) ) )
-                    out[int(oriind_row)][int(oriind_col)][1]=max(0, j-( oriind_col-int(oriind_col) ) )
+                    out[int(oriind_row)][int(oriind_col)][0]=i-( oriind_row-int(oriind_row) ) 
+                    out[int(oriind_row)][int(oriind_col)][1]=j-( oriind_col-int(oriind_col) ) 
         return out
         
 
