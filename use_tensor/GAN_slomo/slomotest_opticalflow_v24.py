@@ -330,8 +330,11 @@ class Step_two(Slomo_flow):
         '''
         #这里先构建待会要用到的二次函数的系数矩阵，想办法处理
         self.talor_cnt=2  #二次展开
-        self.weight_x=np.random.normal(loc=0.0, scale=1.0, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1]) #[180, 320, 3]
-        self.weight_y=np.random.normal(loc=0.0, scale=1.0, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1])
+        self.weight0_1_x=np.random.normal(loc=0.0, scale=1.0, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1]) #[180, 320, 3]
+        self.weight0_1_y=np.random.normal(loc=0.0, scale=1.0, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1])
+        
+        self.weight1_0_x=np.random.normal(loc=0.0, scale=1.0, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1]) #[180, 320, 3]
+        self.weight1_0_y=np.random.normal(loc=0.0, scale=1.0, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1])
         
         #处理video
         videoname=op.splitext(  op.split(inpath)[-1]  )[0]
@@ -394,7 +397,7 @@ class Step_two(Slomo_flow):
         row_col=np.array( np.stack([Y,X], -1), dtype=np.float32)
         
         placetep=np.zeros(self.placeimgshape)
-        for i in range(len(frames)-1):
+        for i in range(pairs):
             placetep[i,:,:,:3]=cv2.resize(frames[i], self.imgshape)
             placetep[i,:,:,6:]=cv2.resize(frames[i+1], self.imgshape)
         
@@ -402,9 +405,12 @@ class Step_two(Slomo_flow):
         flow0_2, flow2_0=self.sess.run([ self.optical_0_1, self.optical_1_0], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates})
         print ('return flow_s shape:',flow0_2.shape)
         
-        mid_tep_x=self.weight_x[2]*framecnt*framecnt + self.weight_x[1]*framecnt + self.weight_x[0]
-        mid_tep_y=self.weight_y[2]*framecnt*framecnt + self.weight_y[1]*framecnt + self.weight_y[0]
+        for i in range(pairs):
+            timecnt=framecnt+i
+            mid_tep_x=self.weight0_1_x[2]*(timecnt+1)**2 + self.weight0_1_x[1]*(timecnt+1) + self.weight0_1_x[0]
+            mid_tep_y=self.weight0_1_y[2]*(timecnt+1)**2 + self.weight0_1_y[1]*(timecnt+1) + self.weight0_1_y[0]
         
+            
         
         
 
