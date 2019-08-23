@@ -443,7 +443,7 @@ class Step_two(Slomo_flow):
         while success and frame is not None:
             #if frame is not None: videoWrite.write(frame)
             success, frame= videoCapture.read()
-            frame=cv2.resize(frame, self.videoshape)
+            #frame=cv2.resize(frame, self.videoshape)
             
             if success and frame is not None:
                 frame_list.append(cv2.resize(frame, self.videoshape))
