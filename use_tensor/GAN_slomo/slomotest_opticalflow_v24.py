@@ -329,12 +329,13 @@ class Step_two(Slomo_flow):
         outpath:output video's full path
         '''
         #这里先构建待会要用到的二次函数的系数矩阵，想办法处理
+        scale=0.1
         self.talor_cnt=2  #二次展开
-        self.weight0_1_x=np.random.normal(loc=0.0, scale=1.0, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1]) #[180, 320, 3]
-        self.weight0_1_y=np.random.normal(loc=0.0, scale=1.0, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1])
+        self.weight0_1_x=np.random.normal(loc=0.0, scale=scale, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1]) #[180, 320, 3]
+        self.weight0_1_y=np.random.normal(loc=0.0, scale=scale, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1])
         
-        self.weight1_0_x=np.random.normal(loc=0.0, scale=1.0, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1]) #[180, 320, 3]
-        self.weight1_0_y=np.random.normal(loc=0.0, scale=1.0, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1])
+        self.weight1_0_x=np.random.normal(loc=0.0, scale=scale, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1]) #[180, 320, 3]
+        self.weight1_0_y=np.random.normal(loc=0.0, scale=scale, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1])
         
         #处理video
         videoname=op.splitext(  op.split(inpath)[-1]  )[0]
@@ -407,11 +408,61 @@ class Step_two(Slomo_flow):
         
         for i in range(pairs):
             timecnt=framecnt+i
-            mid_tep_x=self.weight0_1_x[2]*(timecnt+1)**2 + self.weight0_1_x[1]*(timecnt+1) + self.weight0_1_x[0]
-            mid_tep_y=self.weight0_1_y[2]*(timecnt+1)**2 + self.weight0_1_y[1]*(timecnt+1) + self.weight0_1_y[0]
-        
+            #first process 0->2
+            tep0_1=row_col-flow0_2[i]
+            self.weight0_1_x=cv2.remap(self.weight0_1_x, tep0_1[:,:,1], tep0_1[:,:,0],  interpolation=cv2.INTER_LINEAR)
+            self.weight0_1_y=cv2.remap(self.weight0_1_y, tep0_1[:,:,1], tep0_1[:,:,0],  interpolation=cv2.INTER_LINEAR)
             
+            self.weight0_1_x=self.optimize(self.weight0_1_x, timecnt+1, row_col[:,:,1], lr)
+            self.weight0_1_y=self.optimize(self.weight0_1_y, timecnt+1, row_col[:,:,0], lr)
+            
+            self.weight0_1_x=self.optimize(self.weight0_1_x, timecnt, row_col[:,:,1]-flow0_2[i,:,:,1], lr)
+            self.weight0_1_y=self.optimize(self.weight0_1_y, timecnt, row_col[:,:,0]-flow0_2[i,:,:,0], lr)
+            
+            
+            
+            #then 2->0
+            tep1_0=row_col-flow2_0[i]
+            tep0_1=self.re_warp(tep1_0)  #由于2-》0的光流方向与进行方向相反，这里需要将逆向flow反过来
+            
+            self.weight1_0_x=self.optimize(self.weight1_0_x, timecnt, row_col[:,:,1], lr)
+            self.weight1_0_y=self.optimize(self.weight1_0_y, timecnt, row_col[:,:,0], lr)
+            
+            self.weight1_0_x=self.optimize(self.weight1_0_x, timecnt+1, row_col[:,:,1]-flow2_0[i,:,:,1], lr)
+            self.weight1_0_y=self.optimize(self.weight1_0_y, timecnt+1, row_col[:,:,0]-flow2_0[i,:,:,0], lr)
+            
+            self.weight1_0_x=cv2.remap(self.weight1_0_x, tep0_1[:,:,1], tep0_1[:,:,0],  interpolation=cv2.INTER_LINEAR)
+            self.weight1_0_y=cv2.remap(self.weight1_0_y, tep0_1[:,:,1], tep0_1[:,:,0],  interpolation=cv2.INTER_LINEAR)
         
+    def optimize(self, weight, timecnt, label, lr=0.01):
+        '''
+        weight:[180,320,3]
+        label:[180, 320] row_col
+        '''
+        mid_tep=weight[:,:,2]*(timecnt)**2 + weight[:,:,1]*(timecnt) + weight[:,:,0]
+        
+        loss=mid_tep-label
+        
+        weight[:,:,2]-=loss*lr*(timecnt)**2
+        weight[:,:,1]-=loss*lr*(timecnt)
+        weight[:,:,0]-=loss*lr
+        return weight
+    
+    def re_flow(self,  flowout):
+        '''
+        将0->1的flow，转化为1->0的flow
+        flow里面是坐标而不是相对坐标
+        '''
+        shape=flowout.shape
+        out=flowout.copy()
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                oriind_row=flowout[i][j][0]
+                oriind_col=flowout[i][j][1]
+                if oriind_row>=0 and oriind_col>=0 and oriind_row<shape[0] and oriind_col<shape[1]:
+                    out[int(oriind_row)][int(oriind_col)][0]=max(0, i-( oriind_row-int(oriind_row) ) )
+                    out[int(oriind_row)][int(oriind_col)][1]=max(0, j-( oriind_col-int(oriind_col) ) )
+        return out
         
 
 if __name__=='__main__':
