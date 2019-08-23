@@ -10,13 +10,16 @@ import os.path as op
 import matplotlib.pyplot as plt
 import cv2,os,time
 from datetime import datetime
-import skimage
+#import skimage
+import imageio
+from dask.array.tests.test_numpy_compat import dtype
 
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-12_15-55-54_base_lr-0.000200_batchsize-12_maxstep-240000_rid_prob_with contex loss"
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-14_14-04-50_base_lr-0.000200_batchsize-12_maxstep-240000_reset_loss_mode"
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-16_13-53-36_base_lr-0.000200_batchsize-12_maxstep-240000_add_sub_dataset_mean"
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
-#modelpath=r'/home/sherl/Pictures/v20_GAN_2019-05-13_19-24-10_base_lr-0.000200_batchsize-12_maxstep-240000'
+modelpath=r'E:\DL_models\use_tensorflow\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress'
+
 meta_name=r'model_keep-239999.meta'
 
 version='V24_'
@@ -176,7 +179,7 @@ class Slomo_flow:
     
             
     
-    def process_video_list(self, invideolist, outdir, interpola_cnt=7, directout=True, keep_shape=True):
+    def process_video_list(self, invideolist, outdir, interpola_cnt=7, directout=True, keep_shape=False):
         TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
         outputdir=op.join(outdir, version+TIMESTAMP)
         os.makedirs(outputdir,  exist_ok=True)
@@ -251,6 +254,86 @@ class Slomo_flow:
         videoCapture.release()
         self.show_video_info( outpath)
         
+        outgifpath=op.splitext(outpath)[0]+'.gif'
+        print ('for convent, converting mp4->gif:',outpath,'->',outgifpath)
+        self.convert_mp42gif(outpath, outgifpath)
+        
+        print ("for ppt show,merging two videos:")
+        outgifpath=op.splitext(outpath)[0]+'_merged.gif'
+        self.merge_two_videos(inpath, outpath, outgifpath)
+        
+    
+    def convert_mp42gif(self, inmp4, outgif):
+        videoCapture = cv2.VideoCapture(inmp4)
+        fps=int (videoCapture.get(cv2.CAP_PROP_FPS) )
+        frame_cnt=videoCapture.get(cv2.CAP_PROP_FRAME_COUNT) 
+        kep_frames=[]
+        cnt=0
+        success, frame= videoCapture.read()
+        while success and (frame is not None):
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  #将bgr格式的opencv读取图片转化为rgb
+            kep_frames.append(frame)
+            cnt+=1
+            print (cnt,'/',frame_cnt)
+            success, frame= videoCapture.read()
+        videoCapture.release()
+        #将帧合成gif
+        print ('writing to gif:', outgif)
+        imageio.mimsave(outgif, kep_frames, 'GIF', duration = 1.0/fps)
+        
+        
+    def merge_two_videos(self, video1, video2, outgif):
+        videoCapture1 = cv2.VideoCapture(video1)
+        fps1=int (videoCapture1.get(cv2.CAP_PROP_FPS) )
+        frame_cnt1=videoCapture1.get(cv2.CAP_PROP_FRAME_COUNT)
+        size1 = (int(videoCapture1.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture1.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        
+        videoCapture2 = cv2.VideoCapture(video2)
+        fps2=int (videoCapture2.get(cv2.CAP_PROP_FPS) )
+        frame_cnt2=videoCapture2.get(cv2.CAP_PROP_FRAME_COUNT)
+        size2 = (int(videoCapture2.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture2.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        
+        size=[min(size1[0],size2[0]), min(size1[1], size2[1])]
+        fps=min(fps1, fps2)
+        
+        rate=max(frame_cnt2, frame_cnt1)/min(frame_cnt2, frame_cnt1)
+        mod1=1
+        mod2=1
+        if frame_cnt1<frame_cnt2: mod1=rate
+        else: mod2=rate
+        
+        cnt1=0
+        cnt2=0
+        success1, frame1= videoCapture1.read()
+        success2, frame2= videoCapture2.read()
+        
+        gap=10
+        frames_kep=[]
+        
+        while success1 and success2 and (frame1 is not None) and (frame2 is not None):
+            tep=np.zeros([size[1], size[0]*2+gap, 3], dtype=np.uint8)
+            
+            tep[:, :size[0]]=cv2.cvtColor(cv2.resize(frame1, tuple(size)) , cv2.COLOR_BGR2RGB)
+            tep[:, -size[0]:]=cv2.cvtColor(cv2.resize(frame2, tuple(size)), cv2.COLOR_BGR2RGB)
+            frames_kep.append(tep)
+            cnt1+=1
+            cnt2+=1
+            if cnt1>=mod1:
+                cnt1-=mod1
+                success1, frame1= videoCapture1.read()
+            if cnt2>=mod2:
+                cnt2-=mod2
+                success2, frame2= videoCapture2.read()
+            
+        videoCapture1.release()
+        videoCapture2.release()
+        #将帧合成gif
+        print ('writing to gif:', outgif)
+        imageio.mimsave(outgif, frames_kep, 'GIF', duration = 1.0/fps)
+        
+        
+        
+    
     def show_video_info(self, inpath):
         videoCapture = cv2.VideoCapture(inpath)
         size = (int(videoCapture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
@@ -366,6 +449,8 @@ class Step_two(Slomo_flow):
                 frame_list.append(frame)
                 cnt+=1
                 if len(frame_list)<=self.batch: continue
+            
+            if len(frame_list)<2: continue
             
             sttime=time.time()              
             
