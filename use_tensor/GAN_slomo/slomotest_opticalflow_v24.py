@@ -12,14 +12,14 @@ import cv2,os,time
 from datetime import datetime
 #import skimage
 import imageio
-from dask.array.tests.test_numpy_compat import dtype
+
 
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-12_15-55-54_base_lr-0.000200_batchsize-12_maxstep-240000_rid_prob_with contex loss"
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-14_14-04-50_base_lr-0.000200_batchsize-12_maxstep-240000_reset_loss_mode"
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-16_13-53-36_base_lr-0.000200_batchsize-12_maxstep-240000_add_sub_dataset_mean"
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
-modelpath=r'E:\DL_models\use_tensorflow\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress'
-modelpath=r'D:\data_DL\Gan_slomo\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress'
+#modelpath=r'E:\DL_models\use_tensorflow\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress'
+#modelpath=r'D:\data_DL\Gan_slomo\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress'
 meta_name=r'model_keep-239999.meta'
 
 version='V24_'
