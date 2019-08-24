@@ -412,7 +412,7 @@ class Step_two(Slomo_flow):
         outpath:output video's full path
         '''
         #这里先构建待会要用到的二次函数的系数矩阵，想办法处理
-        scale=0.1
+        scale=0.5
         self.talor_cnt=2  #二次展开
         self.weight0_1_x=np.random.normal(loc=0.0, scale=scale, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1]) #[180, 320, 3]
         self.weight0_1_y=np.random.normal(loc=0.0, scale=scale, size=[self.optical_flow_shape[1], self.optical_flow_shape[2], self.talor_cnt+1])
@@ -486,12 +486,15 @@ class Step_two(Slomo_flow):
         inter_cnt:hao many frames to insert
         framecnt:当前进行到第几个frame，是一个时间代表
         '''
-        lr=0.001
+        lr=0.02
         
         pairs=len(frames)-1
         timerates=[i*1.0/(inter_cnt+1) for i in range(1,self.batch+1)]
         X, Y = np.meshgrid(np.arange(self.optical_flow_shape[2]), np.arange(self.optical_flow_shape[1]))  #w,h 这里X里面代表列，Y代表行号
         row_col=np.array( np.stack([Y,X], -1), dtype=np.float32)
+        
+        width=self.optical_flow_shape[2]
+        height=self.optical_flow_shape[1]
         
         placetep=np.zeros(self.placeimgshape)
         for i in range(pairs):
@@ -509,27 +512,39 @@ class Step_two(Slomo_flow):
 
             timecnt=(framecnt+i)*1.0/videoframes
             timecnt_next=(framecnt+i+1)*1.0/videoframes
-            #first process 0->2
+            
+            #process 0->2
             tep0_1=row_col-flow0_2[i]
             self.weight0_1_x=cv2.remap(self.weight0_1_x, tep0_1[:,:,1], tep0_1[:,:,0],  interpolation=cv2.INTER_LINEAR)
             self.weight0_1_y=cv2.remap(self.weight0_1_y, tep0_1[:,:,1], tep0_1[:,:,0],  interpolation=cv2.INTER_LINEAR)
             
-            self.weight0_1_x=self.optimize(self.weight0_1_x, timecnt_next, row_col[:,:,1], lr)
-            self.weight0_1_y=self.optimize(self.weight0_1_y, timecnt_next, row_col[:,:,0], lr)
+            #如果优化代表从当前位置出发的变化量呢
+            #self.weight0_1_x=self.optimize(self.weight0_1_x, timecnt_next, row_col[:,:,1].astype(np.float32)/width, lr)
+            #self.weight0_1_y=self.optimize(self.weight0_1_y, timecnt_next, row_col[:,:,0].astype(np.float32)/height, lr)
             
-            self.weight0_1_x=self.optimize(self.weight0_1_x, timecnt, row_col[:,:,1]-flow0_2[i,:,:,1], lr)
-            self.weight0_1_y=self.optimize(self.weight0_1_y, timecnt, row_col[:,:,0]-flow0_2[i,:,:,0], lr)
+            #self.weight0_1_x=self.optimize(self.weight0_1_x, timecnt, (row_col[:,:,1]-flow0_2[i,:,:,1]).astype(np.float32)/width, lr)
+            #self.weight0_1_y=self.optimize(self.weight0_1_y, timecnt, (row_col[:,:,0]-flow0_2[i,:,:,0]).astype(np.float32)/height, lr)
+            
+            self.weight0_1_x=self.optimize2(self.weight0_1_x,  flow0_2[i,:,:,1], lr)  #这么写就是基于现有坐标的
+            self.weight0_1_y=self.optimize2(self.weight0_1_y,  flow0_2[i,:,:,0], lr)
+            
+            
+            
             
             print ("optimize self.weight0_1_x and self.weight0_1_y done...")
+            
+            self.weight1_0_x=self.optimize2(self.weight1_0_x,  flow2_0[i,:,:,1], lr)
+            self.weight1_0_y=self.optimize2(self.weight1_0_y,  flow2_0[i,:,:,0], lr)
+            
             #then 2->0
             tep1_0=row_col-flow2_0[i]
             re_tep0_1=self.re_flow(tep1_0)  #由于2->0的光流方向与进行方向相反，这里需要将逆向flow反过来
             
-            self.weight1_0_x=self.optimize(self.weight1_0_x, timecnt, row_col[:,:,1], lr)
-            self.weight1_0_y=self.optimize(self.weight1_0_y, timecnt, row_col[:,:,0], lr)
+            #self.weight1_0_x=self.optimize(self.weight1_0_x, timecnt, row_col[:,:,1].astype(np.float32)/width, lr)
+            #self.weight1_0_y=self.optimize(self.weight1_0_y, timecnt, row_col[:,:,0].astype(np.float32)/height, lr)
             
-            self.weight1_0_x=self.optimize(self.weight1_0_x, timecnt_next, row_col[:,:,1]-flow2_0[i,:,:,1], lr)
-            self.weight1_0_y=self.optimize(self.weight1_0_y, timecnt_next, row_col[:,:,0]-flow2_0[i,:,:,0], lr)
+            #self.weight1_0_x=self.optimize(self.weight1_0_x, timecnt_next, (row_col[:,:,1]-flow2_0[i,:,:,1]).astype(np.float32)/width, lr)
+            #self.weight1_0_y=self.optimize(self.weight1_0_y, timecnt_next, (row_col[:,:,0]-flow2_0[i,:,:,0]).astype(np.float32)/height, lr)
             
             print ("optimize self.weight1_0_x and self.weight1_0_y done...")
             
@@ -538,11 +553,14 @@ class Step_two(Slomo_flow):
                 
                 time_this=timerates[ci]*(1.0/videoframes)+timecnt
                 
-                time_this_flow_t_1=self.get_time_flow(self.weight1_0_y, self.weight1_0_x, time_this)
-                time_this_flow_t_0=self.get_time_flow(self.weight1_0_y, self.weight1_0_x, time_this)
+                time_this_flow_t_1=self.get_time_flow2(self.weight1_0_y, self.weight1_0_x, timerates[ci], True)
+                time_this_flow_t_0=self.get_time_flow2(self.weight1_0_y, self.weight1_0_x, timerates[ci])
                 
-                time_this_flow_1_t=self.re_flow(time_this_flow_t_1).astype(np.float32)
-                time_this_flow_0_t=self.re_flow(time_this_flow_t_0).astype(np.float32)                
+                #time_this_flow_1_t=self.re_flow(time_this_flow_t_1).astype(np.float32)
+                #time_this_flow_0_t=self.re_flow(time_this_flow_t_0).astype(np.float32)     
+                
+                time_this_flow_1_t= (time_this_flow_t_1 + row_col).astype(np.float32)
+                time_this_flow_0_t= (time_this_flow_t_0 + row_col).astype(np.float32)
                 
                 #print ("time_this_flow_1_t:",type(time_this_flow_1_t), time_this_flow_1_t.dtype)
                 
@@ -559,6 +577,12 @@ class Step_two(Slomo_flow):
     def get_time_flow(self, weight_row, weight_col, timecnt):
         mid_tep_row=weight_row[:,:,2]*(timecnt)**2 + weight_row[:,:,1]*(timecnt) + weight_row[:,:,0]
         mid_tep_col=weight_col[:,:,2]*(timecnt)**2 + weight_col[:,:,1]*(timecnt) + weight_col[:,:,0]
+        
+        mid_tep_row*=self.optical_flow_shape[1]
+        mid_tep_col*=self.optical_flow_shape[2]
+        
+        print ("cal flow:",mid_tep_col[3:4,3:5])
+        
         return np.stack([mid_tep_row,mid_tep_col], -1)
         
     def optimize(self, weight, timecnt, label, lr=0.01):
@@ -579,6 +603,38 @@ class Step_two(Slomo_flow):
         print ("second weight:",weight[3:4,3:5])
         
         return weight
+    
+    def get_time_flow2(self, weight_row, weight_col, timecnt, reverse=False):
+        if reverse:
+            mid_tep_row=weight_row[:,:,2]*(1- (timecnt)**2) + weight_row[:,:,1]*(1-timecnt) #+ weight_row[:,:,0]
+            mid_tep_col=weight_col[:,:,2]*(1- (timecnt)**2) + weight_col[:,:,1]*(1-timecnt) #+ weight_col[:,:,0]
+        else:
+            mid_tep_row=weight_row[:,:,2]*((timecnt)**2) + weight_row[:,:,1]*(timecnt) + weight_row[:,:,0]
+            mid_tep_col=weight_col[:,:,2]*((timecnt)**2) + weight_col[:,:,1]*(timecnt) + weight_col[:,:,0]
+        #mid_tep_row*=self.optical_flow_shape[1]
+        #mid_tep_col*=self.optical_flow_shape[2]
+        
+        print ("cal flow:",mid_tep_col[3:4,3:5])
+        
+        return np.stack([mid_tep_row,mid_tep_col], -1)
+    
+    def optimize2(self, weight, label, lr=0.01):
+        #假设x一直为1，值判断当前下一步
+        timecnt=1
+        mid_tep=weight[:,:,2]*(timecnt)**2 + weight[:,:,1]*(timecnt) + weight[:,:,0]
+        
+        loss=mid_tep-label
+        print ("loss:",loss[3:4,3:5])
+        print ("first weight:",weight[3:4,3:5])
+        
+        weight[:,:,2]-=loss*lr*(timecnt)**2 
+        weight[:,:,1]-=loss*lr*(timecnt)
+        weight[:,:,0]-=loss*lr
+        
+        print ("second weight:",weight[3:4,3:5])
+        
+        return weight
+    
     
     def re_flow(self,  flowout):
         '''
