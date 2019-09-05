@@ -35,11 +35,11 @@ testing_orders=np.array([[2, 2, 3, 2*24*60, 2, 4],
 
 testing_devs=np.array([[0, 2, 2, 0, 1, 3],
                        [3, 2, 3, 0, 1, 2]], dtype=np.int32)
-test_dnas=np.array([[17, 4, 5],
+testing_dnas=np.array([[17, 4, 5],
                     [2, 6, 8],
                     [3, 9, 27]] , dtype=np.int32)
 
-test_order_dev=np.array([[1, 1],
+testing_order_dev=np.array([[1, 1],
                          [0, 1],
                          [1, 0]]  ,dtype=np.int32)
 
@@ -58,7 +58,7 @@ class Cal_all:
         
         self.sess=sess
         
-        self.change_group=tf.convert_to_tensor(changegroup, tf.float32)
+        self.change_group=tf.convert_to_tensor(changegroup, tf.int32)
         self.change_cnt=tf.convert_to_tensor(changecnt, tf.int32)
         
         self.order_len=tf.shape(self.place_order)[0]
@@ -84,12 +84,15 @@ class Cal_all:
         '''
         
         dev=tf.floordiv(tep, poses_per_timegap)  #order len
+        dev=tf.cast(dev, tf.int32)
         pos=tf.floormod(tep, poses_per_timegap)
+        pos=tf.cast(pos, tf.int32)
         
         def devind2devid(x):
             tte=tf.where(tf.equal(self.place_order_dev[x[0]], 1))
-            return tte[x[1]][0]
-        elems = (tf.range(0, self.order_len, 1), dev)
+            return tf.cast( tte[x[1]][0], tf.int32)
+        elems = (tf.range(self.order_len), dev)
+        print (elems)
         dev=tf.map_fn(devind2devid, elems, dtype=tf.int32, parallel_iterations=10, back_prop=False)
         
         
@@ -97,6 +100,7 @@ class Cal_all:
         ret=tf.cast(ret, tf.int32)
         
         rett=tf.scatter_nd(ret, tf.range(1, self.order_len+1, 1),[self.dev_len, poses_per_timegap])
+        print (rett)
         #注意这里order id是从1开始的，因为默认值为0
         return rett
     
@@ -130,7 +134,8 @@ class Cal_all:
         devinfo=[]
     
     
-    def process_one_plan(self, devid, planlist):
+    def process_one_plan(self, devid, planlist_i):
+        print (planlist_i)
         cost=tf.constant(0, tf.int32)
         #color_depth,color_series, last_color_group, last_plantime, all_colorcnt, lat_color_count
         i=tf.constant(0, dtype=tf.int32)
@@ -146,8 +151,9 @@ class Cal_all:
         
         def body(i, cost,last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt):
             tep_cose, last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt\
-            =tf.cond(tf.equal(planlist[i], 0), lambda:[0, last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt]\
-                     , self.run_oneorder_on_dev(  [last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt], planlist[i]-1))
+            =tf.cond(tf.equal(planlist_i[i], 0), \
+                     lambda:(0, last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt), \
+                     lambda:self.run_oneorder_on_dev(  [last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt], planlist_i[i]-1))
             
             cost=tf.add(cost, tep_cose)
             
@@ -156,11 +162,15 @@ class Cal_all:
         i, cost,last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt \
         = tf.while_loop(cond, body, loop_var, parallel_iterations=1)
         
-        return [cost,last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt]
+        return [cost, last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt]
 
     def process_all_plans(self, plan_lists):
         #plan_lists:[dev len, poses_per_timegap] data is order id+1
+        kep_inds=tf.expand_dims(  tf.range(self.dev_len) , -1)
+        elems=( tf.concat([kep_inds, plan_lists], 1) )
+        print (elems)
         elems = (tf.range(self.dev_len), plan_lists)
+        print (elems)
         def distribute_plan(x):
             devid=x[0]
             planlist=x[1]
@@ -168,22 +178,43 @@ class Cal_all:
         
         resu=tf.map_fn(distribute_plan, elems, dtype=tf.int32, parallel_iterations=10, back_prop=False)
         #each row is [cost,last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt]
+        print ("resu:",resu)
         return resu
         
     def process_one_dna(self, dna):
         plans_lists=self.one_dna2plan(dna)
         resu=self.process_all_plans(plans_lists)
         
-        return tf.reduce_sum(resu[:,0])
+        return tf.cast( tf.reduce_sum(resu[:,0]), tf.int32)
     
-    def process_all_dna(self, dnas):
-        elems=dnas
+    def process_all_dna(self):
+        elems=self.place_dnas
         def distribute_dnas(x):
             return self.process_one_dna(x)
         
         resu=tf.map_fn(distribute_dnas, elems, dtype=tf.int32, parallel_iterations=10, back_prop=False)
         
         return resu
+    
+    
+    
+    #tensorflow outside
+    def repeat_mod_proc(self, dna, modnum):
+        dna_len=len(dna)
+        if dna_len>=modnum: return None
+        kep=np.zeros([modnum], dtype=np.int8)
+        cnt=0
+        while cnt<dna_len:
+            tep=dna[cnt]%modnum
+            if kep[tep]==0:
+                kep[tep]=1
+                cnt+=1
+            else:
+                dna[cnt]+=1
+        return dna
+            
+            
+        
     
     def run_one_batch(self, order_list, dev_list, dnas, order_dev):
         '''
@@ -192,8 +223,34 @@ class Cal_all:
         dnas:[dnas_len, None]
         order_dev:[order_len, dev_len]
         '''
+        orderlen=order_list.shape[0]
+        devlen=dev_list.shape[0]
         
-
+        modnum=devlen*poses_per_timegap
+        
+        for i in range(dnas_len):
+            dnas[i]=self.repeat_mod_proc(dnas[i], modnum)
+        
+        
+        resu=self.process_all_dna()
+        cost_all=self.sess.run([resu], feed_dict={self.place_order:order_list,
+                                         self.place_dev:dev_list,
+                                         self.place_dnas:dnas,
+                                         self.place_order_dev: order_dev})
+        
+        return cost_all
+    
+if __name__=="__main__":
+    with tf.Session() as sess:
+        tep=Cal_all(sess, test_change_group, test_change_cnt)
+        cost_list=tep.run_one_batch(testing_orders, testing_devs, testing_dnas, testing_order_dev)
+        print (cost_list)
+        
+        
+        
+        
+        
+        
         
         
         

@@ -31,7 +31,9 @@ def testing_map_fn():
         tte=tf.where(  tf.equal(test_order_dev_tf[x[0]], 1)  )
         
         return tte[ x[1][x[0]] ][0]
-    elems2 = (tf.range(3), np.array([[1,0,0],[1,0,1],[1,0,0]]))
+    elems2 = (tf.range(3), np.array([[1,0,0],[1,0,1],[1,0,0]], dtype=np.int32))
+    
+    #这里注意加上dtype，且要和输入数据对应，否者会有结构不匹配错误
     dev=tf.map_fn(devind2devid, elems2, dtype=tf.int64, parallel_iterations=10, back_prop=False)
     
     with tf.Session() as sess:
