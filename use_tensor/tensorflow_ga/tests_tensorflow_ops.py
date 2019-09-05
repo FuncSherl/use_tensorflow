@@ -34,6 +34,12 @@ def testing_map_fn():
     elems2 = (tf.range(3), np.array([[1,0,0],[1,0,1],[1,0,0]], dtype=np.int32))
     
     #这里注意加上dtype，且要和输入数据对应，否者会有结构不匹配错误
+    #而且注意，这里dtype的shape应该和函数返回值形状一致，如：
+    #elems = np.array([1, 2, 3])
+    #alternates = map_fn(lambda x: (x, -x), elems, dtype=(tf.int64, tf.int64))  #注意这里dtype的shape和返回的shape一致
+    #且注意这里返回的值并不是每行一个返回值，而是每行一个返回的对应tensor
+    # alternates[0] == [1, 2, 3]
+    # alternates[1] == [-1, -2, -3]
     dev=tf.map_fn(devind2devid, elems2, dtype=tf.int64, parallel_iterations=10, back_prop=False)
     
     with tf.Session() as sess:
