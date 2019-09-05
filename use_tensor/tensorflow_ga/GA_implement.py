@@ -130,7 +130,7 @@ class Cal_all:
         cost,costtime, last_colorcnt=tf.cond(res1|res2|res3, lambda:[cost,wash_time, 1],  lambda:[0,0, tf.add(devinfo[4], 1)])
         return cost,costtime,last_colorcnt
     
-    def testing_compute_wahs_pot(self):
+    def testing_compute_wash_pot(self):
         devinfo=[]
     
     
@@ -150,6 +150,7 @@ class Cal_all:
             return tf.less(i,poses_per_timegap)
         
         def body(i, cost,last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt):
+            
             tep_cose, last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt\
             =tf.cond(tf.equal(planlist_i[i], 0), \
                      lambda:(0, last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt), \
@@ -162,7 +163,7 @@ class Cal_all:
         i, cost,last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt \
         = tf.while_loop(cond, body, loop_var, parallel_iterations=1)
         
-        return [cost, last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt]
+        return (cost, last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt)
 
     def process_all_plans(self, plan_lists):
         #plan_lists:[dev len, poses_per_timegap] data is order id+1
@@ -176,7 +177,7 @@ class Cal_all:
             planlist=x[1]
             return self.process_one_plan(devid, planlist)
         
-        resu=tf.map_fn(distribute_plan, elems, dtype=tf.int32, parallel_iterations=10, back_prop=False)
+        resu=tf.map_fn(distribute_plan, elems, dtype=(tf.int32,)*6, parallel_iterations=10, back_prop=False)
         #each row is [cost,last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt]
         print ("resu:",resu)
         return resu
@@ -185,7 +186,7 @@ class Cal_all:
         plans_lists=self.one_dna2plan(dna)
         resu=self.process_all_plans(plans_lists)
         
-        return tf.cast( tf.reduce_sum(resu[:,0]), tf.int32)
+        return tf.cast( tf.reduce_sum(resu[0]), tf.int32)
     
     def process_all_dna(self):
         elems=self.place_dnas
