@@ -18,24 +18,34 @@ wash_time=5*60  #5 hours for one wash
 
 render_time=8*60  #每一缸耗时
 
-delay_cost=1000 #
+delay_cost=1000 #每天延迟的cost
+depthchange_cost=500
 
-testing_orders=[[2, 2, 3, 2*24*60, 2, 4],
-                [1, 2, 3, 1*24*60, 4, 4],
-                [3, 2, 2, 3*24*60, 3, 5]]
+test_change_group=np.array([[depthchange_cost,450, 400, 450],
+                            [450, depthchange_cost, 350, 400],
+                            [400, 350, depthchange_cost, 600],
+                            [450, 400, 600, depthchange_cost]], dtype=np.int32)
 
-testing_devs=[[0, 2, 2, 0, 1, 3],
-              [3, 2, 3, 0, 1, 2]]
-test_dnas=[[17, 4, 5],
-           [2, 6, 8],
-           [3, 9, 27]]
-test_order_dev=[[1, 1],
-               [0, 1],
-               [1, 0]]
+test_change_cnt=np.array([7, 6, 8, 5, 6], np.int32)
+
+
+testing_orders=np.array([[2, 2, 3, 2*24*60, 2, 4],
+                         [1, 2, 3, 1*24*60, 4, 4],
+                         [3, 2, 2, 3*24*60, 3, 5]], dtype=np.int32)
+
+testing_devs=np.array([[0, 2, 2, 0, 1, 3],
+                       [3, 2, 3, 0, 1, 2]], dtype=np.int32)
+test_dnas=np.array([[17, 4, 5],
+                    [2, 6, 8],
+                    [3, 9, 27]] , dtype=np.int32)
+
+test_order_dev=np.array([[1, 1],
+                         [0, 1],
+                         [1, 0]]  ,dtype=np.int32)
 
 
 class Cal_all:
-    def __init__(self, changegroup, changecnt):
+    def __init__(self, sess, changegroup, changecnt):
         '''
         changegroup: color change cost between group
         cahngecnt:color series change cnt
@@ -45,6 +55,8 @@ class Cal_all:
         self.place_dev=tf.placeholder(tf.int32, [None, dev_properity_cnt], "dev_placeholder")
         self.place_dnas=tf.placeholder(tf.int32, [dnas_len, None], "dnas_placeholder")  #[dnas_len, order_len]
         self.place_order_dev=tf.placeholder(tf.int32, name="order_dev_placeholder")  #order-dev mat,0 or 1 each
+        
+        self.sess=sess
         
         self.change_group=tf.convert_to_tensor(changegroup, tf.float32)
         self.change_cnt=tf.convert_to_tensor(changecnt, tf.int32)
@@ -57,7 +69,8 @@ class Cal_all:
         
     def one_dna2plan(self, dna):
         '''
-        由传入负责dna的去重[dev_len, poses_per_timegap]
+        由传入负责dna的去重
+        return:[dev_len, poses_per_timegap]
         '''
         tep=dna%(self.order_dev_cnt * poses_per_timegap)
         '''
@@ -77,7 +90,7 @@ class Cal_all:
             tte=tf.where(tf.equal(self.place_order_dev[x[0]], 1))
             return tte[x[1]][0]
         elems = (tf.range(0, self.order_len, 1), dev)
-        dev=tf.map_fn(devind2devid, elems, dtype=tf.int32)
+        dev=tf.map_fn(devind2devid, elems, dtype=tf.int32, parallel_iterations=10, back_prop=False)
         
         
         ret=tf.stack([dev, pos], -1)
@@ -100,7 +113,7 @@ class Cal_all:
         
     def compute_delay(self, devtime, ordertime):
         cost=tf.maximum(devtime+render_time-ordertime, 0)/24/60*delay_cost
-        return cost
+        return tf.cast(cost, tf.int32)
         
         
     def compute_wash_pot(self, devinfo, orderinfo):
@@ -118,7 +131,7 @@ class Cal_all:
     
     
     def process_one_plan(self, devid, planlist):
-        cost=tf.constant(0, tf.float32)
+        cost=tf.constant(0, tf.int32)
         #color_depth,color_series, last_color_group, last_plantime, all_colorcnt, lat_color_count
         i=tf.constant(0, dtype=tf.int32)
         last_color_depth=self.place_dev[devid][0]
@@ -143,24 +156,44 @@ class Cal_all:
         i, cost,last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt \
         = tf.while_loop(cond, body, loop_var, parallel_iterations=1)
         
-        return cost,[last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt]
+        return [cost,last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt]
 
-
-elems = (np.array([1, 2, 3]), np.array([-1, 1, -1]))
-alternate = tf.map_fn(lambda x: x[0] * x[1], elems, dtype=tf.int64)
-
-test_order_dev=tf.convert_to_tensor(test_order_dev, dtype=tf.int64)
-
-def devind2devid(x):
-    tte=tf.where(  tf.equal(test_order_dev[x[0]], 1)  )
+    def process_all_plans(self, plan_lists):
+        #plan_lists:[dev len, poses_per_timegap] data is order id+1
+        elems = (tf.range(self.dev_len), plan_lists)
+        def distribute_plan(x):
+            devid=x[0]
+            planlist=x[1]
+            return self.process_one_plan(devid, planlist)
+        
+        resu=tf.map_fn(distribute_plan, elems, dtype=tf.int32, parallel_iterations=10, back_prop=False)
+        #each row is [cost,last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt]
+        return resu
+        
+    def process_one_dna(self, dna):
+        plans_lists=self.one_dna2plan(dna)
+        resu=self.process_all_plans(plans_lists)
+        
+        return tf.reduce_sum(resu[:,0])
     
-    return tte[x[1]][0]
-elems2 = (np.array([0,1,2]), np.array([1,0,0]))
-dev=tf.map_fn(devind2devid, elems2, dtype=tf.int64)
+    def process_all_dna(self, dnas):
+        elems=dnas
+        def distribute_dnas(x):
+            return self.process_one_dna(x)
+        
+        resu=tf.map_fn(distribute_dnas, elems, dtype=tf.int32, parallel_iterations=10, back_prop=False)
+        
+        return resu
+    
+    def run_one_batch(self, order_list, dev_list, dnas, order_dev):
+        '''
+        order_list:[None, order_properity_cnt]
+        dev_lsit:[None, dev_properity_cnt]
+        dnas:[dnas_len, None]
+        order_dev:[order_len, dev_len]
+        '''
+        
 
-with tf.Session() as sess:
-    a=sess.run([dev, alternate])
-    print (a)
         
         
         
