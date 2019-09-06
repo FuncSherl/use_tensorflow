@@ -32,7 +32,7 @@ test_change_cnt=np.array([7, 6, 8, 5, 6], np.int32)
 testing_orders=np.array([[2, 2, 3, 2*24*60, 2, 4],
                          [1, 2, 3, 1*24*60, 4, 4],
                          [3, 2, 2, 3*24*60, 3, 5],
-                         [2, 2, 2, 3*24*60, 3, 5]], dtype=np.int32)
+                         [2, 2, 2, 1*24*60, 3, 5]], dtype=np.int32)
 
 testing_devs=np.array([[0, 2, 2, 0, 1, 3],
                        [3, 2, 3, 0, 1, 2]], dtype=np.int32)
