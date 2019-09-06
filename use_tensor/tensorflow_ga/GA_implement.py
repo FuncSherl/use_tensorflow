@@ -6,6 +6,7 @@ Created on Sep 3, 2019
 '''
 import tensorflow as tf
 import numpy as np
+from sqlalchemy.sql.base import _bind_or_error
 
 order_properity_cnt=6  #color_depth,color_seris,coloe_group,deadline,client,material
 dev_properity_cnt=6    #color_depth,color_series, last_color_group, last_plantime, all_colorcnt, lat_color_count
@@ -13,7 +14,6 @@ dnas_len=3          #how many dnas
 poses_per_timegap=8    #每次运算时的时间间隔对应的几次染
 
 
-wash_cost=200 #
 wash_time=5*60  #5 hours for one wash
 
 render_time=8*60  #每一缸耗时
@@ -31,17 +31,19 @@ test_change_cnt=np.array([7, 6, 8, 5, 6], np.int32)
 
 testing_orders=np.array([[2, 2, 3, 2*24*60, 2, 4],
                          [1, 2, 3, 1*24*60, 4, 4],
-                         [3, 2, 2, 3*24*60, 3, 5]], dtype=np.int32)
+                         [3, 2, 2, 3*24*60, 3, 5],
+                         [2, 2, 2, 3*24*60, 3, 5]], dtype=np.int32)
 
 testing_devs=np.array([[0, 2, 2, 0, 1, 3],
                        [3, 2, 3, 0, 1, 2]], dtype=np.int32)
-testing_dnas=np.array([[17, 4, 5],
-                    [2, 6, 8],
-                    [3, 9, 27]] , dtype=np.int32)
+testing_dnas=np.array([[13, 14, 15, 0],
+                       [2, 3, 8, 18],
+                       [3, 9, 27, 34]] , dtype=np.int32)
 
 testing_order_dev=np.array([[1, 1],
-                         [0, 1],
-                         [1, 0]]  ,dtype=np.int32)
+                            [0, 1],
+                            [1, 0],
+                            [1, 1]]  ,dtype=np.int32)
 
 
 class Cal_all:
@@ -72,7 +74,8 @@ class Cal_all:
         由传入负责dna的去重
         return:[dev_len, poses_per_timegap]
         '''
-        tep=dna%(self.order_dev_cnt * poses_per_timegap)
+        #tep=dna%(self.order_dev_cnt * poses_per_timegap)
+        tep=dna%(self.dev_len * poses_per_timegap)
         '''
         i=tf.constant(1, dtype=tf.int32)
         def cond(i):
@@ -87,20 +90,21 @@ class Cal_all:
         dev=tf.cast(dev, tf.int32)
         pos=tf.floormod(tep, poses_per_timegap)
         pos=tf.cast(pos, tf.int32)
-        
+        '''
         def devind2devid(x):
             tte=tf.where(tf.equal(self.place_order_dev[x[0]], 1))
             return tf.cast( tte[x[1]][0], tf.int32)
         elems = (tf.range(self.order_len), dev)
         print (elems)
         dev=tf.map_fn(devind2devid, elems, dtype=tf.int32, parallel_iterations=10, back_prop=False)
+        '''
         
-        
-        ret=tf.stack([dev, pos], -1)
+        ret=tf.stack([dev, pos], -1)  #[4,2]
         ret=tf.cast(ret, tf.int32)
         
-        rett=tf.scatter_nd(ret, tf.range(1, self.order_len+1, 1),[self.dev_len, poses_per_timegap])
-        print (rett)
+        rett=tf.scatter_nd(ret, tf.range(1, self.order_len+1),[self.dev_len, poses_per_timegap])
+        print ("rett:",rett)
+        
         #注意这里order id是从1开始的，因为默认值为0
         return rett
     
@@ -126,7 +130,7 @@ class Cal_all:
         res2=tf.cond(tf.equal(orderinfo[2], devinfo[2]), lambda:False, lambda:True)
         res3=tf.cond(tf.less(devinfo[4], self.change_cnt[  tf.cast(devinfo[1], tf.int32)  ]), lambda:False, lambda:True  )
         
-        cost=tf.cond(res2, lambda:self.change_group[devinfo[2]][orderinfo[2]], lambda:wash_cost)
+        cost=self.change_group[devinfo[2]][orderinfo[2]]
         cost,costtime, last_colorcnt=tf.cond(res1|res2|res3, lambda:[cost,wash_time, 1],  lambda:[0,0, tf.add(devinfo[4], 1)])
         return cost,costtime,last_colorcnt
     
@@ -167,9 +171,9 @@ class Cal_all:
 
     def process_all_plans(self, plan_lists):
         #plan_lists:[dev len, poses_per_timegap] data is order id+1
-        kep_inds=tf.expand_dims(  tf.range(self.dev_len) , -1)
-        elems=( tf.concat([kep_inds, plan_lists], 1) )
-        print (elems)
+        #kep_inds=tf.expand_dims(  tf.range(self.dev_len) , -1)
+        #elems=( tf.concat([kep_inds, plan_lists], 1) )
+        #print (elems)
         elems = (tf.range(self.dev_len), plan_lists)
         print (elems)
         def distribute_plan(x):
@@ -186,7 +190,7 @@ class Cal_all:
         plans_lists=self.one_dna2plan(dna)
         resu=self.process_all_plans(plans_lists)
         
-        return tf.cast( tf.reduce_sum(resu[0]), tf.int32)
+        return resu[0]  #tf.cast( tf.reduce_sum(resu[0]), tf.int32)  #cost sum
     
     def process_all_dna(self):
         elems=self.place_dnas
@@ -194,25 +198,44 @@ class Cal_all:
             return self.process_one_dna(x)
         
         resu=tf.map_fn(distribute_dnas, elems, dtype=tf.int32, parallel_iterations=10, back_prop=False)
-        
+        print (resu)
         return resu
     
     
     
     #tensorflow outside
-    def repeat_mod_proc(self, dna, modnum):
-        dna_len=len(dna)
-        if dna_len>=modnum: return None
-        kep=np.zeros([modnum], dtype=np.int8)
+    def repeat_mod_proc(self, dna, order_dev):
+        #order_dev:[order_len, dev_len]
+        order_len=len(dna)
+        dev_len=order_dev.shape[1]
+        
+        order_dev_cnt=np.sum(order_dev, 1)  #[order len]
+        ind_orders=np.argsort(order_dev_cnt)
+        print (ind_orders)
+        kep=np.zeros([dev_len, poses_per_timegap], dtype=np.int8)
+        
         cnt=0
-        while cnt<dna_len:
-            tep=dna[cnt]%modnum
-            if kep[tep]==0:
-                kep[tep]=1
+        failcnt=0
+        while cnt<order_len:
+            orderid=ind_orders[cnt]
+            tep=dna[orderid]%(dev_len*poses_per_timegap)
+            dev_ind=int(tep/poses_per_timegap)
+            poses_ind=tep%poses_per_timegap
+            if order_dev[orderid][dev_ind] and kep[dev_ind][poses_ind]==0:
                 cnt+=1
+                kep[dev_ind][poses_ind]=1
+                failcnt=0
             else:
-                dna[cnt]+=1
+                dna[orderid]+=1
+                failcnt+=1
+                if failcnt>dev_len*poses_per_timegap:
+                    return None
         return dna
+                
+            
+                    
+        
+        
             
             
         
@@ -227,14 +250,24 @@ class Cal_all:
         orderlen=order_list.shape[0]
         devlen=dev_list.shape[0]
         
-        modnum=devlen*poses_per_timegap
-        
+        print (dnas)
+        print (order_dev)
         for i in range(dnas_len):
-            dnas[i]=self.repeat_mod_proc(dnas[i], modnum)
-        
+            temp=self.repeat_mod_proc(dnas[i], order_dev)
+            if temp is None:
+                print ('error:dna:',dnas[i]," cann't be fitted")
+                return None
+            dnas[i]=temp
+        print (dnas)
         
         resu=self.process_all_dna()
-        cost_all=self.sess.run([resu], feed_dict={self.place_order:order_list,
+        
+        print (  self.sess.run([self.order_len, self.dev_len], feed_dict={self.place_order:order_list,
+                                         self.place_dev:dev_list,
+                                         self.place_dnas:dnas,
+                                         self.place_order_dev: order_dev})    )
+        
+        cost_all=self.sess.run([ resu], feed_dict={self.place_order:order_list,
                                          self.place_dev:dev_list,
                                          self.place_dnas:dnas,
                                          self.place_order_dev: order_dev})

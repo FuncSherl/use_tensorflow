@@ -45,11 +45,18 @@ def testing_map_fn():
     with tf.Session() as sess:
         a=sess.run([dev, alternate])
         print (a)
+        
+def testing_scatter_nd():
+    ret=np.array([[0,1],[2,1],[2,2]], dtype=np.int32)
+    rett=tf.scatter_nd(ret, tf.range(1, 3+1),[4, 4])
+    with tf.Session() as sess:
+        a=sess.run([rett])
+        print (a)
 
 
 if __name__ == '__main__':
-    testing_map_fn()
-
+    #testing_map_fn()
+    testing_scatter_nd()
 
 
 
