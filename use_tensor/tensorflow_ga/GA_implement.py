@@ -21,25 +21,31 @@ render_time=8*60  #每一缸耗时
 delay_cost=1000 #每天延迟的cost
 depthchange_cost=500
 
+#group之间的颜色切换cost，同group的为depthchangec_cost
 test_change_group=np.array([[depthchange_cost,450, 400, 450],
                             [450, depthchange_cost, 350, 400],
                             [400, 350, depthchange_cost, 600],
                             [450, 400, 600, depthchange_cost]], dtype=np.int32)
 
+#需要多少次染色才洗缸
 test_change_cnt=np.array([7, 6, 8, 5, 6], np.int32)
 
-
+#测试用例，order列表
 testing_orders=np.array([[2, 2, 3, 2*24*60, 2, 4],
                          [1, 2, 3, 1*24*60, 4, 4],
                          [3, 2, 2, 3*24*60, 3, 5],
                          [2, 2, 2, 1*24*60, 3, 5]], dtype=np.int32)
 
+#测试用例，device列表
 testing_devs=np.array([[0, 2, 2, 0, 1, 3],
                        [3, 2, 3, 0, 1, 2]], dtype=np.int32)
+
+#测试用例，dna列表
 testing_dnas=np.array([[13, 14, 15, 0],
                        [2, 3, 8, 18],
                        [3, 9, 27, 34]] , dtype=np.int32)
 
+#测试用例，order与device的对应列表[order len, device len]
 testing_order_dev=np.array([[1, 1],
                             [0, 1],
                             [1, 0],
@@ -72,6 +78,7 @@ class Cal_all:
     def one_dna2plan(self, dna):
         '''
         由传入负责dna的去重
+        根据dna生成plan，其中plan中的order id是下标从1开始，因为其他默认值为0
         return:[dev_len, poses_per_timegap]
         '''
         #tep=dna%(self.order_dev_cnt * poses_per_timegap)
@@ -109,7 +116,11 @@ class Cal_all:
         return rett
     
     def run_oneorder_on_dev(self, devinfo, orderid):
-        #[last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt]
+        '''
+        根据device的状态：devinfo，运行一个订单：orderid
+        return：更新后的cost和device的状态
+        '''
+        #devinfo的各个状态[last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt]
         #return tep_cose, last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt
         orderinfo=self.place_order[orderid]
         
@@ -120,11 +131,16 @@ class Cal_all:
         return tf.add(cost_wash, cost_render), orderinfo[0], orderinfo[1], orderinfo[2], tf.add(last_plantime, render_time), last_colorcnt
         
     def compute_delay(self, devtime, ordertime):
+        #延期的cost计算
         cost=tf.maximum(devtime+render_time-ordertime, 0)/24/60*delay_cost
         return tf.cast(cost, tf.int32)
         
         
     def compute_wash_pot(self, devinfo, orderinfo):
+        '''
+        计算洗缸的cost，根据现在dev的状态devinfo和order的要求orderinfo
+        return：cost，花费时间（0 or wash_time），color染色计数
+        '''
         #color_depth,color_seris,coloe_group,deadline,client,material
         res1=tf.cond(tf.less(orderinfo[0], devinfo[0])   , lambda:True, lambda:False)
         res2=tf.cond(tf.equal(orderinfo[2], devinfo[2]), lambda:False, lambda:True)
@@ -134,11 +150,14 @@ class Cal_all:
         cost,costtime, last_colorcnt=tf.cond(res1|res2|res3, lambda:[cost,wash_time, 1],  lambda:[0,0, tf.add(devinfo[4], 1)])
         return cost,costtime,last_colorcnt
     
-    def testing_compute_wash_pot(self):
-        devinfo=[]
-    
     
     def process_one_plan(self, devid, planlist_i):
+        '''
+        利用循环顺序处理一个device上的plan，利用run_oneorder_on_dev，顺序运行一个机器上的所有订单
+        devid:该device的id
+        planlist_i:该机器上的订单
+        return:处理的cost及运行后机器的状态
+        '''
         print (planlist_i)
         cost=tf.constant(0, tf.int32)
         #color_depth,color_series, last_color_group, last_plantime, all_colorcnt, lat_color_count
@@ -170,6 +189,11 @@ class Cal_all:
         return (cost, last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt)
 
     def process_all_plans(self, plan_lists):
+        '''
+        根据一个dna生成的plan，在对应设备上逐行处理每个plan，多线程
+        return：每行分别为[cost,last_color_depth, last_color_series, last_color_group, last_plan_time, last_color_cnt]
+        同process_one_plan的返回值，注意是每行不是每列，这里tensor与普通的list填充不同
+        '''
         #plan_lists:[dev len, poses_per_timegap] data is order id+1
         #kep_inds=tf.expand_dims(  tf.range(self.dev_len) , -1)
         #elems=( tf.concat([kep_inds, plan_lists], 1) )
@@ -187,12 +211,14 @@ class Cal_all:
         return resu
         
     def process_one_dna(self, dna):
+        #利用上面的函数，将一条dna转换成plan然后运行plan
         plans_lists=self.one_dna2plan(dna)
         resu=self.process_all_plans(plans_lists)
-        
+        #resu[0]为所有执行返回的cost的集合
         return resu[0]  #tf.cast( tf.reduce_sum(resu[0]), tf.int32)  #cost sum
     
     def process_all_dna(self):
+        #利用上面函数处理所有dna
         elems=self.place_dnas
         def distribute_dnas(x):
             return self.process_one_dna(x)
@@ -205,6 +231,7 @@ class Cal_all:
     
     #tensorflow outside
     def repeat_mod_proc(self, dna, order_dev):
+        #一条dna的去重，这里是全局的去重
         #order_dev:[order_len, dev_len]
         order_len=len(dna)
         dev_len=order_dev.shape[1]
@@ -242,6 +269,7 @@ class Cal_all:
     
     def run_one_batch(self, order_list, dev_list, dnas, order_dev):
         '''
+        该类的入口函数，每次送进来一批次的数据，如一天的订单，注意订单时间是分钟的计数
         order_list:[None, order_properity_cnt]
         dev_lsit:[None, dev_properity_cnt]
         dnas:[dnas_len, None]
