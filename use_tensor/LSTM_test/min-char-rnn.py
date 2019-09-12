@@ -62,13 +62,13 @@ def lossFun(inputs, targets, hprev):
         dy[targets[t]] -= 1
         dWhy += np.dot(dy, hs[t].T)
         dby += dy
-        dh = np.dot(Why.T, dy) + dhnext  # backprop into h
+        dh = np.dot(Why.T, dy) + dhnext  # backprop into h 注意这里加上了下个时间段bp回来的梯度
         # backprop through tanh nonlinearity
-        dhraw = (1 - hs[t] * hs[t]) * dh
-        dbh += dhraw
+        dhraw = (1 - hs[t] * hs[t]) * dh   # d（tanh（x））=1-（tanh（x）^2）这里对tanh求导，得到激活之前的数
+        dbh += dhraw  #bias
         dWxh += np.dot(dhraw, xs[t].T)
         dWhh += np.dot(dhraw, hs[t - 1].T)
-        dhnext = np.dot(Whh.T, dhraw)
+        dhnext = np.dot(Whh.T, dhraw)   #计算本层通过h向上一层的bp 
     for dparam in [dWxh, dWhh, dWhy, dbh, dby]:
         # clip to mitigate exploding gradients
         np.clip(dparam, -5, 5, out = dparam)
