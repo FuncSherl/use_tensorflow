@@ -87,7 +87,7 @@ def sample(h, seed_ix, n):
         h = np.tanh(np.dot(Wxh, x) + np.dot(Whh, h) + bh)
         y = np.dot(Why, h) + by
         p = np.exp(y) / np.sum(np.exp(y))
-        ix = np.random.choice(range(vocab_size), p = p.ravel())
+        ix = np.random.choice(range(vocab_size), p = p.ravel())  #这里p参数代表每个位上的选中概率
         x = np.zeros((vocab_size, 1))
         x[ix] = 1
         ixes.append(ix)
