@@ -175,7 +175,7 @@ class Step2_ConvLstm:
         
         
 
-    def forward_once(self, image_3, state, timerate):
+    def forward_once(self, image_3, state, timerate=0.5):
         output, state_new=self.sess.run([self.output,self.state_final], \
                       feed_dict={self.input_pla:inputs,  self.state_pla_c:state[0],  self.state_pla_h:state[1]})
         
