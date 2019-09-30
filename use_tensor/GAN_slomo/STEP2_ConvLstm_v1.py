@@ -4,10 +4,10 @@ Created on Sep 27, 2019
 @author: sherl
 '''
 import tensorflow as tf
+import os.path as op
 from data import create_dataset2 as cdata
 import numpy as np
 import cv2, os, random, time
-from dask.array.tests.test_numpy_compat import dtype
 
 #图像形状 
 img_size_w=int (640/2)
@@ -41,9 +41,12 @@ stddev=0.01
 bias_init=0.0
 LR=1e-3
 
+pcid=1
+if pcid==1:  # 实验室机器
+    modelpath = "/home/sherl/Pictures/v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
+elif pcid==0:  #server
+    modelpath = "/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/logs_v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000"
 
-
-modelpath = "/home/sherl/Pictures/v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
 meta_name = r'model_keep-239999.meta'
 
 # 设置GPU显存按需增长
@@ -56,13 +59,27 @@ class Step2_ConvLstm:
     def __init__(self, sess):
         self.sess = sess
         
-        # 注意这里的placeholder
-        self.input_pla = tf.placeholder(tf.float32, [batchsize,  flow_size_h, flow_size_w, input_channel], name='step2_opticalflow_in')
+        saver = tf.train.import_meta_graph(op.join(modelpath, meta_name) )
+        saver.restore(self.sess, tf.train.latest_checkpoint(modelpath))
+        self.graph = tf.get_default_graph()
+        #placeholders
+        self.imgs_pla= self.graph.get_tensor_by_name('imgs_in:0')
+        self.training= self.graph.get_tensor_by_name("training_in:0")
+        self.timerates= self.graph.get_tensor_by_name("timerates_in:0")
         
         self.state_pla_c = tf.placeholder(tf.float32, state_shape, name='step2_state_in_c')
         self.state_pla_h = tf.placeholder(tf.float32, state_shape, name='step2_state_in_h')
+        #tesorfs
+        self.optical_0_1=self.graph.get_tensor_by_name("G_opticalflow_0_2:0")
+        self.optical_1_0=self.graph.get_tensor_by_name("G_opticalflow_2_0:0")
+        # 注意这里的placeholder
+        #self.input_pla = tf.placeholder(tf.float32, [batchsize,  flow_size_h, flow_size_w, input_channel], name='step2_opticalflow_in')
+        self.input_pla=tf.concat([self.optical_0_1, self.optical_1_0], -1)
+        print (self.input_pla)  #Tensor("concat_9:0", shape=(12, 180, 320, 4), dtype=float32)
         
-        self.imgs_pla = tf.placeholder(tf.float32, [batchsize, img_size_h, img_size_w, group_img_num*img_channel], name='step2_oriimgs_in')
+        
+        #self.imgs_pla = tf.placeholder(tf.float32, [batchsize, img_size_h, img_size_w, group_img_num*img_channel], name='step2_oriimgs_in')
+        
         self.frame0=self.imgs_pla[:,:,:,:img_channel]
         self.frame1=self.imgs_pla[:,:,:,img_channel:img_channel*2]
         self.frame2=self.imgs_pla[:,:,:,img_channel*2:]
