@@ -16,6 +16,7 @@ if pc_id==0: #
     videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
     extratdir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\extracted_videos' 
     tfrec_dir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\tfrecords'
+    modelpath="E:\DL_models\use_tensorflow\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
 elif pc_id==1: #lab pc
     videodir=r'/media/sherl/本地磁盘1/data_DL/Adobe240fps/original_high_fps_videos' #
     extratdir=r'/media/sherl/本地磁盘1/data_DL/Adobe240fps/extracted_videos' #

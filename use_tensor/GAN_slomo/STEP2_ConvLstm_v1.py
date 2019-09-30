@@ -183,6 +183,10 @@ class Step2_ConvLstm:
         
         #最后构建完成后初始化参数 
         self.sess.run(tf.global_variables_initializer())
+        self.traindata_video_index=0
+        self.traindata_frame_index=0
+        self.testdata_video_index=0
+        self.testdata_frame_index=0
         
     
     def warp_op(self, images, flow, timerates=1):
@@ -212,7 +216,9 @@ class Step2_ConvLstm:
             ret=tf.nn.bias_add(ret, bias)
         return ret
         
-        
+    def get_train_batchdata_numpy(self):
+        train_root=cdata.extratdir_train
+        videolist=os.listdir(train_root)
         
         
 
