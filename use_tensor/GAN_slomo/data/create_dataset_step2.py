@@ -150,7 +150,7 @@ def preprocess_img(image,outlen, outchannel=9, training=True):
     #这里利用resize后的图片训练可能会导致在真实情况下效果由于与训练时的图片缩放比例不一样导致的问题
     #tf.image.resize_image_with_crop_or_pad()
     image=tf.image.resize_images(image, tuple(  [outlen[0]+6, outlen[1]+6 ]   )  )
-    image=tf.image.random_flip_left_right(image)
+    #image=tf.image.random_flip_left_right(image)
     image=tf.image.random_crop(image, [outlen[0], outlen[1], outchannel ])
     
     #image=tf.image.resize_images(image, tuple( outlen   )  )
@@ -166,7 +166,7 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3, training=Tr
     imgsize:[new_height, new_width]
     '''
     tep=os.listdir(tfdir)
-    random.shuffle(tep)
+    #random.shuffle(tep)
     tep=list(map(lambda x:op.join(tfdir, x), tep))
     print (tep)
     dataset = tf.data.TFRecordDataset(tep).repeat()
@@ -208,7 +208,7 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3, training=Tr
     
     dataset=dataset.map(parse,num_parallel_calls=6)#注意把值回赋给dataset
     
-    dataset=dataset.batch(batchsize).shuffle(batchsize*6)
+    dataset=dataset.batch(batchsize)#.shuffle(batchsize*6)
     #print("dataset.output_shapes",dataset.output_shapes)
     
     iterator = dataset.make_one_shot_iterator()
