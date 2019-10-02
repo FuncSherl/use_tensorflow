@@ -4,11 +4,14 @@ Created on Sep 27, 2019
 @author: sherl
 '''
 import tensorflow as tf
+from datetime import datetime
 import os.path as op
-from data import create_dataset2 as cdata
+from data import create_dataset_step2 as cdata
 import numpy as np
 import cv2, os, random, time
 
+print ('tensorflow version:',tf.__version__,'  path:',tf.__path__)
+TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 #图像形状 
 flow_channel = 2
 
@@ -23,7 +26,7 @@ group_img_num=3
 img_channel=3
 
 
-timestep = 12
+timestep = 12  #这里与第一部中的batchsize相同
 
 #hyper param 
 dropout=0.5 
@@ -31,8 +34,9 @@ leakyrelurate=0.2
 stddev=0.01
 bias_init=0.0
 LR=1e-3
+maxstep=240000 #训练多少次
 
-
+mean_dataset=[102.1, 109.9, 110.0]  #0->1 is [0.4, 0.43, 0.43]
 modelpath=cdata.modelpath
 meta_name = r'model_keep-239999.meta'
 
@@ -40,12 +44,13 @@ meta_name = r'model_keep-239999.meta'
 gpu_options = tf.GPUOptions(allow_growth=True)
 config = tf.ConfigProto(gpu_options=gpu_options)
 
+logdir="./logs_v24_Step2/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(LR,batchsize, maxstep))
 
 class Step2_ConvLstm:
 
     def __init__(self, sess):
         self.sess = sess
-        
+
         #加载原模型
         saver = tf.train.import_meta_graph(op.join(modelpath, meta_name) )
         saver.restore(self.sess, tf.train.latest_checkpoint(modelpath))
@@ -75,6 +80,8 @@ class Step2_ConvLstm:
         self.img_size=[self.img_size_h, self.img_size_w]
         print (self.imgs_pla) #Tensor("imgs_in:0", shape=(12, 180, 320, 9), dtype=float32)
         
+        self.pipline_data_train=cdata.get_pipline_data_train(self.img_size, self.batchsize_inputimg)
+        self.pipline_data_test=cdata.get_pipline_data_test(self.img_size, self.batchsize_inputimg)
         #输出光流形状
         self.flow_size_h=self.optical_0_1.get_shape().as_list()[1]
         self.flow_size_w=self.optical_0_1.get_shape().as_list()[2]
@@ -92,8 +99,8 @@ class Step2_ConvLstm:
         self.frame1=self.imgs_pla[:,:,:,img_channel:img_channel*2]
         self.frame2=self.imgs_pla[:,:,:,img_channel*2:]
         
-        self.timerates_pla=tf.placeholder(tf.float32, [batchsize], name='step2_inner_timerates_in')
-        self.timerates_expand=tf.expand_dims(self.timerates_pla, -1)
+        #self.timerates_pla=tf.placeholder(tf.float32, [batchsize], name='step2_inner_timerates_in')
+        self.timerates_expand=tf.expand_dims(self.timerates, -1)
         self.timerates_expand=tf.expand_dims(self.timerates_expand, -1)
         self.timerates_expand=tf.expand_dims(self.timerates_expand, -1) #batchsize*1*1*1
         
@@ -103,7 +110,8 @@ class Step2_ConvLstm:
         self.state_init = self.cell.zero_state(batch_size=batchsize, dtype=tf.float32)
         self.state_init_np=( np.zeros(self.state_shape, dtype=np.float32), np.zeros(self.state_shape, dtype=np.float32) )
         print (self.state_init) #LSTMStateTuple(c=<tf.Tensor 'ConvLSTMCellZeroState/zeros:0' shape=(2, 180, 320, 12) dtype=float32>, h=<tf.Tensor 'ConvLSTMCellZeroState/zeros_1:0' shape=(2, 180, 320, 12) dtype=float32>)
-        
+        self.state_new_train=self.state_init_np
+        self.state_new_test=self.state_init_np
         #这里开始搞lstm了
         self.input_dynamic_lstm=tf.expand_dims(self.input_pla, 0)   #这里默认lstm的输入batchsize=1，注意，设置里batchsize必须为1
         print (self.input_dynamic_lstm)  #Tensor("ExpandDims_6:0", shape=(1, 12, 180, 320, 4), dtype=float32)
@@ -183,10 +191,7 @@ class Step2_ConvLstm:
         
         #最后构建完成后初始化参数 
         self.sess.run(tf.global_variables_initializer())
-        self.traindata_video_index=0
-        self.traindata_frame_index=0
-        self.testdata_video_index=0
-        self.testdata_frame_index=0
+
         
     
     def warp_op(self, images, flow, timerates=1):
@@ -216,28 +221,134 @@ class Step2_ConvLstm:
             ret=tf.nn.bias_add(ret, bias)
         return ret
         
-    def get_train_batchdata_numpy(self):
-        train_root=cdata.extratdir_train
-        videolist=os.listdir(train_root)
-        
+    def getbatch_train_imgs(self):
+        newstate=False
+        while True:
+            tepimg=self.sess.run(self.pipline_data_train)
+            inimg,rate,label=tepimg[0],tepimg[1],tepimg[2]
+            if str(label[0]).split('_')[0]==str(label[-1]).split('_')[0]: break
+            newstate=True
+        return self.img2tanh(inimg),rate,newstate
+    
+    def getbatch_test_imgs(self):
+        newstate=False
+        while True:
+            tepimg=self.sess.run(self.pipline_data_test)
+            inimg,rate,label=tepimg[0],tepimg[1],tepimg[2]
+            if str(label[0]).split('_')[0]==str(label[-1]).split('_')[0]: break
+            newstate=True
+        return self.img2tanh(inimg),rate,newstate
+    
+    def img2tanh(self,img):
+        #img=tf.cast(img,tf.float32)
+        img-=mean_dataset*3
+        return img*2.0/255-1
+    
+    def tanh2img(self,tanhd):
+        tep= (tanhd+1)*255//2
+        #print ('tep.shape:',tep.shape)  #tep.shape: (180, 320, 9)
+        multly=int(tep.shape[-1]/len(mean_dataset))
+        #print ('expanding:',multly)
+        tep+=mean_dataset*multly
+        return tep.astype(np.uint8)
         
 
-    def forward_once(self, image_3, state, timerate=0.5):
-        output, state_new=self.sess.run([self.output,self.state_final], \
-                      feed_dict={self.input_pla:inputs,  self.state_pla_c:state[0],  self.state_pla_h:state[1]})
+    def train_once(self):
+        imgdata,rate,newstate=self.getbatch_train_imgs()
+        if newstate: self.state_new_train=self.state_init_np
         
-        print (output.shape, type(state_new) )
+        _, \
+        self.state_new_train,   \
+        ssim,psnr,      \
+        contexloss, L1_loss, loss_all=self.sess.run([self.train_op,\
+                                    self.state_final, \
+                                    self.ssim, self.psnr, self.contex_loss, self.L1_loss_all, self.G_loss_all], \
+                      feed_dict={self.imgs_pla:imgdata,self.timerates:rate,self.training:True,  self.state_pla_c:self.state_new_train[0],  self.state_pla_h:self.state_new_train[1]})
         
-        return output,state_new
+        print ()
+        print ("train once:")
+        print ("ssim:",ssim)
+        print ("psnr:",psnr)
+        print ("contexloss:",contexloss)
+        print ("l1_loss_all:",L1_loss)
+        print ("loss_all:",loss_all)
+        
+        return ssim,psnr,contexloss,L1_loss
 
-
-
+    def eval_once(self, evalstep=100):
+        kep_ssim=0.0
+        kep_psnr=0.0
+        kep_l1loss=0.0
+        kep_contexloss=0.0
+        for i in range(evalstep):
+            imgdata,rate,newstate=self.getbatch_test_imgs()
+            if newstate: self.state_new_test=self.state_init_np
+    
+            self.state_new_test,   \
+            ssim,psnr,      \
+            contexloss, L1_loss, loss_all=self.sess.run([
+                                        self.state_final, \
+                                        self.ssim, self.psnr, self.contex_loss, self.L1_loss_all, self.G_loss_all], \
+                          feed_dict={self.input_pla:imgdata,self.timerates:rate,self.training:False,  self.state_pla_c:self.state_new_test[0],  self.state_pla_h:self.state_new_test[1]})
+        
+            kep_ssim+=ssim
+            kep_psnr+=psnr
+            kep_l1loss+=L1_loss
+            kep_contexloss+=contexloss
+        return kep_ssim/evalstep,kep_psnr/evalstep,kep_contexloss/evalstep,kep_l1loss/evalstep
 
 
 if __name__ == '__main__':   
     with tf.Session(config=config) as sess:     
-        step2 = Step2_ConvLstm(sess)
-        step2.forward_once(np.random.rand(batchsize,  step2.flow_size_h, step2.flow_size_w, step2.lstm_input_channel), state=step2.state_init_np)
+        gan = Step2_ConvLstm(sess)
+        
+        logwriter = tf.summary.FileWriter(logdir,   sess.graph)
+        
+        all_saver = tf.train.Saver(max_to_keep=2) 
+
+
+        begin_t=time.time()
+        for i in range(maxstep):     
+            print ('\n',"{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now()))
+                   
+            if ((i+1)%2000==0):#一次测试
+                print ('begining to eval D:')
+                ssim_mean, psnr_mean,contexloss,l1loss=gan.eval_once()
+                
+                #自己构建summary
+                tsummary = tf.Summary()
+                #tsummary.value.add(tag='mean prob of real1', simple_value=prob_T)
+                #tsummary.value.add(tag='mean prob of fake1', simple_value=prob_F)
+                tsummary.value.add(tag='mean L1_loss of G and GT', simple_value=l1loss)
+                tsummary.value.add(tag='mean contexloss', simple_value=contexloss)
+                tsummary.value.add(tag='mean ssim:', simple_value=ssim_mean)
+                tsummary.value.add(tag='mean psnr:', simple_value=psnr_mean)
+                #写入日志
+                logwriter.add_summary(tsummary, i)
+                
+            if i==0 or (i+1)%1500==0:#保存一波图片
+                pass#gan.eval_G_once(i)
+                
+                
+            if (i+1)%2000==0:#保存模型
+                print ('saving models...')
+                pat=all_saver.save(sess, op.join(logdir,'model_keep'),global_step=i)
+                print ('saved at:',pat)
+            
+            
+            stt=time.time()
+            print ('%d/%d  start train_once...'%(i,maxstep))
+            #lost,sum_log=vgg.train_once(sess) #这里每次训练都run一个summary出来
+            gan.train_once()
+            #写入日志
+            #logwriter.add_summary(sum_log, i)
+            #print ('write summary done!')
+            
+                
+            print ('time used:',time.time()-stt,' to be ',1.0/(time.time()-stt),' iters/s', ' left time:',(time.time()-stt)*(maxstep-i)/60/60,' hours')
+            
+        
+        print ('Training done!!!-->time used:',(time.time()-begin_t),'s = ',(time.time()-begin_t)/60/60,' hours')
 
         
         

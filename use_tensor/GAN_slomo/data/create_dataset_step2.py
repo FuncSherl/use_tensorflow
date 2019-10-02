@@ -165,6 +165,7 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3, training=Tr
     imgsize:[new_height, new_width]
     '''
     tep=os.listdir(tfdir)
+    tep.sort()
     #random.shuffle(tep)
     tep=list(map(lambda x:op.join(tfdir, x), tep))
     print (tep)
@@ -173,7 +174,7 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3, training=Tr
     
     def parse(one_element):
         feats = tf.parse_single_example(one_element, features={'data':tf.FixedLenFeature([], tf.string), 
-                                                           #'label':tf.FixedLenFeature([],tf.int64), 
+                                                           'label':tf.FixedLenFeature([],tf.string), 
                                                            'width':tf.FixedLenFeature([], tf.int64),
                                                            'height':tf.FixedLenFeature([], tf.int64)})
         image = tf.decode_raw(feats['data'], tf.uint8)
@@ -228,8 +229,9 @@ def test_showtfimgs(tfdir, batchsize):
         while True:
             images=sess.run(tep) 
             print ( images[0].shape)  #images这里是一个tuple，第一个是图片，第二个是timerate    (2, 360, 640, 9)
-            images,rates=images[0],images[1]
+            images,rates,label=images[0],images[1],images[-1]
             print (rates)
+            print (label)
             cv2.imshow('test',images[0,:,:,:3].astype(np.uint8))
             cv2.waitKey(0)
             cv2.imshow('test',images[0,:,:,3:6].astype(np.uint8))
@@ -285,8 +287,8 @@ def get_dataset_mean():
 if __name__ == '__main__':
     #txt2frames(train_txt ,extratdir_train)
     #txt2frames(test_txt, extratdir_test)
-    gen_tfrecords()
-    #test_showtfimgs(tfrec_dir_train, 2)
+    #gen_tfrecords()
+    test_showtfimgs(tfrec_dir_train, 2)
     #get_dataset_mean()
             
             
