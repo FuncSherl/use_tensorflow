@@ -11,22 +11,22 @@ import matplotlib.pyplot as plt
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'
 
-pc_id=1
+pc_id=2
 
 if pc_id==0: #
     videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
     extratdir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\extracted_videos' 
-    tfrec_dir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\tfrecords'
+    tfrec_dir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\tfrecords_step2'
     modelpath=r"E:\DL_models\use_tensorflow\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
 elif pc_id==1: #lab pc
     videodir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/original_high_fps_videos' #
     extratdir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos' #
-    tfrec_dir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/tfrecords' #
+    tfrec_dir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/tfrecords_step2' #
     modelpath = "/home/sherl/Pictures/v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
 elif pc_id==2: #server
     videodir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/original_high_fps_videos'
     extratdir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/extracted_videos'
-    tfrec_dir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/tfrecords'
+    tfrec_dir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/tfrecords_step2'
     modelpath = "/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/logs_v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000"
 
 extratdir_train=op.join(extratdir, 'train')
@@ -35,7 +35,7 @@ extratdir_test=op.join(extratdir, 'test')
 tfrec_dir_train=op.join(tfrec_dir, 'train')
 tfrec_dir_test=op.join(tfrec_dir, 'test')
 
-group_cnt_images=12
+group_cnt_images=12   #每个分组有多少图
 mean_dataset=[102.1, 109.9, 110.0]  #0->1 is [0.4, 0.43, 0.43]
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 '''
@@ -105,16 +105,14 @@ def frames2tfrec(frame_dir, tfrecdir, group_num=group_cnt_images, groups_perfile
         
         imgdata=[]
         for j in range(len(framelist)):
-            print (dirind,'/',len(videodirs),'  ',j,'/',len(framelist), cnt_num)
+            label_tep=str(dirind)+"_"+str(j)  #构建label
+            print (dirind,'/',len(videodirs),'  ',j,'/',len(framelist), cnt_num,label_tep)
             
             rimg=cv2.imread(op.join(tepath, framelist[j]))
             rimg=cv2.resize(rimg, tuple(img_shape_required))
             imgdata.append(rimg)
             
             if len(imgdata)<group_num: continue
-            elif len(imgdata)>group_num: 
-                imgdata=[imgdata[-1]]
-                continue
                 
             #print (imgdata.dtype, type(imgdata))
             
@@ -131,13 +129,14 @@ def frames2tfrec(frame_dir, tfrecdir, group_num=group_cnt_images, groups_perfile
             
             example = tf.train.Example(
             features=tf.train.Features(feature={
-            #'label': tf.train.Feature(int64_list=tf.train.Int64List(value=[label])),
+            'label': tf.train.Feature(bytes_list=tf.train.BytesList(value=[label_tep.encode("utf-8")])),
             'data': tf.train.Feature(bytes_list=tf.train.BytesList(value=[groupdata_raw])),
             'width':tf.train.Feature(int64_list=tf.train.Int64List(value=[size[1]])),
             'height':tf.train.Feature(int64_list=tf.train.Int64List(value=[size[0]]))
             })) 
             writer.write(example.SerializeToString())  #序列化为字符串
             cnt_num+=1
+            imgdata=[imgdata[-1]]
             
             
     writer.close()
@@ -178,7 +177,7 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3, training=Tr
                                                            'width':tf.FixedLenFeature([], tf.int64),
                                                            'height':tf.FixedLenFeature([], tf.int64)})
         image = tf.decode_raw(feats['data'], tf.uint8)
-        #label = tf.cast(feats['label'],tf.int32)
+        label = tf.cast(feats['label'],tf.string)   #feats['label'].decode()
         width = tf.cast(feats['width'], tf.int32)
         height= tf.cast(feats['height'], tf.int32)
         
@@ -189,13 +188,13 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3, training=Tr
         
         #生成的值遵循范围内的均匀分布 [minval, maxval)。下限minval包含在范围内，而上限maxval则被排除在外。
         #对于浮点数，默认范围是[0, 1)。对于int，至少maxval必须明确指定。
-        randnum_start=tf.random_uniform([1],minval=0, maxval=int(num_ori_group/3), dtype=tf.int64)[0]
-        randnum_mid=tf.random_uniform([1],minval=int(num_ori_group/3), maxval=2*int(num_ori_group/3), dtype=tf.int64)[0]
-        randnum_r=tf.random_uniform([1],minval=2*int(num_ori_group/3), maxval=num_ori_group  , dtype=tf.int64)[0]
+        #randnum_start=tf.random_uniform([1],minval=0, maxval=int(num_ori_group/3), dtype=tf.int64)[0]
+        randnum_mid=tf.random_uniform([1],minval=int(1), maxval=int(num_ori_group-1), dtype=tf.int64)[0]
+        #randnum_r=  tf.random_uniform([1],minval=2*int(num_ori_group/3), maxval=num_ori_group  , dtype=tf.int64)[0]
         
-        frame0=image[:,:, randnum_start*img_channel: (randnum_start+1)*img_channel]
+        frame0=image[:,:, :img_channel]
         frame1=image[:,:, randnum_mid*img_channel:(randnum_mid+1)*img_channel]
-        frame2=image[:,:, (randnum_r)*img_channel: (randnum_r+1)*img_channel]
+        frame2=image[:,:, (-1)*img_channel: ]
         tepframes=[frame0, frame1, frame2]
         image=tf.concat(tepframes, -1)
         
@@ -203,8 +202,8 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3, training=Tr
         image=preprocess_img(image, imgsize, len(tepframes)*img_channel, training)
         
         #这里t_rate指的是中间帧距离前帧的距离/后一帧与前一帧的距离，位于(0,1)
-        t_rate= tf.cast(randnum_mid-randnum_start, tf.float32) / tf.cast(randnum_r-randnum_start, tf.float32)
-        return [image,t_rate]
+        t_rate= tf.cast(randnum_mid, tf.float32) / tf.cast(num_ori_group-1, tf.float32)
+        return [image,t_rate, label]
     
     dataset=dataset.map(parse,num_parallel_calls=6)#注意把值回赋给dataset
     
@@ -286,8 +285,8 @@ def get_dataset_mean():
 if __name__ == '__main__':
     #txt2frames(train_txt ,extratdir_train)
     #txt2frames(test_txt, extratdir_test)
-    #gen_tfrecords()
-    test_showtfimgs(tfrec_dir_train, 2)
+    gen_tfrecords()
+    #test_showtfimgs(tfrec_dir_train, 2)
     #get_dataset_mean()
             
             
