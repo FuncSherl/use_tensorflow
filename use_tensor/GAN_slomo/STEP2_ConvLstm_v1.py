@@ -255,7 +255,9 @@ class Step2_ConvLstm:
 
     def train_once(self):
         imgdata,rate,newstate=self.getbatch_train_imgs()
-        if newstate: self.state_new_train=self.state_init_np
+        if newstate: 
+            self.state_new_train=self.state_init_np
+            print ('start from a zero state!!!')
         
         _, \
         self.state_new_train,   \
@@ -265,7 +267,7 @@ class Step2_ConvLstm:
                                     self.ssim, self.psnr, self.contex_loss, self.L1_loss_all, self.G_loss_all], \
                       feed_dict={self.imgs_pla:imgdata,self.timerates:rate,self.training:True,  self.state_pla_c:self.state_new_train[0],  self.state_pla_h:self.state_new_train[1]})
         
-        print ()
+        #print ()
         print ("train once:")
         print ("ssim:",ssim)
         print ("psnr:",psnr)
