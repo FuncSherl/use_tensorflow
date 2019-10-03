@@ -289,12 +289,12 @@ class Step2_ConvLstm:
             contexloss, L1_loss, loss_all=self.sess.run([
                                         self.state_final, \
                                         self.ssim, self.psnr, self.contex_loss, self.L1_loss_all, self.G_loss_all], \
-                          feed_dict={self.input_pla:imgdata,self.timerates:rate,self.training:False,  self.state_pla_c:self.state_new_test[0],  self.state_pla_h:self.state_new_test[1]})
+                          feed_dict={self.imgs_pla:imgdata,self.timerates:rate,self.training:False,  self.state_pla_c:self.state_new_test[0],  self.state_pla_h:self.state_new_test[1]})
         
-            kep_ssim+=ssim
-            kep_psnr+=psnr
-            kep_l1loss+=L1_loss
-            kep_contexloss+=contexloss
+            kep_ssim+=np.mean(ssim)
+            kep_psnr+=np.mean(psnr)
+            kep_l1loss+=np.mean(L1_loss)
+            kep_contexloss+=np.mean(contexloss)
         return kep_ssim/evalstep,kep_psnr/evalstep,kep_contexloss/evalstep,kep_l1loss/evalstep
 
 
@@ -311,7 +311,7 @@ if __name__ == '__main__':
         for i in range(maxstep):     
             print ('\n',"{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now()))
                    
-            if ((i+1)%2000==0):#一次测试
+            if i==0 or (i+1)%2000==0:#一次测试
                 print ('begining to eval D:')
                 ssim_mean, psnr_mean,contexloss,l1loss=gan.eval_once()
                 
