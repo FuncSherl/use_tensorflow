@@ -298,7 +298,7 @@ class Step2_ConvLstm:
             kep_l1loss+=np.mean(L1_loss)
             kep_contexloss+=np.mean(contexloss)
             
-        print ("eval ",evalstep,' times:','\nmean ssim:',kep_ssim,' mean psnr:',kep_psnr,'\nmean l1loss:',kep_l1loss,' mean contexloss:',kep_contexloss)
+        print ("eval ",evalstep,' times:','\nmean ssim:',kep_ssim/evalstep,' mean psnr:',kep_psnr/evalstep,'\nmean l1loss:',kep_l1loss/evalstep,' mean contexloss:',kep_contexloss/evalstep)
         return kep_ssim/evalstep,kep_psnr/evalstep,kep_contexloss/evalstep,kep_l1loss/evalstep
 
 
