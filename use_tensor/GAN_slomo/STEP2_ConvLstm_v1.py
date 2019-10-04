@@ -45,6 +45,8 @@ gpu_options = tf.GPUOptions(allow_growth=True)
 config = tf.ConfigProto(gpu_options=gpu_options)
 
 logdir="./logs_v24_Step2/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(LR,batchsize, maxstep))
+kepimgdir=op.join(logdir, "zerostateimgs")
+os.makedirs(kepimgdir,  exist_ok=True)
 
 class Step2_ConvLstm:
 
@@ -64,6 +66,7 @@ class Step2_ConvLstm:
         #tesorfs
         self.optical_0_1=self.graph.get_tensor_by_name("G_opticalflow_0_2:0")
         self.optical_1_0=self.graph.get_tensor_by_name("G_opticalflow_2_0:0")
+        self.outimg = self.graph.get_tensor_by_name("G_net_generate:0")
         
         # 注意这里构建lstm的输入是根据第一部的输出直接来的
         #self.input_pla = tf.placeholder(tf.float32, [batchsize,  flow_size_h, flow_size_w, input_channel], name='step2_opticalflow_in')
@@ -277,20 +280,31 @@ class Step2_ConvLstm:
         
         return ssim,psnr,contexloss,L1_loss
 
-    def eval_once(self, evalstep=100):
+    def eval_once(self, step,evalstep=100):
+        kep_img_dir=op.join(kepimgdir, str(step))
+        os.makedirs(kep_img_dir, exist_ok=True)
+        
+        recording=0  #遇到一个新的状态开始记录，到下一个状态停止
         kep_ssim=0.0
         kep_psnr=0.0
         kep_l1loss=0.0
         kep_contexloss=0.0
+        
+        img_cnt=0
+        
         for i in range(evalstep):
             imgdata,rate,newstate=self.getbatch_test_imgs()
-            if newstate: self.state_new_test=self.state_init_np
+            if newstate: 
+                self.state_new_test=self.state_init_np
+                recording+=1
     
             self.state_new_test,   \
             ssim,psnr,      \
-            contexloss, L1_loss, loss_all=self.sess.run([
+            contexloss, L1_loss, loss_all,\
+            step1_flow_0_1,step1_flow_1_0,step1_imgout,step2_flow_0_1,step2_flow_1_0,step2_outimg=self.sess.run([
                                         self.state_final, \
-                                        self.ssim, self.psnr, self.contex_loss, self.L1_loss_all, self.G_loss_all], \
+                                        self.ssim, self.psnr, self.contex_loss, self.L1_loss_all, self.G_loss_all,\
+                                        self.optical_0_1, self.optical_1_0, self.outimg, self.opticalflow_0_2,self.opticalflow_2_0,self.G_net], \
                           feed_dict={self.imgs_pla:imgdata,self.timerates:rate,self.training:False,  self.state_pla_c:self.state_new_test[0],  self.state_pla_h:self.state_new_test[1]})
         
             kep_ssim+=np.mean(ssim)
@@ -298,8 +312,80 @@ class Step2_ConvLstm:
             kep_l1loss+=np.mean(L1_loss)
             kep_contexloss+=np.mean(contexloss)
             
+            if recording==1:
+                tep=self.form_bigimg(imgdata,step1_flow_0_1,step1_flow_1_0,step1_imgout,step2_flow_0_1,step2_flow_1_0,step2_outimg)
+                cv2.imwrite( op.join(kep_img_dir, "recording_"+str(recording)+"_"+str(img_cnt)+'.jpg') ,  tep)
+                img_cnt+=1
+                
+                    
+            
         print ("eval ",evalstep,' times:','\nmean ssim:',kep_ssim/evalstep,' mean psnr:',kep_psnr/evalstep,'\nmean l1loss:',kep_l1loss/evalstep,' mean contexloss:',kep_contexloss/evalstep)
+        print ("write "+str(img_cnt)+" imgs to:"+kep_img_dir)
         return kep_ssim/evalstep,kep_psnr/evalstep,kep_contexloss/evalstep,kep_l1loss/evalstep
+    
+    def form_bigimg(self, imgdata,step1_flow_0_1,step1_flow_1_0,step1_imgout,step2_flow_0_1,step2_flow_1_0,step2_outimg):
+        #imgdata:[12,180,320,9]
+        #根据输入的原始输入3图，第一步的输出前后光流，第一步的输出合成中间帧，第二部的前后光流，第二部的合成中间帧--->合成一张大图
+        gap=6
+        height=self.batchsize_inputimg*self.img_size_h+ (self.batchsize_inputimg-1)*gap
+        width =self.img_size_w*9+(9-1)*gap
+        
+        ret=np.zeros([height, width, img_channel], dtype=np.uint8)
+        imgdata=self.tanh2img(imgdata)
+        step1_imgout=self.tanh2img(step1_imgout)
+        step2_outimg=self.tanh2img(step2_outimg)
+        
+        for j in range(self.batchsize_inputimg):
+            col=0
+            row=j*(self.img_size_h+gap)
+            #0,1,2
+            for k in range(group_img_num): 
+                ret[row:row+self.img_size_h, col:col+self.img_size_w]=imgdata[j, :,:,k*img_channel:(k+1)*img_channel]
+                col+=self.img_size_w+gap
+            #3
+            ret[row:row+self.img_size_h, col:col+self.img_size_w]=self.flow_bgr(step1_flow_0_1[j])
+            col+=self.img_size_w+gap
+            #4
+            ret[row:row+self.img_size_h, col:col+self.img_size_w]=self.flow_bgr(step1_flow_1_0[j])
+            col+=self.img_size_w+gap
+            #5
+            ret[row:row+self.img_size_h, col:col+self.img_size_w]=step1_imgout[j]
+            col+=self.img_size_w+gap
+            #6
+            ret[row:row+self.img_size_h, col:col+self.img_size_w]=self.flow_bgr(step2_flow_0_1[j])
+            col+=self.img_size_w+gap
+            #7
+            ret[row:row+self.img_size_h, col:col+self.img_size_w]=self.flow_bgr(step2_flow_1_0[j])
+            col+=self.img_size_w+gap
+            #8
+            ret[row:row+self.img_size_h, col:col+self.img_size_w]=step2_outimg[j]
+            col+=self.img_size_w+gap
+        return ret
+    
+    
+    def flow_bgr(self, flow):
+        #flow:[h,w,2] no batch
+        # Use Hue, Saturation, Value colour model 
+        #色调（H），饱和度（S），明度（V）
+        #这里色调<->方向
+        #饱和度 =255
+        #明度<->运动长度
+        #黑色代表无运动
+        h, w = flow.shape[:2]
+        hsv = np.zeros((h, w, 3), np.uint8)
+        #print (hsv.shape)
+        hsv[..., 1] = 255
+        
+        mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+        hsv[..., 0] = ang * 180 / np.pi / 2
+        hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+        bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        '''
+        cv2.imshow("colored flow", bgr)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        '''
+        return bgr
 
 
 if __name__ == '__main__':   
@@ -317,7 +403,7 @@ if __name__ == '__main__':
                    
             if i==0 or (i+1)%2000==0:#一次测试
                 print ('begining to eval D:')
-                ssim_mean, psnr_mean,contexloss,l1loss=gan.eval_once()
+                ssim_mean, psnr_mean,contexloss,l1loss=gan.eval_once(i)
                 
                 #自己构建summary
                 tsummary = tf.Summary()

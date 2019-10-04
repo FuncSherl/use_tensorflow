@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'
 
-pc_id=2
+pc_id=0
 
 if pc_id==0: #
     videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
@@ -287,8 +287,8 @@ def get_dataset_mean():
 if __name__ == '__main__':
     #txt2frames(train_txt ,extratdir_train)
     #txt2frames(test_txt, extratdir_test)
-    #gen_tfrecords()
-    test_showtfimgs(tfrec_dir_train, 2)
+    gen_tfrecords()
+    #test_showtfimgs(tfrec_dir_train, 2)
     #get_dataset_mean()
             
             
