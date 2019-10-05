@@ -233,7 +233,7 @@ class Step2_ConvLstm:
             inimg,rate,label=tepimg[0],tepimg[1],tepimg[2]
             if str(label[0]).split('_')[0]==str(label[-1]).split('_')[0]: break
             newstate=True
-        if str(label[0]).split('_')[0]!=self.last_label_train:
+        if str(label[0]).split('_')[0]!=self.last_label_train: #如果刚好上面处于两个视频分界线，这里可能存在误判，这里进行修复
             newstate=True
         self.last_label_train=str(label[0]).split('_')[0]
         
