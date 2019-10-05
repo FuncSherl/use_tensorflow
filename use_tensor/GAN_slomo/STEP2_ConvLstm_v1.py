@@ -115,6 +115,8 @@ class Step2_ConvLstm:
         print (self.state_init) #LSTMStateTuple(c=<tf.Tensor 'ConvLSTMCellZeroState/zeros:0' shape=(2, 180, 320, 12) dtype=float32>, h=<tf.Tensor 'ConvLSTMCellZeroState/zeros_1:0' shape=(2, 180, 320, 12) dtype=float32>)
         self.state_new_train=self.state_init_np
         self.state_new_test=self.state_init_np
+        self.last_label_train='#'
+        self.last_label_test='#'
         #这里开始搞lstm了
         self.input_dynamic_lstm=tf.expand_dims(self.input_pla, 0)   #这里默认lstm的输入batchsize=1，注意，设置里batchsize必须为1
         print (self.input_dynamic_lstm)  #Tensor("ExpandDims_6:0", shape=(1, 12, 180, 320, 4), dtype=float32)
@@ -231,6 +233,10 @@ class Step2_ConvLstm:
             inimg,rate,label=tepimg[0],tepimg[1],tepimg[2]
             if str(label[0]).split('_')[0]==str(label[-1]).split('_')[0]: break
             newstate=True
+        if str(label[0]).split('_')[0]!=self.last_label_train:
+            newstate=True
+        self.last_label_train=str(label[0]).split('_')[0]
+        
         return self.img2tanh(inimg),rate,newstate
     
     def getbatch_test_imgs(self):
@@ -240,6 +246,10 @@ class Step2_ConvLstm:
             inimg,rate,label=tepimg[0],tepimg[1],tepimg[2]
             if str(label[0]).split('_')[0]==str(label[-1]).split('_')[0]: break
             newstate=True
+        if str(label[0]).split('_')[0]!=self.last_label_test:
+            newstate=True
+        self.last_label_test=str(label[0]).split('_')[0]
+        
         return self.img2tanh(inimg),rate,newstate
     
     def img2tanh(self,img):
