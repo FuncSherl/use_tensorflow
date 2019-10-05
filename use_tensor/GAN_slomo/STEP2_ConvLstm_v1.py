@@ -359,7 +359,8 @@ class Step2_ConvLstm:
             ret[row:row+self.img_size_h, col:col+self.img_size_w]=self.flow_bgr(step1_flow_1_0[j])
             col+=self.img_size_w+gap
             #5
-            ret[row:row+self.img_size_h, col:col+self.img_size_w]=step1_imgout[j]
+            mean_l1=np.mean( np.abs(step1_imgout[j]-imgdata[j, :,:,1*img_channel:(1+1)*img_channel]) )
+            ret[row:row+self.img_size_h, col:col+self.img_size_w]=cv2.putText(step1_imgout[j],'GT_step1_L1loss:'+str(mean_l1),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
             col+=self.img_size_w+gap
             #6
             ret[row:row+self.img_size_h, col:col+self.img_size_w]=self.flow_bgr(step2_flow_0_1[j])
@@ -368,7 +369,8 @@ class Step2_ConvLstm:
             ret[row:row+self.img_size_h, col:col+self.img_size_w]=self.flow_bgr(step2_flow_1_0[j])
             col+=self.img_size_w+gap
             #8
-            ret[row:row+self.img_size_h, col:col+self.img_size_w]=step2_outimg[j]
+            mean_l1=np.mean( np.abs(step2_outimg[j]-imgdata[j, :,:,1*img_channel:(1+1)*img_channel]) )
+            ret[row:row+self.img_size_h, col:col+self.img_size_w]=cv2.putText(step2_outimg[j],'GT_step2_L1loss:'+str(mean_l1),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
             col+=self.img_size_w+gap
         return ret
     
