@@ -70,9 +70,9 @@ class Step2_ConvLstm:
         
         # 注意这里构建lstm的输入是根据第一部的输出直接来的
         #self.input_pla = tf.placeholder(tf.float32, [batchsize,  flow_size_h, flow_size_w, input_channel], name='step2_opticalflow_in')
-        self.input_pla=tf.concat([self.optical_0_1, self.optical_1_0], -1)  #这里将两个光流拼起来 可以考虑将前后帧也拼起来
+        self.input_pla=tf.concat([self.imgs_pla[:,:,:,:img_channel], self.optical_0_1, self.optical_1_0, self.imgs_pla[:,:,:, img_channel*2:]], -1)  #这里将两个光流拼起来 可以考虑将前后帧也拼起来
         self.lstm_input_channel=self.input_pla.get_shape().as_list()[-1]
-        print (self.input_pla)  #Tensor("concat_9:0", shape=(12, 180, 320, 4), dtype=float32)
+        print (self.input_pla)  #Tensor("concat_9:0", shape=(12, 180, 320, ?), dtype=float32)
         
         #第一部中的batchsize，这里可以当作timestep使用
         self.batchsize_inputimg=self.imgs_pla.get_shape().as_list()[0]
@@ -172,9 +172,21 @@ class Step2_ConvLstm:
         self.L1_loss_interframe =tf.reduce_mean(tf.abs(  self.G_net-self.frame1  ))
         self.L1_loss_all        =tf.reduce_mean(tf.abs(  self.G_net-self.frame1  ) + \
                                                 tf.abs(self.img_flow_2_0-self.frame0) + \
-                                                tf.abs(self.img_flow_0_2-self.frame2), name='G_clear_l1_loss')
+                                                tf.abs(self.img_flow_0_2-self.frame2), name='step2_G_clear_l1_loss')
         #self.G_loss_mean_Square=  self.contex_loss*1 + self.L1_loss_all
         print ('step2_loss_mean_l1 form finished..')
+        
+        #4 local var loss
+        self.local_var_loss_0_2=self.local_var_loss(self.opticalflow_0_2)
+        self.local_var_loss_2_0=self.local_var_loss(self.opticalflow_2_0)
+        #print ("local _var loss:",self.local_var_loss_0_2,  self.G_loss_mean_D1)
+        #local _var loss: Tensor("mean_local_var:0", shape=(), dtype=float32) Tensor("Mean_3:0", shape=(), dtype=float32)
+        self.local_var_loss_all=tf.add(self.local_var_loss_0_2, self.local_var_loss_2_0, name="step2_local_var_add")
+        
+        #5 global var loss
+        self.global_var_loss_0_2=self.global_var_loss(self.opticalflow_0_2)
+        self.global_var_loss_2_0=self.global_var_loss(self.opticalflow_2_0)
+        self.global_var_loss_all=tf.add(self.global_var_loss_0_2, self.global_var_loss_2_0, name="step2_global_var_add")
         
         #6 SSIM
         self.ssim = tf.image.ssim(self.G_net, self.frame1, max_val=2.0)
@@ -185,7 +197,7 @@ class Step2_ConvLstm:
         print ("psnr:", self.psnr) #psnr: Tensor("G_frame1_psnr/Identity_3:0", shape=(12,), dtype=float32)
         
         
-        self.G_loss_all=self.contex_loss + self.L1_loss_all
+        self.G_loss_all=self.contex_loss + self.L1_loss_all +  self.local_var_loss_all*0.06
         
         self.train_op = tf.train.AdamOptimizer(LR, name="step2_adam").minimize(self.G_loss_all)
         
@@ -197,7 +209,30 @@ class Step2_ConvLstm:
         #最后构建完成后初始化参数 
         self.sess.run(tf.global_variables_initializer())
 
+    
+    def local_var_loss(self, flow, kernel_size=10, stride=1):
+        '''
+        计算局部平滑loss，即每一个卷积范围内的方差之和
+        flow:nhwc,channel=2
+        '''
+        flow_shape=flow.get_shape().as_list()
+        #[filter_height, filter_width, in_channels, channel_multiplier]
+        common_kernel=tf.ones([kernel_size, kernel_size, flow_shape[-1], 1])
+        flow_squ=tf.square(flow)
+        #E xi^2
+        E_flow_squ=tf.nn.depthwise_conv2d(flow_squ, common_kernel, strides=[1,stride,stride,1], padding="VALID")/(kernel_size*kernel_size)
         
+        #(E x)^2
+        E_flow    =tf.nn.depthwise_conv2d(flow,     common_kernel, strides=[1,stride,stride,1], padding="VALID")/(kernel_size*kernel_size)
+        E_flow=tf.square(E_flow)
+        
+        local_var=tf.subtract(E_flow_squ, E_flow, name="step2_local_var")
+        #local_var: Tensor("local_var:0", shape=(12, 171, 311, 2), dtype=float32)
+        print ("local_var:",local_var)
+        
+        mean_local_var=tf.reduce_mean(local_var, name="step2_mean_local_var")
+        
+        return mean_local_var
     
     def warp_op(self, images, flow, timerates=1):
         '''
@@ -275,9 +310,9 @@ class Step2_ConvLstm:
         _, \
         self.state_new_train,   \
         ssim,psnr,      \
-        contexloss, L1_loss, loss_all=self.sess.run([self.train_op,\
+        contexloss, L1_loss, localloss,loss_all=self.sess.run([self.train_op,\
                                     self.state_final, \
-                                    self.ssim, self.psnr, self.contex_loss, self.L1_loss_all, self.G_loss_all], \
+                                    self.ssim, self.psnr, self.contex_loss, self.L1_loss_all, self.local_var_loss_all,self.G_loss_all], \
                       feed_dict={self.imgs_pla:imgdata,self.timerates:rate,self.training:True,  self.state_pla_c:self.state_new_train[0],  self.state_pla_h:self.state_new_train[1]})
         
         #print ()
@@ -285,10 +320,11 @@ class Step2_ConvLstm:
         print ("ssim:",ssim)
         print ("psnr:",psnr)
         print ("contexloss:",contexloss)
+        print ("local var loss:",localloss)
         print ("l1_loss_all:",L1_loss)
         print ("loss_all:",loss_all)
         
-        return ssim,psnr,contexloss,L1_loss
+        return ssim,psnr,contexloss,localloss,L1_loss
 
     def eval_once(self, step,evalstep=100):
         kep_img_dir=op.join(kepimgdir, str(step))
@@ -299,6 +335,7 @@ class Step2_ConvLstm:
         kep_psnr=0.0
         kep_l1loss=0.0
         kep_contexloss=0.0
+        kep_localloss=0
         
         img_cnt=0
         
@@ -310,10 +347,11 @@ class Step2_ConvLstm:
     
             self.state_new_test,   \
             ssim,psnr,      \
-            contexloss, L1_loss, loss_all,\
+            contexloss, L1_loss, localvarloss,loss_all,\
             step1_flow_0_1,step1_flow_1_0,step1_imgout,step2_flow_0_1,step2_flow_1_0,step2_outimg=self.sess.run([
                                         self.state_final, \
-                                        self.ssim, self.psnr, self.contex_loss, self.L1_loss_all, self.G_loss_all,\
+                                        self.ssim, self.psnr, \
+                                        self.contex_loss, self.L1_loss_all, self.local_var_loss_all,self.G_loss_all,\
                                         self.optical_0_1, self.optical_1_0, self.outimg, self.opticalflow_0_2,self.opticalflow_2_0,self.G_net], \
                           feed_dict={self.imgs_pla:imgdata,self.timerates:rate,self.training:False,  self.state_pla_c:self.state_new_test[0],  self.state_pla_h:self.state_new_test[1]})
         
@@ -321,6 +359,7 @@ class Step2_ConvLstm:
             kep_psnr+=np.mean(psnr)
             kep_l1loss+=np.mean(L1_loss)
             kep_contexloss+=np.mean(contexloss)
+            kep_localloss+=localvarloss
             
             if recording==1:
                 tep=self.form_bigimg(imgdata,step1_flow_0_1,step1_flow_1_0,step1_imgout,step2_flow_0_1,step2_flow_1_0,step2_outimg)
@@ -329,9 +368,9 @@ class Step2_ConvLstm:
                 
                     
             
-        print ("eval ",evalstep,' times:','\nmean ssim:',kep_ssim/evalstep,' mean psnr:',kep_psnr/evalstep,'\nmean l1loss:',kep_l1loss/evalstep,' mean contexloss:',kep_contexloss/evalstep)
+        print ("eval ",evalstep,' times:','\nmean ssim:',kep_ssim/evalstep,' mean psnr:',kep_psnr/evalstep,'\nmean l1loss:',kep_l1loss/evalstep,' mean contexloss:',kep_contexloss/evalstep," mean localvar loss:",kep_localloss/evalstep)
         print ("write "+str(img_cnt)+" imgs to:"+kep_img_dir)
-        return kep_ssim/evalstep,kep_psnr/evalstep,kep_contexloss/evalstep,kep_l1loss/evalstep
+        return kep_ssim/evalstep,kep_psnr/evalstep,kep_contexloss/evalstep,kep_l1loss/evalstep, kep_localloss/evalstep
     
     def form_bigimg(self, imgdata,step1_flow_0_1,step1_flow_1_0,step1_imgout,step2_flow_0_1,step2_flow_1_0,step2_outimg):
         #imgdata:[12,180,320,9]
@@ -415,7 +454,7 @@ if __name__ == '__main__':
                    
             if i==0 or (i+1)%2000==0:#一次测试
                 print ('begining to eval D:')
-                ssim_mean, psnr_mean,contexloss,l1loss=gan.eval_once(i)
+                ssim_mean, psnr_mean,contexloss,l1loss,localvarloss=gan.eval_once(i)
                 
                 #自己构建summary
                 tsummary = tf.Summary()
@@ -423,6 +462,7 @@ if __name__ == '__main__':
                 #tsummary.value.add(tag='mean prob of fake1', simple_value=prob_F)
                 tsummary.value.add(tag='mean L1_loss of G and GT', simple_value=l1loss)
                 tsummary.value.add(tag='mean contexloss', simple_value=contexloss)
+                tsummary.value.add(tag='mean localvar loss', simple_value=localvarloss)
                 tsummary.value.add(tag='mean ssim:', simple_value=ssim_mean)
                 tsummary.value.add(tag='mean psnr:', simple_value=psnr_mean)
                 #写入日志

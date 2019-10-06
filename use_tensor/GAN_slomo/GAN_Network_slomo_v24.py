@@ -309,7 +309,7 @@ class GAN_Net:
         '''
         flow_shape=flow.get_shape().as_list()
         #[filter_height, filter_width, in_channels, channel_multiplier]
-        common_kernel=tf.ones([kernel_size, kernel_size, 2, 1])
+        common_kernel=tf.ones([kernel_size, kernel_size, flow_shape[-1], 1])
         flow_squ=tf.square(flow)
         #E xi^2
         E_flow_squ=tf.nn.depthwise_conv2d(flow_squ, common_kernel, strides=[1,stride,stride,1], padding="VALID")/(kernel_size*kernel_size)
