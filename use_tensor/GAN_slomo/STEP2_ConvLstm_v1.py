@@ -234,6 +234,11 @@ class Step2_ConvLstm:
         
         return mean_local_var
     
+    def global_var_loss(self, flow):
+        tep=tf.reduce_mean( tf.abs(flow[:, :-1, :, :]-flow[:, 1:, :, :]) )+tf.reduce_mean( tf.abs(flow[:, :, :-1, :]-flow[:, :, 1:, :]) )
+        return tep
+    
+    
     def warp_op(self, images, flow, timerates=1):
         '''
         tf.contrib.image.dense_image_warp(
