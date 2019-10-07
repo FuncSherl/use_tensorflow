@@ -117,6 +117,13 @@ class Step2_ConvLstm:
         self.state_new_test=self.state_init_np
         self.last_label_train='#'
         self.last_label_test='#'
+        self.state_random_row_train=0
+        self.state_random_col_train=0
+        self.state_flip_train=False
+        
+        self.state_random_row_test=0
+        self.state_random_col_test=0
+        self.state_flip_test=False
         #这里开始搞lstm了
         self.input_dynamic_lstm=tf.expand_dims(self.input_pla, 0)   #这里默认lstm的输入batchsize=1，注意，设置里batchsize必须为1
         print (self.input_dynamic_lstm)  #Tensor("ExpandDims_6:0", shape=(1, 12, 180, 320, 4), dtype=float32)
@@ -270,12 +277,21 @@ class Step2_ConvLstm:
         newstate=False
         while True:
             tepimg=self.sess.run(self.pipline_data_train)
-            inimg,rate,label=tepimg[0],tepimg[1],tepimg[2]
+            inimg,rate,label=tepimg[0],tepimg[1],tepimg[2]  #注意这里拿到的img是size+6大小的，这里可以进行一个数据扩张，但是扩展一定要连续帧一致
             if str(label[0]).split('_')[0]==str(label[-1]).split('_')[0]: break
             newstate=True
         if str(label[0]).split('_')[0]!=self.last_label_train: #如果刚好上面处于两个视频分界线，这里可能存在误判，这里进行修复
             newstate=True
         self.last_label_train=str(label[0]).split('_')[0]
+        
+        if newstate:
+            self.state_random_row_train=np.random.randint(6)
+            self.state_random_col_train=np.random.randint(6)
+            self.state_flip_train=np.random.randint(2)
+        
+        inimg=inimg[self.state_random_row_train:self.state_random_row_train+self.img_size_h, self.state_random_col_train:self.state_random_col_train+self.img_size_w]
+        if self.state_flip_train:  #左右翻转扩张
+            inimg=np.fliplr(inimg)
         
         return self.img2tanh(inimg),rate,newstate
     
@@ -289,6 +305,14 @@ class Step2_ConvLstm:
         if str(label[0]).split('_')[0]!=self.last_label_test:
             newstate=True
         self.last_label_test=str(label[0]).split('_')[0]
+        
+        if newstate:
+            self.state_random_row_test=np.random.randint(6)
+            self.state_random_col_test=np.random.randint(6)
+            self.state_flip_test=np.random.randint(2)
+        inimg=inimg[self.state_random_row_test:self.state_random_row_test+self.img_size_h, self.state_random_col_test:self.state_random_col_test+self.img_size_w]
+        if self.state_flip_test:
+            inimg=np.fliplr(inimg)
         
         return self.img2tanh(inimg),rate,newstate
     
