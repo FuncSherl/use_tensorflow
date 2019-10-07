@@ -289,9 +289,9 @@ class Step2_ConvLstm:
             self.state_random_col_train=np.random.randint(6)
             self.state_flip_train=np.random.randint(2)
         
-        inimg=inimg[self.state_random_row_train:self.state_random_row_train+self.img_size_h, self.state_random_col_train:self.state_random_col_train+self.img_size_w]
+        inimg=inimg[:,self.state_random_row_train:self.state_random_row_train+self.img_size_h, self.state_random_col_train:self.state_random_col_train+self.img_size_w]
         if self.state_flip_train:  #左右翻转扩张
-            inimg=np.fliplr(inimg)
+            inimg=np.flip(inimg,2)
         
         return self.img2tanh(inimg),rate,newstate
     
@@ -310,9 +310,9 @@ class Step2_ConvLstm:
             self.state_random_row_test=np.random.randint(6)
             self.state_random_col_test=np.random.randint(6)
             self.state_flip_test=np.random.randint(2)
-        inimg=inimg[self.state_random_row_test:self.state_random_row_test+self.img_size_h, self.state_random_col_test:self.state_random_col_test+self.img_size_w]
-        if self.state_flip_test:
-            inimg=np.fliplr(inimg)
+        inimg=inimg[:,self.state_random_row_test:self.state_random_row_test+self.img_size_h, self.state_random_col_test:self.state_random_col_test+self.img_size_w]
+        if self.state_flip_test:  #INIMG[12，180，320，9]
+            inimg=np.flip(inimg, 2)
         
         return self.img2tanh(inimg),rate,newstate
     
