@@ -310,9 +310,11 @@ class Step2_ConvLstm:
             self.state_random_row_test=np.random.randint(6)
             self.state_random_col_test=np.random.randint(6)
             self.state_flip_test=np.random.randint(2)
+        ''' 在测试阶段，不需要数据扩张
         inimg=inimg[:,self.state_random_row_test:self.state_random_row_test+self.img_size_h, self.state_random_col_test:self.state_random_col_test+self.img_size_w]
         if self.state_flip_test:  #INIMG[12，180，320，9]
             inimg=np.flip(inimg, 2)
+        '''
         
         return self.img2tanh(inimg),rate,newstate
     

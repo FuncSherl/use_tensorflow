@@ -24,10 +24,10 @@ elif pc_id==1: #lab pc
     tfrec_dir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/tfrecords_step2' #
     modelpath = "/home/sherl/Pictures/v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
 elif pc_id==2: #server
-    videodir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/original_high_fps_videos'
-    extratdir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/extracted_videos'
-    tfrec_dir=r'/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/tfrecords_step2'
-    modelpath = "/media/ms/document/xvhao/use_tensorflow/use_tensor/GAN_slomo/logs_v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000"
+    videodir=r'/home/vrlab/Documents/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/original_high_fps_videos'
+    extratdir=r'/home/vrlab/Documents/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/extracted_videos'
+    tfrec_dir=r'/home/vrlab/Documents/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/tfrecords_step2'
+    modelpath = "/home/vrlab/Documents/xvhao/use_tensorflow/use_tensor/GAN_slomo/logs_v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000"
 
 extratdir_train=op.join(extratdir, 'train')
 extratdir_test=op.join(extratdir, 'test')
@@ -148,7 +148,10 @@ def preprocess_img(image,outlen, outchannel=9, training=True):
     ''''''
     #这里利用resize后的图片训练可能会导致在真实情况下效果由于与训练时的图片缩放比例不一样导致的问题
     #tf.image.resize_image_with_crop_or_pad()
-    image=tf.image.resize_images(image, tuple(  [outlen[0]+6, outlen[1]+6 ]   )  )
+    if training:
+        image=tf.image.resize_images(image, tuple(  [outlen[0]+6, outlen[1]+6 ]   )  )
+    else:
+        image=tf.image.resize_images(image, tuple(  [outlen[0], outlen[1] ]   )  )
     #image=tf.image.random_flip_left_right(image)
     #image=tf.image.random_crop(image, [outlen[0], outlen[1], outchannel ])
     
