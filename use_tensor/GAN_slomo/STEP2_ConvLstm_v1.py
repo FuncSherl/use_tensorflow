@@ -217,9 +217,9 @@ class Step2_ConvLstm:
 #          
 #         self.train_op = tf.train.AdamOptimizer(LR, name="step2_adam").minimize(self.G_loss_all)
         
-        train_op,\
-        L1_loss_all,contex_loss,local_var_loss_all,G_loss_all,\
-        ssim,psnr,G_net=self.loss_cal(self.opticalflow_0_2, self.opticalflow_2_0, scopevar.name)
+        self.step2_train_op,\
+        self.step2_L1_loss_all,self.step2_contex_loss,self.step2_local_var_loss_all,self.step2_G_loss_all,\
+        self.step2_ssim,self.step2_psnr,self.step2_G_net=self.loss_cal(self.opticalflow_0_2, self.opticalflow_2_0, scopevar.name)
         
         
         
