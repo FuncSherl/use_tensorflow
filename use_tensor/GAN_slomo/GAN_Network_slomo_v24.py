@@ -131,6 +131,8 @@ class GAN_Net:
         #print ('after concat:',frame0and2)
         #!!!!!!!!!!here is differs from v1,add to Generator output the ori img will reduce the generator difficulty 
         self.G_opticalflow=self.Generator_net(self.frame0, self.frame2)  #注意这里是直接作为optical flow
+        ###################3testing
+        #到这里trainable var 只有60个，是G的参数
         
         #下面将结果中的代表各个意义分开
         #optical flow[:,:,:,0:2] is frame0->frame2(get frame2 from frame0), [2:]is 2->0
@@ -200,8 +202,9 @@ class GAN_Net:
         print ("forming conx loss：")
         tep_G_shape=self.G_net.get_shape().as_list()[1:]
         
-        self.contex_Genera =tf.keras.applications.VGG16(include_top=False, input_tensor=self.G_net,  input_shape=tep_G_shape).get_layer("block4_conv3").output
-        self.contex_frame1 =tf.keras.applications.VGG16(include_top=False, input_tensor=self.frame1, input_shape=tep_G_shape).get_layer("block4_conv3").output
+        with tf.variable_scope("VGG16",  reuse=tf.AUTO_REUSE):
+            self.contex_Genera =tf.keras.applications.VGG16(include_top=False, input_tensor=self.G_net,  input_shape=tep_G_shape).get_layer("block4_conv3").output
+            self.contex_frame1 =tf.keras.applications.VGG16(include_top=False, input_tensor=self.frame1, input_shape=tep_G_shape).get_layer("block4_conv3").output
         
         self.contex_loss=   tf.reduce_mean(tf.squared_difference( self.contex_frame1, self.contex_Genera), name='G_Contex_loss')
         print ('G_loss_mean_contex form finished..')
@@ -261,6 +264,13 @@ class GAN_Net:
         print ("trainable vars cnt:",len(t_vars))
         self.G_para=[var for var in t_vars if var.name.startswith('G')]
         self.D_para=[var for var in t_vars if var.name.startswith('D')]
+        print (t_vars)
+        '''
+        trainable vars cnt: 128
+        D: AdamOptimizer to maxmize 16 vars..
+        G: AdamOptimizer to maxmize 60 vars..
+        :这里有个差值128-16-60，差得是VGG网络中的参数52，还是很吃内存的
+        '''
         
         # weight clipping
         self.clip_D = [p.assign(tf.clip_by_value(p, weightclip_min, weightclip_max)) for p in self.D_para]
@@ -268,6 +278,7 @@ class GAN_Net:
         #训练使用
         self.train_D=self.train_op_D(decay_steps, decay_rate)
         self.train_G=self.train_op_G(decay_steps, decay_rate)  
+        #print ("training op names:",self.train_D, self.train_G)
         
         '''
         print ('\nshow all trainable vars:',len(tf.trainable_variables()))
