@@ -34,7 +34,10 @@ dropout=0.5
 leakyrelurate=0.2
 stddev=0.01
 bias_init=0.0
-LR=1e-3
+LR=1e-3  #0.0001
+LR_step1=2e-4
+decay_steps=12000
+decay_rate=0.9
 maxstep=240000 #训练多少次
 
 weightclip_min=-0.01
@@ -48,7 +51,7 @@ meta_name = r'model_keep-239999.meta'
 gpu_options = tf.GPUOptions(allow_growth=True)
 config = tf.ConfigProto(gpu_options=gpu_options)
 
-logdir="./logs_v24_Step2/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(LR,batchsize, maxstep))
+logdir="./logs_v24_Step2_v1/GAN_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(LR,batchsize, maxstep))
 kepimgdir=op.join(logdir, "zerostateimgs")
 os.makedirs(kepimgdir,  exist_ok=True)
 
@@ -61,6 +64,7 @@ class Step2_ConvLstm:
         saver = tf.train.import_meta_graph(op.join(modelpath, meta_name) )
         saver.restore(self.sess, tf.train.latest_checkpoint(modelpath))
         self.graph = tf.get_default_graph()
+        self.global_step = tf.Variable(0.0, name='step2_global_step',dtype=tf.float32, trainable=False)
         
         #placeholders
         self.imgs_pla= self.graph.get_tensor_by_name('imgs_in:0')
@@ -217,12 +221,6 @@ class Step2_ConvLstm:
 #          
 #         self.train_op = tf.train.AdamOptimizer(LR, name="step2_adam").minimize(self.G_loss_all)
         
-        self.step2_train_op,\
-        self.step2_L1_loss_all,self.step2_contex_loss,self.step2_local_var_loss_all,self.step2_G_loss_all,\
-        self.step2_ssim,self.step2_psnr,self.step2_G_net=self.loss_cal(self.opticalflow_0_2, self.opticalflow_2_0, scopevar.name)
-        
-        
-        
         
         t_vars=tf.trainable_variables()
         print ("trainable vars cnt:",len(t_vars))
@@ -244,11 +242,19 @@ class Step2_ConvLstm:
         # weight clipping
         self.clip_D = [p.assign(tf.clip_by_value(p, weightclip_min, weightclip_max)) for p in self.D_para]
         
+        self.step1_train_op,\
+        self.step1_L1_loss_all,self.step1_contex_loss,self.step1_local_var_loss_all,self.step1_G_loss_all,\
+        self.step1_ssim,self.step1_psnr,self.step1_G_net=self.loss_cal(self.optical_0_1, self.optical_1_0, LR_step1, self.G_para, scopevar.name)
+        
+        self.step2_train_op,\
+        self.step2_L1_loss_all,self.step2_contex_loss,self.step2_local_var_loss_all,self.step2_G_loss_all,\
+        self.step2_ssim,self.step2_psnr,self.step2_G_net=self.loss_cal(self.opticalflow_0_2, self.opticalflow_2_0, LR, self.STEP2_para, scopevar.name)
+        
         
         #最后构建完成后初始化参数 
         self.sess.run(tf.global_variables_initializer())
         
-    def loss_cal(self,opticalflow_0_2, opticalflow_2_0, name='STEP2'):
+    def loss_cal(self,opticalflow_0_2, opticalflow_2_0, lr, varlist, name='STEP2'):
         with tf.variable_scope(name,  reuse=tf.AUTO_REUSE):
             #反向光流算中间帧
             opticalflow_t_0=tf.add( -(1-self.timerates_expand)*self.timerates_expand*opticalflow_0_2 ,\
@@ -311,10 +317,11 @@ class Step2_ConvLstm:
             psnr = tf.image.psnr(G_net, self.frame1, max_val=2.0, name="step2_frame1_psnr")
             print ("psnr:", psnr) #psnr: Tensor("G_frame1_psnr/Identity_3:0", shape=(12,), dtype=float32)
             
-            
             G_loss_all=contex_loss + L1_loss_all +  local_var_loss_all*0.06
             
-            train_op = tf.train.AdamOptimizer(LR, name="step2_adam").minimize(G_loss_all)
+            self.lr_rate = tf.train.exponential_decay(lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+            train_op = tf.train.AdamOptimizer(self.lr_rate, name=name+"_step2_adam").minimize(G_loss_all,  global_step=self.global_step,var_list=varlist)
+            
         return train_op,L1_loss_all,contex_loss,local_var_loss_all,G_loss_all,ssim,psnr,G_net
 
     
@@ -435,35 +442,49 @@ class Step2_ConvLstm:
             self.state_new_train=self.state_init_np
             print ('start from a zero state!!!')
         
-        _, \
+        _, _,\
         self.state_new_train,   \
-        ssim,psnr,      \
-        contexloss, L1_loss, localloss,loss_all=self.sess.run([self.train_op,\
+        ssim1,ssim2,psnr1,psnr2,      \
+        contexloss1, contexloss2,L1_loss1, L1_loss2,\
+        localloss1,localloss2,loss_all1,loss_all2=self.sess.run([self.step1_train_op,self.step2_train_op,\
                                     self.state_final, \
-                                    self.ssim, self.psnr, self.contex_loss, self.L1_loss_all, self.local_var_loss_all,self.G_loss_all], \
+                                    self.step1_ssim, self.step2_ssim, self.step1_psnr, self.step2_psnr, \
+                                    self.step1_contex_loss, self.step2_contex_loss, self.step1_L1_loss_all,self.step2_L1_loss_all, \
+                                    self.step1_local_var_loss_all, self.step2_local_var_loss_all, self.step1_G_loss_all, self.step2_G_loss_all], \
                       feed_dict={self.imgs_pla:imgdata,self.timerates:rate,self.training:True,  self.state_pla_c:self.state_new_train[0],  self.state_pla_h:self.state_new_train[1]})
         
         #print ()
         print ("train once:")
-        print ("ssim:",ssim)
-        print ("psnr:",psnr)
-        print ("contexloss:",contexloss)
-        print ("local var loss:",localloss)
-        print ("l1_loss_all:",L1_loss)
-        print ("loss_all:",loss_all)
+        print ("ssim1:",ssim1)
+        print ("ssim2:",ssim2)
+        print ("psnr1:",psnr1)
+        print ("psnr2:",psnr2)
+        print ("contexloss1:",contexloss1)
+        print ("contexloss2:",contexloss2)
+        print ("local var loss 1:",localloss1)
+        print ("local var loss 2:",localloss2)
+        print ("l1_loss_all 1:",L1_loss1)
+        print ("l1_loss_all 2:",L1_loss2)
+        print ("loss_all 1:",loss_all1)
+        print ("loss_all 2:",loss_all2)
         
-        return ssim,psnr,contexloss,localloss,L1_loss
+        return [loss_all1, loss_all2]
 
     def eval_once(self, step,evalstep=100):
         kep_img_dir=op.join(kepimgdir, str(step))
         os.makedirs(kep_img_dir, exist_ok=True)
         
         recording=0  #遇到一个新的状态开始记录，到下一个状态停止
-        kep_ssim=0.0
-        kep_psnr=0.0
-        kep_l1loss=0.0
-        kep_contexloss=0.0
-        kep_localloss=0
+        kep_ssim1=0.0
+        kep_psnr1=0.0
+        kep_l1loss1=0.0
+        kep_contexloss1=0.0
+        kep_localloss1=0
+        kep_ssim2=0.0
+        kep_psnr2=0.0
+        kep_l1loss2=0.0
+        kep_contexloss2=0.0
+        kep_localloss2=0
         
         img_cnt=0
         
@@ -474,20 +495,27 @@ class Step2_ConvLstm:
                 recording+=1
     
             self.state_new_test,   \
-            ssim,psnr,      \
-            contexloss, L1_loss, localvarloss,loss_all,\
+            ssim1,ssim2,psnr1,psnr2,      \
+            contexloss1,contexloss2, L1_loss1, L1_loss2, \
+            localvarloss1, localvarloss2,loss_all1,loss_all2,\
             step1_flow_0_1,step1_flow_1_0,step1_imgout,step2_flow_0_1,step2_flow_1_0,step2_outimg=self.sess.run([
                                         self.state_final, \
-                                        self.ssim, self.psnr, \
-                                        self.contex_loss, self.L1_loss_all, self.local_var_loss_all,self.G_loss_all,\
-                                        self.optical_0_1, self.optical_1_0, self.outimg, self.opticalflow_0_2,self.opticalflow_2_0,self.G_net], \
+                                        self.step1_ssim, self.step2_ssim, self.step1_psnr, self.step2_psnr, \
+                                        self.step1_contex_loss, self.step2_contex_loss, self.step1_L1_loss_all,self.step2_L1_loss_all,\
+                                        self.step1_local_var_loss_all, self.step2_local_var_loss_all, self.step1_G_loss_all, self.step2_G_loss_all,\
+                                        self.optical_0_1, self.optical_1_0, self.step1_G_net, self.opticalflow_0_2,self.opticalflow_2_0,self.step2_G_net], \
                           feed_dict={self.imgs_pla:imgdata,self.timerates:rate,self.training:False,  self.state_pla_c:self.state_new_test[0],  self.state_pla_h:self.state_new_test[1]})
         
-            kep_ssim+=np.mean(ssim)
-            kep_psnr+=np.mean(psnr)
-            kep_l1loss+=np.mean(L1_loss)
-            kep_contexloss+=np.mean(contexloss)
-            kep_localloss+=localvarloss
+            kep_ssim1+=np.mean(ssim1)
+            kep_ssim2+=np.mean(ssim2)
+            kep_psnr1+=np.mean(psnr1)
+            kep_psnr2+=np.mean(psnr2)
+            kep_l1loss1+=np.mean(L1_loss1)
+            kep_l1loss2+=np.mean(L1_loss2)
+            kep_contexloss1+=np.mean(contexloss1)
+            kep_contexloss2+=np.mean(contexloss2)
+            kep_localloss1+=localvarloss1
+            kep_localloss2+=localvarloss2
             
             if recording==1:
                 tep=self.form_bigimg(imgdata,step1_flow_0_1,step1_flow_1_0,step1_imgout,step2_flow_0_1,step2_flow_1_0,step2_outimg)
@@ -496,9 +524,14 @@ class Step2_ConvLstm:
                 
                     
             
-        print ("eval ",evalstep,' times:','\nmean ssim:',kep_ssim/evalstep,' mean psnr:',kep_psnr/evalstep,'\nmean l1loss:',kep_l1loss/evalstep,' mean contexloss:',kep_contexloss/evalstep," mean localvar loss:",kep_localloss/evalstep)
+        print ("eval ",evalstep,' times:','\nmean ssim1:',kep_ssim1/evalstep,'  mean ssim2:',kep_ssim2/evalstep,\
+               '\nmean psnr1:',kep_psnr1/evalstep,'  mean psnr2:',kep_psnr2/evalstep,\
+               '\nmean l1loss1:',kep_l1loss1/evalstep,'   mean l1loss2:',kep_l1loss2/evalstep,\
+               '\nmean contexloss1:',kep_contexloss1/evalstep,'   mean contexloss2:',kep_contexloss2/evalstep,\
+               '\nmean localvar loss1:',kep_localloss1/evalstep, "   mean localvar loss2:",kep_localloss2/evalstep)
         print ("write "+str(img_cnt)+" imgs to:"+kep_img_dir)
-        return kep_ssim/evalstep,kep_psnr/evalstep,kep_contexloss/evalstep,kep_l1loss/evalstep, kep_localloss/evalstep
+        return [kep_ssim1/evalstep,kep_ssim2/evalstep],[kep_psnr1/evalstep, kep_psnr2/evalstep], \
+            [kep_contexloss1/evalstep, kep_contexloss2/evalstep],[kep_l1loss1/evalstep, kep_l1loss2/evalstep], [kep_localloss1/evalstep, kep_localloss2/evalstep]
     
     def form_bigimg(self, imgdata,step1_flow_0_1,step1_flow_1_0,step1_imgout,step2_flow_0_1,step2_flow_1_0,step2_outimg):
         #imgdata:[12,180,320,9]
@@ -588,11 +621,18 @@ if __name__ == '__main__':
                 tsummary = tf.Summary()
                 #tsummary.value.add(tag='mean prob of real1', simple_value=prob_T)
                 #tsummary.value.add(tag='mean prob of fake1', simple_value=prob_F)
-                tsummary.value.add(tag='mean L1_loss of G and GT', simple_value=l1loss)
-                tsummary.value.add(tag='mean contexloss', simple_value=contexloss)
-                tsummary.value.add(tag='mean localvar loss', simple_value=localvarloss)
-                tsummary.value.add(tag='mean ssim:', simple_value=ssim_mean)
-                tsummary.value.add(tag='mean psnr:', simple_value=psnr_mean)
+                tsummary.value.add(tag='mean L1_loss of G and GT step1', simple_value=l1loss[0])                
+                tsummary.value.add(tag='mean contexloss step1', simple_value=contexloss[0])
+                tsummary.value.add(tag='mean localvar loss step1', simple_value=localvarloss[0])
+                tsummary.value.add(tag='mean ssim step1', simple_value=ssim_mean[0])
+                tsummary.value.add(tag='mean psnr step1', simple_value=psnr_mean[0])
+                
+                tsummary.value.add(tag='mean L1_loss of G and GT step2', simple_value=l1loss[1])
+                tsummary.value.add(tag='mean contexloss step2', simple_value=contexloss[1])
+                tsummary.value.add(tag='mean localvar loss step2', simple_value=localvarloss[1])
+                tsummary.value.add(tag='mean ssim step2', simple_value=ssim_mean[1])
+                tsummary.value.add(tag='mean psnr step2', simple_value=psnr_mean[1])
+                
                 #写入日志
                 logwriter.add_summary(tsummary, i)
                 
