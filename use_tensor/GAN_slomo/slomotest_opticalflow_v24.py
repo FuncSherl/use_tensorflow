@@ -22,6 +22,8 @@ modelpath="/home/sherl/Pictures/v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_bat
 #modelpath=r'D:\data_DL\Gan_slomo\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress'
 meta_name=r'model_keep-239999.meta'
 
+ucf_path=r'/media/sherl/本地磁盘/data_DL/UCF101_results'
+
 version='V24_'
 
 inputvideodir='./testing_gif'
@@ -177,9 +179,40 @@ class Slomo_flow:
         return out
         
     
+    def eval_on_ucf_mini(self, ucf_path, outdir="my_frames"):
+        '''
+        :在ucf的superslomo提供的结果数据上进行生成并对比
+        '''
+        outframepath=op.join(ucf_path, outdir)
+        os.makedirs(outframepath, exist_ok=True)
+        
+        inframepath=op.join(ucf_path, "ucf101_interp_ours")
+        ind_dirs=os.listdir(inframepath)
+        for ind,i in enumerate(ind_dirs):
+            tep_in=op.join(inframepath, i)
+            tep_out=op.join(outframepath, i)
+            os.makedirs(tep_out, exist_ok=True)
             
+            frame0_p=op.join(tep_in, "frame_00.png")
+            frame2_p=op.join(tep_in, "frame_02.png")
+            
+            frame1_my_p=op.join(tep_out, "frame_01_my.png")
+            
+            frame0=cv2.imread(frame0_p)
+            frame2=cv2.imread(frame2_p)
+            
+            outf=self.getframes_throw_flow(frame0, frame2, 1)[0]
+            print (ind,"/",len(ind_dirs),outf.shape)
+            outf=cv2.resize(outf, (256, 256))
+            cv2.imwrite(frame1_my_p, outf)
+        
     
     def process_video_list(self, invideolist, outdir, interpola_cnt=7, directout=True, keep_shape=False):
+        '''
+        入口函数
+        输入一个list包含每个video的完整路径：invideolist
+        一个输出ideo的路径
+        '''
         TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
         outputdir=op.join(outdir, version+TIMESTAMP)
         os.makedirs(outputdir,  exist_ok=True)
@@ -657,7 +690,8 @@ if __name__=='__main__':
     with tf.Session() as sess:
         slomo=Slomo_flow(sess)
         #slomo=Step_two(sess)
-        slomo.process_video_list(inputvideo, outputvideodir, 12)
+        #slomo.process_video_list(inputvideo, outputvideodir, 12)
+        slomo.eval_on_ucf_mini(ucf_path)
        
         
         
