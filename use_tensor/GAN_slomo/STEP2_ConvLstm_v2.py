@@ -71,10 +71,17 @@ class Step2_ConvLstm:
         self.training= self.graph.get_tensor_by_name("training_in:0")
         self.timerates= self.graph.get_tensor_by_name("timerates_in:0")
         
+        #self.timerates_pla=tf.placeholder(tf.float32, [batchsize], name='step2_inner_timerates_in')
+        self.timerates_expand=tf.expand_dims(self.timerates, -1)
+        self.timerates_expand=tf.expand_dims(self.timerates_expand, -1)
+        self.timerates_expand=tf.expand_dims(self.timerates_expand, -1) #batchsize*1*1*1
+        
         #tesorfs
+        #这里是第一部的输出光流
         self.optical_0_1=self.graph.get_tensor_by_name("G_opticalflow_0_2:0")
         self.optical_1_0=self.graph.get_tensor_by_name("G_opticalflow_2_0:0")
         self.outimg = self.graph.get_tensor_by_name("G_net_generate:0")
+        
         
         
         
@@ -86,6 +93,9 @@ class Step2_ConvLstm:
         self.img_size_h=self.imgs_pla.get_shape().as_list()[1]
         self.img_size=[self.img_size_h, self.img_size_w]
         print (self.imgs_pla) #Tensor("imgs_in:0", shape=(12, 180, 320, 9), dtype=float32)
+        self.frame0=self.imgs_pla[:,:,:,:img_channel]
+        self.frame1=self.imgs_pla[:,:,:,img_channel:img_channel*2]
+        self.frame2=self.imgs_pla[:,:,:,img_channel*2:]
         
         self.pipline_data_train=cdata.get_pipline_data_train(self.img_size, self.batchsize_inputimg)
         self.pipline_data_test=cdata.get_pipline_data_test(self.img_size, self.batchsize_inputimg)
@@ -94,17 +104,39 @@ class Step2_ConvLstm:
         self.flow_size_w=self.optical_0_1.get_shape().as_list()[2]
         self.flow_channel=self.optical_0_1.get_shape().as_list()[-1]
         
-        self.flow_shape=[ self.flow_size_h, self.flow_size_w, self.flow_channel]
+        self.flow_shape=[ self.flow_size_h, self.flow_size_w, self.flow_channel*2]
         
         #last flow placeholder
-        self.last_optical_flow_0_1=tf.placeholder(tf.float32, self.flow_shape, name='step2_last_flow_0_1')
-        self.last_optical_flow_1_0=tf.placeholder(tf.float32, self.flow_shape, name='step2_last_flow_1_0')
+        self.last_optical_flow=tf.placeholder(tf.float32, self.flow_shape, name='step2_last_flow')
         
-        # 注意这里构建lstm的输入是根据第一部的输出直接来的
-        #self.input_pla = tf.placeholder(tf.float32, [batchsize,  flow_size_h, flow_size_w, input_channel], name='step2_opticalflow_in')
-        self.input_pla=tf.concat([self.imgs_pla[:,:,:,:img_channel], self.optical_0_1, self.optical_1_0, self.last_optical_flow_0_1, self.last_optical_flow_1_0, self.imgs_pla[:,:,:, img_channel*2:]], -1)  #这里将两个光流拼起来 可以考虑将前后帧也拼起来
-        self.lstm_input_channel=self.input_pla.get_shape().as_list()[-1]
-        print (self.input_pla)  #Tensor("concat_9:0", shape=(12, 180, 320, ?), dtype=float32)
+        
+        #这里将batch中的第一组中的前后帧和前后光流拼起来
+        input_pla=tf.concat([ self.frame0[0], self.optical_0_1[0], self.optical_1_0[0], self.last_optical_flow, self.frame2[0] ], -1)  #这里将两个光流拼起来 可以考虑将前后帧也拼起来
+        print (input_pla)  #
+        
+        with tf.variable_scope("STEP2",  reuse=tf.AUTO_REUSE) as scopevar:
+            new_flow=self.step2_network(input_pla)
+            kep_new_flow=[new_flow]
+            
+            for ti in range(1,self.batchsize_inputimg):
+                input_pla=tf.concat([ self.frame0[ti], self.optical_0_1[ti], self.optical_1_0[ti], new_flow, self.frame2[ti] ], -1) #14
+                new_flow=self.step2_network(input_pla)
+                kep_new_flow.append(new_flow)
+                
+            self.flow_next=new_flow
+            self.flow_after=tf.stack(kep_new_flow, axis=0, name='step2_opticalflow')
+            print ('self.flow_after:',self.flow_after)
+            
+        self.last_flow_init_np=np.zeros(self.flow_shape, dtype=np.float32)
+        print (self.last_flow_init_np.shape) #
+        #初始化train和test的初始0状态
+        self.last_flow_new_train=self.last_flow_init_np
+        self.last_flow_new_test=self.last_flow_init_np
+            
+        #########################################################################
+        self.opticalflow_0_2=tf.slice(self.flow_after, [0, 0, 0, 0], [-1, -1, -1, 2], name='step2_opticalflow_0_2')
+        self.opticalflow_2_0=tf.slice(self.flow_after, [0, 0, 0, 2], [-1, -1, -1, 2], name='step2_opticalflow_2_0')
+        print ('original flow:',self.opticalflow_0_2, self.opticalflow_2_0)
         
         #获取数据时的一些cpu上的参数，用于扩张数据和判定时序
         self.last_label_train='#'
@@ -116,112 +148,6 @@ class Step2_ConvLstm:
         self.state_random_row_test=0
         self.state_random_col_test=0
         self.state_flip_test=False
-        
-        #self.imgs_pla = tf.placeholder(tf.float32, [batchsize, img_size_h, img_size_w, group_img_num*img_channel], name='step2_oriimgs_in')
-        self.frame0=self.imgs_pla[:,:,:,:img_channel]
-        self.frame1=self.imgs_pla[:,:,:,img_channel:img_channel*2]
-        self.frame2=self.imgs_pla[:,:,:,img_channel*2:]
-        
-        #self.timerates_pla=tf.placeholder(tf.float32, [batchsize], name='step2_inner_timerates_in')
-        self.timerates_expand=tf.expand_dims(self.timerates, -1)
-        self.timerates_expand=tf.expand_dims(self.timerates_expand, -1)
-        self.timerates_expand=tf.expand_dims(self.timerates_expand, -1) #batchsize*1*1*1
-        
-        with tf.variable_scope("STEP2",  reuse=tf.AUTO_REUSE) as scopevar:
-            self.cell = tf.contrib.rnn.ConvLSTMCell(conv_ndims=2, input_shape=[self.flow_size_h, self.flow_size_w, self.lstm_input_channel], \
-                                                    output_channels=output_channel, kernel_shape=[kernel_len, kernel_len])
-            
-            self.state_init = self.cell.zero_state(batch_size=batchsize, dtype=tf.float32)
-            self.state_init_np=( np.zeros(self.state_shape, dtype=np.float32), np.zeros(self.state_shape, dtype=np.float32) )
-            print (self.state_init) #LSTMStateTuple(c=<tf.Tensor 'ConvLSTMCellZeroState/zeros:0' shape=(2, 180, 320, 12) dtype=float32>, h=<tf.Tensor 'ConvLSTMCellZeroState/zeros_1:0' shape=(2, 180, 320, 12) dtype=float32>)
-            #初始化train和test的初始0状态
-            self.state_new_train=self.state_init_np
-            self.state_new_test=self.state_init_np
-            
-            #这里开始搞lstm了
-            self.input_dynamic_lstm=tf.expand_dims(self.input_pla, 0)   #这里默认lstm的输入batchsize=1，注意，设置里batchsize必须为1
-            print (self.input_dynamic_lstm)  #Tensor("ExpandDims_6:0", shape=(1, 12, 180, 320, 4), dtype=float32)
-            self.outputs, self.state_final = tf.nn.dynamic_rnn(self.cell, inputs =self.input_dynamic_lstm , initial_state = tf.nn.rnn_cell.LSTMStateTuple(self.state_pla_c, self.state_pla_h), time_major = False)
-            
-            #self.output,self.state_final=self.cell.call(inputs=self.input_pla,state=(self.state_pla_c, self.state_pla_h) )
-            print (self.outputs,self.state_final)  
-            #Tensor("rnn/transpose_1:0", shape=(1, 12, 180, 320, 12), dtype=float32) 
-            #LSTMStateTuple(c=<tf.Tensor 'rnn/while/Exit_3:0' shape=(1, 180, 320, 12) dtype=float32>, h=<tf.Tensor 'rnn/while/Exit_4:0' shape=(1, 180, 320, 12) dtype=float32>)
-            
-            
-            self.flow_after=self.final_convlayer(self.outputs[0])
-            print (self.flow_after) #Tensor("final_convlayer/BiasAdd:0", shape=(12, 180, 320, 4), dtype=float32)
-            
-        self.opticalflow_0_2=tf.slice(self.flow_after, [0, 0, 0, 0], [-1, -1, -1, 2], name='step2_opticalflow_0_2')
-        self.opticalflow_2_0=tf.slice(self.flow_after, [0, 0, 0, 2], [-1, -1, -1, 2], name='step2_opticalflow_2_0')
-        print ('original flow:',self.opticalflow_0_2, self.opticalflow_2_0)
-        #original flow: Tensor("step2_opticalflow_0_2:0", shape=(12, 180, 320, 2), dtype=float32) Tensor("step2_opticalflow_2_0:0", shape=(12, 180, 320, 2), dtype=float32)
-        
-#         #反向光流算中间帧
-#         self.opticalflow_t_0=tf.add( -(1-self.timerates_expand)*self.timerates_expand*self.opticalflow_0_2 ,\
-#                                       self.timerates_expand*self.timerates_expand*self.opticalflow_2_0 , name="step2_opticalflow_t_0")
-#         self.opticalflow_t_2=tf.add( (1-self.timerates_expand)*(1-self.timerates_expand)*self.opticalflow_0_2 ,\
-#                                       self.timerates_expand*(self.timerates_expand-1)*self.opticalflow_2_0, name="step2_opticalflow_t_2")
-#          
-#         print ('two optical flow:',self.opticalflow_t_0, self.opticalflow_t_2)
-#         #two optical flow: Tensor("step2_opticalflow_t_0:0", shape=(12, 180, 320, 2), dtype=float32) Tensor("step2_opticalflow_t_2:0", shape=(12, 180, 320, 2), dtype=float32)
-#          
-#         #2种方法合成t时刻的帧
-#         self.img_flow_2_t=self.warp_op(self.frame2, -self.opticalflow_t_2) #!!!
-#         self.img_flow_0_t=self.warp_op(self.frame0, -self.opticalflow_t_0) #!!!
-#          
-#         self.G_net=tf.add(self.timerates_expand*self.img_flow_2_t , (1-self.timerates_expand)*self.img_flow_0_t, name="step2_net_generate" )
-#          
-#         #利用光流前后帧互相合成
-#         self.img_flow_2_0=self.warp_op(self.frame2, self.opticalflow_2_0)  #frame2->frame0
-#         self.img_flow_0_2=self.warp_op(self.frame0, self.opticalflow_0_2)  #frame0->frame2
-#          
-#          
-#         #1、contex loss
-#         print ("forming conx loss：")
-#         tep_G_shape=self.G_net.get_shape().as_list()[1:]
-#          
-#         self.contex_Genera =tf.keras.applications.VGG16(include_top=False, input_tensor=self.G_net,  input_shape=tep_G_shape).get_layer("block4_conv3").output
-#         self.contex_frame1 =tf.keras.applications.VGG16(include_top=False, input_tensor=self.frame1, input_shape=tep_G_shape).get_layer("block4_conv3").output
-#          
-#         self.contex_loss=   tf.reduce_mean(tf.squared_difference( self.contex_frame1, self.contex_Genera), name='step2_Contex_loss')
-#         print ('step2_loss_mean_contex form finished..')
-#          
-#          
-#         #2、L1 loss
-#         print ("forming L1 loss:生成帧与GT、frame2->frame0与frame0、frame0->frame2与frame2")
-#         self.L1_loss_interframe =tf.reduce_mean(tf.abs(  self.G_net-self.frame1  ))
-#         self.L1_loss_all        =tf.reduce_mean(tf.abs(  self.G_net-self.frame1  ) + \
-#                                                 tf.abs(self.img_flow_2_0-self.frame0) + \
-#                                                 tf.abs(self.img_flow_0_2-self.frame2), name='step2_G_clear_l1_loss')
-#         #self.G_loss_mean_Square=  self.contex_loss*1 + self.L1_loss_all
-#         print ('step2_loss_mean_l1 form finished..')
-#          
-#         #4 local var loss
-#         self.local_var_loss_0_2=self.local_var_loss(self.opticalflow_0_2)
-#         self.local_var_loss_2_0=self.local_var_loss(self.opticalflow_2_0)
-#         #print ("local _var loss:",self.local_var_loss_0_2,  self.G_loss_mean_D1)
-#         #local _var loss: Tensor("mean_local_var:0", shape=(), dtype=float32) Tensor("Mean_3:0", shape=(), dtype=float32)
-#         self.local_var_loss_all=tf.add(self.local_var_loss_0_2, self.local_var_loss_2_0, name="step2_local_var_add")
-#          
-#         #5 global var loss
-#         self.global_var_loss_0_2=self.global_var_loss(self.opticalflow_0_2)
-#         self.global_var_loss_2_0=self.global_var_loss(self.opticalflow_2_0)
-#         self.global_var_loss_all=tf.add(self.global_var_loss_0_2, self.global_var_loss_2_0, name="step2_global_var_add")
-#          
-#         #6 SSIM
-#         self.ssim = tf.image.ssim(self.G_net, self.frame1, max_val=2.0)
-#         print ("ssim:",self.ssim)  #ssim: Tensor("Mean_10:0", shape=(12,), dtype=float32)
-#          
-#         #7 PSNR
-#         self.psnr = tf.image.psnr(self.G_net, self.frame1, max_val=2.0, name="step2_frame1_psnr")
-#         print ("psnr:", self.psnr) #psnr: Tensor("G_frame1_psnr/Identity_3:0", shape=(12,), dtype=float32)
-#          
-#          
-#         self.G_loss_all=self.contex_loss + self.L1_loss_all +  self.local_var_loss_all*0.06
-#          
-#         self.train_op = tf.train.AdamOptimizer(LR, name="step2_adam").minimize(self.G_loss_all)
-        
         
         t_vars=tf.trainable_variables()
         print ("trainable vars cnt:",len(t_vars))
@@ -254,6 +180,11 @@ class Step2_ConvLstm:
         
         #最后构建完成后初始化参数 
         self.sess.run(tf.global_variables_initializer())
+        
+    def step2_network(self):
+        pass
+    
+    
         
     def loss_cal(self,opticalflow_0_2, opticalflow_2_0, lr, varlist, name='STEP2'):
         with tf.variable_scope(name,  reuse=tf.AUTO_REUSE):
