@@ -113,7 +113,7 @@ class Step2_ConvLstm:
         
         #这里将batch中的第一组中的前后帧和前后光流拼起来
         input_pla=tf.concat([ self.frame0[0], self.optical_0_1[0], self.optical_1_0[0], self.last_optical_flow, self.frame2[0] ], -1)  #这里将两个光流拼起来 可以考虑将前后帧也拼起来
-        print (input_pla)  #
+        print (input_pla)  #Tensor("concat_9:0", shape=(180, 320, 14), dtype=float32)
         
         with tf.variable_scope("STEP2",  reuse=tf.AUTO_REUSE) as scopevar:
             new_flow=self.step2_network(input_pla)
@@ -160,10 +160,10 @@ class Step2_ConvLstm:
         print ("STEP2 param len:",len(self.STEP2_para))
         print (self.STEP2_para)
         '''
-        trainable vars cnt: 186
+        trainable vars cnt: 184
         G param len: 60
         D param len: 16
-        STEP2 param len: 6
+        STEP2 param len: 56
         相比于前面不加第二部的128个，这里注意将VGG与step1中的VGG共享参数，否则会白白多用内存
         '''
         
@@ -185,6 +185,7 @@ class Step2_ConvLstm:
     def step2_network(self, inputdata, outchannel=4, layercnt=3, filterlen=3, training=True,  withbias=True):
         #input:concat后的单个图[180,320,14]
         #return: new optical flow [180, 320, 4]注意是双向光流
+        inputdata=tf.expand_dims(inputdata, 0)
         inputshape=inputdata.get_shape().as_list()
         channel_init=inputshape[-1]
         
@@ -192,7 +193,7 @@ class Step2_ConvLstm:
         tep=my_lrelu(tep, 'unet_down_start')
         
         print ('\nforming UNET-->layer:',layercnt)
-        print (tep)
+        print (tep) #Tensor("STEP2/unet_down_start_1/LeakyRelu:0", shape=(1, 180, 320, 28)
         skipcon=[]
         for i in range(layercnt):
             skipcon.append(tep)
@@ -209,18 +210,19 @@ class Step2_ConvLstm:
             tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon[i],'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  training=training,withbias=withbias)
             print (tep)
         
-    
+        #这里注意原图的位置一定要在input的最前和后，否者这里需要对应修改concat的位置
+        tep=tf.concat([ inputdata[...,:img_channel], tep, inputdata[...,-img_channel:] ], -1)
         tep=my_conv(tep, filterlen, outchannel*2, scopename='unet_up_end0', stride=1, withbias=withbias)
         
         tep=my_batchnorm( tep,training, 'unet_up_end0_bn2')
         tep=my_lrelu(tep, 'unet_up_end0_relu')
-        print (tep)
+        #print (tep)
         
         tep=my_conv(tep, filterlen, outchannel, scopename='unet_up_end1', stride=1, withbias=withbias)
         tep=tf.image.resize_images(tep, [inputshape[1],inputshape[2]], method=tf.image.ResizeMethod.BILINEAR)
-        print (tep)
+        print (tep)  #Tensor("STEP2/unet_up_end1_10/BiasAdd:0", shape=(1, 180, 320, 4), dtype=float32)
         
-        return tep
+        return tep[0]
             
     
     
@@ -288,7 +290,7 @@ class Step2_ConvLstm:
             psnr = tf.image.psnr(G_net, self.frame1, max_val=2.0, name="step2_frame1_psnr")
             print ("psnr:", psnr) #psnr: Tensor("G_frame1_psnr/Identity_3:0", shape=(12,), dtype=float32)
             
-            G_loss_all=contex_loss + L1_loss_all +  local_var_loss_all*0.06
+            G_loss_all=contex_loss*5 + L1_loss_all*10 +  local_var_loss_all*0.06
             
             self.lr_rate = tf.train.exponential_decay(lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
             train_op = tf.train.AdamOptimizer(self.lr_rate, name=name+"_step2_adam").minimize(G_loss_all,  global_step=self.global_step,var_list=varlist)
@@ -400,8 +402,8 @@ class Step2_ConvLstm:
     def train_once(self):
         imgdata,rate,newstate=self.getbatch_train_imgs()
         if newstate: 
-            self.state_new_train=self.state_init_np
-            print ('start from a zero state!!!')
+            self.last_flow_new_train=self.last_flow_init_np
+            print ('start from a zero flow!!!')
         
         _, _,\
         self.last_flow_new_train,   \
@@ -452,7 +454,7 @@ class Step2_ConvLstm:
         for i in range(evalstep):
             imgdata,rate,newstate=self.getbatch_test_imgs()
             if newstate: 
-                self.state_new_test=self.state_init_np
+                self.last_flow_new_test=self.last_flow_init_np
                 recording+=1
     
             self.last_flow_new_test,   \
