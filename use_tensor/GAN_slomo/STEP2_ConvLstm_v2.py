@@ -10,6 +10,7 @@ from data import create_dataset_step2 as cdata
 import  GAN_tools_common as mytools
 import numpy as np
 import cv2, os, random, time
+from GAN_tools_v25 import *
 
 print ('tensorflow version:',tf.__version__,'  path:',tf.__path__)
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
@@ -181,8 +182,46 @@ class Step2_ConvLstm:
         #最后构建完成后初始化参数 
         self.sess.run(tf.global_variables_initializer())
         
-    def step2_network(self):
-        pass
+    def step2_network(self, inputdata, outchannel=4, layercnt=3, filterlen=3, training=True,  withbias=True):
+        #input:concat后的单个图[180,320,14]
+        #return: new optical flow [180, 320, 4]注意是双向光流
+        inputshape=inputdata.get_shape().as_list()
+        channel_init=inputshape[-1]
+        
+        tep=my_conv(inputdata, filterlen+int(layercnt/2), channel_init*2, scopename='unet_down_start', stride=1,  withbias=withbias)
+        tep=my_lrelu(tep, 'unet_down_start')
+        
+        print ('\nforming UNET-->layer:',layercnt)
+        print (tep)
+        skipcon=[]
+        for i in range(layercnt):
+            skipcon.append(tep)
+            tep=unet_down(tep, channel_init*( 2**(i+2)), 'unet_down_'+str(i), filterlen=filterlen+int( (layercnt-i)/2 ), training=training,withbias=withbias)
+            print (tep)
+            
+        '''
+        # 这里不将channel变为两倍了
+        tep=unet_down(tep, channel_init*( 2**(i+2)), 'unet_down_'+str(i+1), filterlen=filterlen , withbias=withbias)
+        print (tep)
+        '''
+        
+        for i in reversed(range(layercnt)):
+            tep=unet_up(tep, channel_init*( 2**(i+1)), skipcon[i],'unet_up_'+str(i), filterlen=filterlen+int( (layercnt-i)/3 ),  training=training,withbias=withbias)
+            print (tep)
+        
+    
+        tep=my_conv(tep, filterlen, outchannel*2, scopename='unet_up_end0', stride=1, withbias=withbias)
+        
+        tep=my_batchnorm( tep,training, 'unet_up_end0_bn2')
+        tep=my_lrelu(tep, 'unet_up_end0_relu')
+        print (tep)
+        
+        tep=my_conv(tep, filterlen, outchannel, scopename='unet_up_end1', stride=1, withbias=withbias)
+        tep=tf.image.resize_images(tep, [inputshape[1],inputshape[2]], method=tf.image.ResizeMethod.BILINEAR)
+        print (tep)
+        
+        return tep
+            
     
     
         
@@ -298,16 +337,6 @@ class Step2_ConvLstm:
         '''
         return tf.contrib.image.dense_image_warp(images, flow*timerates)
     
-    #最终输出加上一个conv层才是得到的光流
-    def final_convlayer(self, inputdata, filterlen=kernel_len, outchannel=flow_channel*2,   scopename="final_convlayer"):
-        #my_conv(inputdata, filterlen, outchannel,   scopename, stride=2, padding="SAME", reuse=tf.AUTO_REUSE, withbias=True)
-        inputshape=inputdata.get_shape().as_list()
-        with tf.variable_scope(scopename,  reuse=tf.AUTO_REUSE):
-            kep=mytools.my_conv(inputdata, filterlen, inputshape[-1],"conv1", 1)
-            kep=mytools.my_lrelu(kep, "lrelu1")
-            kep=mytools.my_conv(kep, filterlen, outchannel, "conv2", 1)
-            kep=mytools.my_lrelu(kep, "lrelu2")
-        return kep
         
     def getbatch_train_imgs(self):
         newstate=False
@@ -375,15 +404,15 @@ class Step2_ConvLstm:
             print ('start from a zero state!!!')
         
         _, _,\
-        self.state_new_train,   \
+        self.last_flow_new_train,   \
         ssim1,ssim2,psnr1,psnr2,      \
         contexloss1, contexloss2,L1_loss1, L1_loss2,\
         localloss1,localloss2,loss_all1,loss_all2=self.sess.run([self.step1_train_op,self.step2_train_op,\
-                                    self.state_final, \
+                                    self.flow_next, \
                                     self.step1_ssim, self.step2_ssim, self.step1_psnr, self.step2_psnr, \
                                     self.step1_contex_loss, self.step2_contex_loss, self.step1_L1_loss_all,self.step2_L1_loss_all, \
                                     self.step1_local_var_loss_all, self.step2_local_var_loss_all, self.step1_G_loss_all, self.step2_G_loss_all], \
-                      feed_dict={self.imgs_pla:imgdata,self.timerates:rate,self.training:True,  self.state_pla_c:self.state_new_train[0],  self.state_pla_h:self.state_new_train[1]})
+                      feed_dict={self.imgs_pla:imgdata,self.timerates:rate,self.training:True,  self.last_optical_flow:self.last_flow_new_train})
         
         #print ()
         print ("train once:")
@@ -426,17 +455,17 @@ class Step2_ConvLstm:
                 self.state_new_test=self.state_init_np
                 recording+=1
     
-            self.state_new_test,   \
+            self.last_flow_new_test,   \
             ssim1,ssim2,psnr1,psnr2,      \
             contexloss1,contexloss2, L1_loss1, L1_loss2, \
             localvarloss1, localvarloss2,loss_all1,loss_all2,\
             step1_flow_0_1,step1_flow_1_0,step1_imgout,step2_flow_0_1,step2_flow_1_0,step2_outimg=self.sess.run([
-                                        self.state_final, \
+                                        self.flow_next, \
                                         self.step1_ssim, self.step2_ssim, self.step1_psnr, self.step2_psnr, \
                                         self.step1_contex_loss, self.step2_contex_loss, self.step1_L1_loss_all,self.step2_L1_loss_all,\
                                         self.step1_local_var_loss_all, self.step2_local_var_loss_all, self.step1_G_loss_all, self.step2_G_loss_all,\
                                         self.optical_0_1, self.optical_1_0, self.step1_G_net, self.opticalflow_0_2,self.opticalflow_2_0,self.step2_G_net], \
-                          feed_dict={self.imgs_pla:imgdata,self.timerates:rate,self.training:False,  self.state_pla_c:self.state_new_test[0],  self.state_pla_h:self.state_new_test[1]})
+                          feed_dict={self.imgs_pla:imgdata,self.timerates:rate,self.training:False,  self.last_optical_flow:self.last_flow_new_test})
         
             kep_ssim1+=np.mean(ssim1)
             kep_ssim2+=np.mean(ssim2)
@@ -491,7 +520,7 @@ class Step2_ConvLstm:
             ret[row:row+self.img_size_h, col:col+self.img_size_w]=self.flow_bgr(step1_flow_1_0[j])
             col+=self.img_size_w+gap
             #5
-            mean_l1=np.mean( np.abs(step1_imgout[j]-imgdata[j, :,:,1*img_channel:(1+1)*img_channel]) )
+            mean_l1=np.mean( np.abs(step1_imgout[j]-imgdata[j, :,:,1*img_channel:(1+1)*img_channel]) )*2/255
             ret[row:row+self.img_size_h, col:col+self.img_size_w]=cv2.putText(step1_imgout[j],'GT_step1_L1loss:'+str(mean_l1),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
             col+=self.img_size_w+gap
             #6
@@ -501,7 +530,7 @@ class Step2_ConvLstm:
             ret[row:row+self.img_size_h, col:col+self.img_size_w]=self.flow_bgr(step2_flow_1_0[j])
             col+=self.img_size_w+gap
             #8
-            mean_l1=np.mean( np.abs(step2_outimg[j]-imgdata[j, :,:,1*img_channel:(1+1)*img_channel]) )
+            mean_l1=np.mean( np.abs(step2_outimg[j]-imgdata[j, :,:,1*img_channel:(1+1)*img_channel]) )*2/255
             ret[row:row+self.img_size_h, col:col+self.img_size_w]=cv2.putText(step2_outimg[j],'GT_step2_L1loss:'+str(mean_l1),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
             col+=self.img_size_w+gap
         return ret
