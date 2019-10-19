@@ -112,7 +112,7 @@ class Step2_ConvLstm:
         
         
         #这里将batch中的第一组中的前后帧和前后光流拼起来
-        input_pla=tf.concat([ self.frame0[0], self.optical_0_1[0], self.optical_1_0[0], self.last_optical_flow, self.frame2[0] ], -1)  #这里将两个光流拼起来 可以考虑将前后帧也拼起来
+        input_pla=tf.concat([ self.frame0[0], self.frame2[0] , self.optical_0_1[0], self.optical_1_0[0], self.last_optical_flow], -1)  #这里将两个光流拼起来 可以考虑将前后帧也拼起来
         print (input_pla)  #Tensor("concat_9:0", shape=(180, 320, 14), dtype=float32)
         
         with tf.variable_scope("STEP2",  reuse=tf.AUTO_REUSE) as scopevar:
@@ -120,7 +120,7 @@ class Step2_ConvLstm:
             kep_new_flow=[new_flow]
             
             for ti in range(1,self.batchsize_inputimg):
-                input_pla=tf.concat([ self.frame0[ti], self.optical_0_1[ti], self.optical_1_0[ti], new_flow, self.frame2[ti] ], -1) #14
+                input_pla=tf.concat([ self.frame0[ti], self.frame2[ti] , self.optical_0_1[ti], self.optical_1_0[ti], new_flow], -1) #14
                 new_flow=self.step2_network(input_pla)
                 kep_new_flow.append(new_flow)
                 
@@ -212,7 +212,7 @@ class Step2_ConvLstm:
             print (tep)
         
         #这里注意原图的位置一定要在input的最前和后，否者这里需要对应修改concat的位置
-        tep=tf.concat([ inputdata[...,:img_channel], tep, inputdata[...,-img_channel:] ], -1)
+        tep=tf.concat([ inputdata[..., :img_channel*2], tep ], -1)
         tep=my_conv(tep, filterlen, outchannel*2, scopename='unet_up_end0', stride=1, withbias=withbias)
         
         tep=my_batchnorm( tep,training, 'unet_up_end0_bn2')
