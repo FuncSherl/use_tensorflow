@@ -126,14 +126,15 @@ class Step2_ConvLstm:
                 
             self.flow_next=new_flow
             self.flow_after=tf.stack(kep_new_flow, axis=0, name='step2_opticalflow')
-            print ('self.flow_after:',self.flow_after)
+            print ('self.flow_after:',self.flow_after)  #Tensor("STEP2/step2_opticalflow:0", shape=(12, 180, 320, 4), dtype=float32)
+            print ('self.flow_next:',self.flow_next)  #Tensor("STEP2/strided_slice_79:0", shape=(180, 320, 4), dtype=float32)
             
         self.last_flow_init_np=np.zeros(self.flow_shape, dtype=np.float32)
-        print (self.last_flow_init_np.shape) #
+        print (self.last_flow_init_np.shape) #(180, 320, 4)
         #初始化train和test的初始0状态
         self.last_flow_new_train=self.last_flow_init_np
         self.last_flow_new_test=self.last_flow_init_np
-            
+        
         #########################################################################
         self.opticalflow_0_2=tf.slice(self.flow_after, [0, 0, 0, 0], [-1, -1, -1, 2], name='step2_opticalflow_0_2')
         self.opticalflow_2_0=tf.slice(self.flow_after, [0, 0, 0, 2], [-1, -1, -1, 2], name='step2_opticalflow_2_0')
