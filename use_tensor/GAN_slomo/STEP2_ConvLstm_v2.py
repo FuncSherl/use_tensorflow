@@ -292,7 +292,7 @@ class Step2_ConvLstm:
             
             G_loss_all=contex_loss*5 + L1_loss_all*10 +  local_var_loss_all*0.06
             
-            self.lr_rate = tf.train.exponential_decay(lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+            self.lr_rate = tf.train.exponential_decay(lr,  global_step=self.global_step/2, decay_steps=decay_steps, decay_rate=decay_rate)
             train_op = tf.train.AdamOptimizer(self.lr_rate, name=name+"_step2_adam").minimize(G_loss_all,  global_step=self.global_step,var_list=varlist)
             
         return train_op,L1_loss_all,contex_loss,local_var_loss_all,G_loss_all,ssim,psnr,G_net
