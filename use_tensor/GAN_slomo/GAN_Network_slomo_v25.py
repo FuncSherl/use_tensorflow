@@ -246,10 +246,10 @@ class GAN_Net:
         #训练生成器的总LOSS   这里将G的loss和contex loss与前面G的loss做一个归一化，这样当D的loss大的时候，说明这时D不可靠，需要多训练D，而相应的减小该D对G的训练影响
         tep_serer_loss=(self.G_loss_mean_D1 + self.contex_loss + self.D_linear_net_loss_sum)*2  #后面的数限制了总的loss大小，为5时为1/5=0.2
         
-        self.G_loss_all=self.G_loss_mean_D1 + \
-                        self.contex_loss*5 + \
+        self.G_loss_all=self.contex_loss*5 + \
                         self.L1_loss_all*10 +\
                         self.local_var_loss_all *0.06
+                        #self.G_loss_mean_D1 + \
                         #self.global_var_loss_all /10
                         
                         #* (1+self.global_step/G_squareloss_rate_globalstep)# self.G_loss_mean_D2     

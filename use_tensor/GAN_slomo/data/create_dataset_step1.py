@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #本文件是想要实验一下step2的训练数据用于第一步时的效果，看看是loss函数的影响还是数据的影响导致第二部训练时第一部分效果不如原来
+#因此这里是第二部的数据，用的获取数据方法是第一步的方式
 
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'
