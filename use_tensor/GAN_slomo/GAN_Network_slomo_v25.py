@@ -248,9 +248,10 @@ class GAN_Net:
         
         self.G_loss_all=self.contex_loss*5 + \
                         self.L1_loss_all*10 +\
-                        self.local_var_loss_all *0.06
+                        self.global_var_loss_all *0.1
+                        #self.local_var_loss_all *0.06
                         #self.G_loss_mean_D1 + \
-                        #self.global_var_loss_all /10
+                        
                         
                         #* (1+self.global_step/G_squareloss_rate_globalstep)# self.G_loss_mean_D2     
                         #W ./tensorflow/core/grappler/optimizers/graph_optimizer_stage.h:241] Failed to run optimizer ArithmeticOptimizer, stage HoistCommonFactor node 
@@ -314,7 +315,7 @@ class GAN_Net:
         return tf.contrib.image.dense_image_warp(images, flow*timerates)
     
     
-    def local_var_loss(self, flow, kernel_size=10, stride=1):
+    def local_var_loss(self, flow, kernel_size=5, stride=4):
         '''
         计算局部平滑loss，即每一个卷积范围内的方差之和
         flow:nhwc,channel=2
