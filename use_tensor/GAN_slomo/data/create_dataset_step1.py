@@ -294,8 +294,8 @@ def get_dataset_mean():
 if __name__ == '__main__':
     #txt2frames(train_txt ,extratdir_train)
     #txt2frames(test_txt, extratdir_test)
-    gen_tfrecords()
-    #test_showtfimgs(tfrec_dir_train, 2)
+    #gen_tfrecords()
+    test_showtfimgs(tfrec_dir_train, 2)
     #get_dataset_mean()
             
             
