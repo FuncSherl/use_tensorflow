@@ -748,8 +748,8 @@ if __name__ == '__main__':
             
             #######################
             if (i+1)%5==0:#偶尔测试一次
-                prob_TT,prob_FF,L1_loss,L1_loss__all,ssim, psnr=gan.evla_D_once(1)
-                print ('once prob of D1 real/fake:',prob_TT,'/',prob_FF)
+                L1_loss,L1_loss__all,ssim, psnr=gan.evla_D_once(1)
+                #print ('once prob of D1 real/fake:',prob_TT,'/',prob_FF)
                 print ("once L1 loss of inter frame/all l1 loss:",L1_loss,'/',L1_loss__all)
                 print ("once ssim and psnr:",ssim,'/', psnr)
                 
