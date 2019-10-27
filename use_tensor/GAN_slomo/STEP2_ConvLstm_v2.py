@@ -172,12 +172,12 @@ class Step2_ConvLstm:
         self.clip_D = [p.assign(tf.clip_by_value(p, weightclip_min, weightclip_max)) for p in self.D_para]
         
         self.step1_train_op,\
-        self.step1_L1_loss_all,self.step1_contex_loss,self.step1_local_var_loss_all,self.step1_G_loss_all,\
-        self.step1_ssim,self.step1_psnr,self.step1_G_net=self.loss_cal(self.optical_0_1, self.optical_1_0, LR_step1, self.G_para, scopevar.name)
+        self.step1_L1_loss_all,self.step1_contex_loss,self.step1_local_var_loss_all,self.step1_global_var_loss_all,self.step1_G_loss_all,\
+        self.step1_ssim,self.step1_psnr,self.step1_G_net=self.loss_cal(self.optical_0_1, self.optical_1_0, LR_step1, self.G_para, scopevar.name+"_step1_losscal")
         
         self.step2_train_op,\
-        self.step2_L1_loss_all,self.step2_contex_loss,self.step2_local_var_loss_all,self.step2_G_loss_all,\
-        self.step2_ssim,self.step2_psnr,self.step2_G_net=self.loss_cal(self.opticalflow_0_2, self.opticalflow_2_0, LR, self.STEP2_para, scopevar.name)
+        self.step2_L1_loss_all,self.step2_contex_loss,self.step2_local_var_loss_all, self.step2_global_var_loss_all, self.step2_G_loss_all,\
+        self.step2_ssim,self.step2_psnr,self.step2_G_net=self.loss_cal(self.opticalflow_0_2, self.opticalflow_2_0, LR, self.STEP2_para, scopevar.name+"_step2_losscal")
         
         
         #最后构建完成后初始化参数 
@@ -291,12 +291,12 @@ class Step2_ConvLstm:
             psnr = tf.image.psnr(G_net, self.frame1, max_val=2.0, name="step2_frame1_psnr")
             print ("psnr:", psnr) #psnr: Tensor("G_frame1_psnr/Identity_3:0", shape=(12,), dtype=float32)
             
-            G_loss_all=contex_loss*5 + L1_loss_all*10 +  local_var_loss_all*0.06
+            G_loss_all=contex_loss*5 + L1_loss_all*10 +  global_var_loss_all*0.06
             
             self.lr_rate = tf.train.exponential_decay(lr,  global_step=self.global_step/2, decay_steps=decay_steps, decay_rate=decay_rate)
             train_op = tf.train.AdamOptimizer(self.lr_rate, name=name+"_step2_adam").minimize(G_loss_all,  global_step=self.global_step,var_list=varlist)
             
-        return train_op,L1_loss_all,contex_loss,local_var_loss_all,G_loss_all,ssim,psnr,G_net
+        return train_op,L1_loss_all,contex_loss,local_var_loss_all,global_var_loss_all,G_loss_all,ssim,psnr,G_net
 
     
     def local_var_loss(self, flow, kernel_size=10, stride=1):

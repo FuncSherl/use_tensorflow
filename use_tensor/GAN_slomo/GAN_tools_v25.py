@@ -20,7 +20,7 @@ def unet_up(inputdata, outchannel,skipcon, scopename,stride=2, filterlen=3, trai
         #use blinear to upsample
         tep=tf.image.resize_bilinear(inputdata, (inputshape[1]*stride, inputshape[2]*stride) )
         tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=1, withbias=withbias)
-        #tep=my_batchnorm( tep,training, scopename+'_bn1')
+        tep=my_batchnorm( tep,training, scopename+'_bn1')
         tep=my_lrelu(tep, scopename)
         '''
         #单个cov无法拟合xor操作，而这里需要一个选择pixel的操作，线性操作不行
@@ -31,7 +31,7 @@ def unet_up(inputdata, outchannel,skipcon, scopename,stride=2, filterlen=3, trai
     else:
         #use deconv to upsample
         tep=my_deconv(inputdata, filterlen, outchannel, scopename+'_deconv1', stride, withbias=withbias)
-        #tep=my_batchnorm( tep,training, scopename+'_bn1')
+        tep=my_batchnorm( tep,training, scopename+'_bn1')
         tep=my_lrelu(tep, scopename)
     
     if skipcon is  not None:
@@ -43,7 +43,7 @@ def unet_up(inputdata, outchannel,skipcon, scopename,stride=2, filterlen=3, trai
     
     #单个conv无法拟合
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv3', stride=1, withbias=withbias)
-    #tep=my_batchnorm( tep,training, scopename+'_bn3')
+    tep=my_batchnorm( tep,training, scopename+'_bn3')
     tep=my_lrelu(tep, scopename)
     '''
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv4', stride=1, withbias=withbias)
@@ -65,11 +65,11 @@ def unet_down(inputdata, outchannel, scopename,stride=2, filterlen=3,training=Tr
         tep=inputdata
 
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=stride, withbias=withbias)
-    #tep=my_batchnorm( tep,training, scopename+'_bn1')
+    tep=my_batchnorm( tep,training, scopename+'_bn1')
     tep=my_lrelu(tep, scopename)
     
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv2', stride=1, withbias=withbias)
-    #tep=my_batchnorm( tep,training, scopename+'_bn2')
+    tep=my_batchnorm( tep,training, scopename+'_bn2')
     tep=my_lrelu(tep, scopename)
     
     return tep
