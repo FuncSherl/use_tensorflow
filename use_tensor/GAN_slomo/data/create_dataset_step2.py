@@ -23,6 +23,7 @@ elif pc_id==1: #lab pc
     extratdir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos' #
     tfrec_dir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/tfrecords_step2' #
     modelpath = "/home/sherl/Pictures/v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
+    modelpath="/home/sherl/Pictures/v25/GAN_2019-10-27_16-11-30_base_lr-0.000200_batchsize-12_maxstep-240000_rid_GAN_ssim_down"
 elif pc_id==2: #server
     videodir=r'/home/vrlab/Documents/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/original_high_fps_videos'
     extratdir=r'/home/vrlab/Documents/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/extracted_videos'

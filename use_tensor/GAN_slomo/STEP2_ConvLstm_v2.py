@@ -388,7 +388,7 @@ class Step2_ConvLstm:
     
     def img2tanh(self,img):
         #img=tf.cast(img,tf.float32)
-        img-=mean_dataset*3
+        #img-=mean_dataset*3
         return img*2.0/255-1
     
     def tanh2img(self,tanhd):
@@ -396,7 +396,7 @@ class Step2_ConvLstm:
         #print ('tep.shape:',tep.shape)  #tep.shape: (180, 320, 9)
         multly=int(tep.shape[-1]/len(mean_dataset))
         #print ('expanding:',multly)
-        tep+=mean_dataset*multly
+        #tep+=mean_dataset*multly
         return tep.astype(np.uint8)
         
 
@@ -481,7 +481,7 @@ class Step2_ConvLstm:
             kep_localloss1+=localvarloss1
             kep_localloss2+=localvarloss2
             
-            if recording==1:
+            if recording in [1,2]:
                 tep=self.form_bigimg(imgdata,step1_flow_0_1,step1_flow_1_0,step1_imgout,step2_flow_0_1,step2_flow_1_0,step2_outimg)
                 cv2.imwrite( op.join(kep_img_dir, "recording_"+str(recording)+"_"+str(img_cnt)+'.jpg') ,  tep)
                 img_cnt+=1
