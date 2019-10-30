@@ -165,6 +165,7 @@ class Step2_ConvLstm:
         G param len: 60
         D param len: 16
         STEP2 param len: 56
+        剩下的52个是VGG
         相比于前面不加第二部的128个，这里注意将VGG与step1中的VGG共享参数，否则会白白多用内存
         '''
         

@@ -206,11 +206,10 @@ class SuperSlomo:
         print ("VGG param len:",len(self.vgg_para))
         print (self.vgg_para)
         '''
-        trainable vars cnt: 184
-        G param len: 60
-        D param len: 16
-        STEP2 param len: 56
-        相比于前面不加第二部的128个，这里注意将VGG与step1中的VGG共享参数，否则会白白多用内存
+        trainable vars cnt: 144
+        first param len: 46
+        second param len: 46
+        VGG param len: 52
         '''
         
         #训练过程
