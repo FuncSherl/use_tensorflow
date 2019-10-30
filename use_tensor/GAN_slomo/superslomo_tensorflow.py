@@ -219,7 +219,7 @@ class SuperSlomo:
                                                                                               global_step=self.global_step  , var_list=self.first_para+self.sec_para  )
         
         # weight clipping
-        self.clip_D = [p.assign(tf.clip_by_value(p, weightclip_min, weightclip_max)) for p in self.D_para]
+        #self.clip_D = [p.assign(tf.clip_by_value(p, weightclip_min, weightclip_max)) for p in self.D_para]
         
         #最后构建完成后初始化参数 
         self.sess.run(tf.global_variables_initializer())
