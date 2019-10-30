@@ -163,7 +163,7 @@ class GAN_Net:
         self.img_flow_0_t=self.warp_op(self.frame0, -self.opticalflow_t_0) #!!!
         
         self.G_net=tf.add(self.timerates_expand*self.img_flow_2_t , (1-self.timerates_expand)*self.img_flow_0_t, name="G_net_generate" )
-        
+        print ('self.G_net:',self.G_net)
         '''
         tep_prob_flow1=tf.expand_dims(self.prob_flow1, -1)
         tep_prob_flow1=tf.tile(tep_prob_flow1, [1,1,1,3])

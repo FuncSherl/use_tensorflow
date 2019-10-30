@@ -20,6 +20,7 @@ modelpath="/home/sherl/Pictures/v24/GAN_2019-08-16_13-53-36_base_lr-0.000200_bat
 modelpath="/home/sherl/Pictures/v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
 modelpath="/home/sherl/Pictures/v25/GAN_2019-10-15_17-25-42_base_lr-0.000200_batchsize-12_maxstep-240000_train_step1_with_step2 data"
 modelpath="/home/sherl/Pictures/v25/GAN_2019-10-27_16-11-30_base_lr-0.000200_batchsize-12_maxstep-240000_rid_GAN_ssim_down"
+modelpath="/home/sherl/Pictures/v25/GAN_2019-10-29_17-35-34_base_lr-0.000200_batchsize-6_maxstep-240000"
 #modelpath=r'E:\DL_models\use_tensorflow\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress'
 #modelpath=r'D:\data_DL\Gan_slomo\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress'
 meta_name=r'model_keep-239999.meta'
@@ -58,6 +59,8 @@ class Slomo_flow:
         self.img_pla= self.graph.get_tensor_by_name('imgs_in:0')
         self.training= self.graph.get_tensor_by_name("training_in:0")
         self.timerates= self.graph.get_tensor_by_name("timerates_in:0")
+        
+        print (self.outimg)
         
         self.optical_flow_shape=self.optical_0_1.get_shape().as_list() #[12, 180, 320, 2]
         #print (self.optical_flow_shape)
@@ -692,8 +695,8 @@ if __name__=='__main__':
     with tf.Session() as sess:
         slomo=Slomo_flow(sess)
         #slomo=Step_two(sess)
-        #slomo.process_video_list(inputvideo, outputvideodir, 12)
-        slomo.eval_on_ucf_mini(ucf_path)
+        slomo.process_video_list(inputvideo, outputvideodir, 6)
+        #slomo.eval_on_ucf_mini(ucf_path)
        
         
         
