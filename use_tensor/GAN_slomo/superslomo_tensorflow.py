@@ -113,12 +113,19 @@ class SuperSlomo:
         self.frame1=self.imgs_pla[:,:,:,img_channel:img_channel*2]
         self.frame2=self.imgs_pla[:,:,:,img_channel*2:]
         
-        with tf.variable_scope("unet_first",  reuse=tf.AUTO_REUSE) as scope:
+        with tf.variable_scope("first_unet",  reuse=tf.AUTO_REUSE) as scope:
             firstinput=tf.concat([self.frame0, self.frame2], -1)
             self.first_opticalflow=my_unet( firstinput, 4, withbias=True)  #注意这里是直接作为optical flow
             
         self.first_opticalflow_0_1=self.first_opticalflow[:, :, :, :2]
         self.first_opticalflow_1_0=self.first_opticalflow[:, :, :, 2:]
+        
+        #输出光流形状
+        self.flow_size_h=self.first_opticalflow_0_1.get_shape().as_list()[1]
+        self.flow_size_w=self.first_opticalflow_0_1.get_shape().as_list()[2]
+        self.flow_channel=self.first_opticalflow_0_1.get_shape().as_list()[-1]
+        
+        self.flow_shape=[ self.flow_size_h, self.flow_size_w, self.flow_channel*2]
         
         #反向光流算中间帧
         self.first_opticalflow_t_0=tf.add( -(1-self.timerates_expand)*self.timerates_expand*self.first_opticalflow_0_1 ,\
@@ -137,7 +144,7 @@ class SuperSlomo:
         self.first_img_flow_0_2=self.warp_op(self.frame0, self.first_opticalflow_0_1)  #frame0->frame2
         
         #第二个unet
-        with tf.variable_scope("unet_second",  reuse=tf.AUTO_REUSE) as scope:
+        with tf.variable_scope("second_unet",  reuse=tf.AUTO_REUSE) as scope:
             secinput=tf.concat([self.frame0, self.frame2, \
                                 self.first_opticalflow_0_1, self.first_opticalflow_1_0, \
                                 self.first_opticalflow_t_2, self.first_opticalflow_t_0,\
@@ -147,7 +154,7 @@ class SuperSlomo:
         self.second_opticalflow_t_0=self.second_opticalflow[:,:,:,:2]+self.first_opticalflow_t_0
         self.second_opticalflow_t_1=self.second_opticalflow[:,:,:,2:4]+self.first_opticalflow_t_2
         
-        self.vmap_t_0=tf.sigmoid(self.second_opticalflow[:,:,:,-1])
+        self.vmap_t_0=tf.expand_dims( tf.sigmoid(self.second_opticalflow[:,:,:,-1])  , -1)
         self.vmap_t_1=1-self.vmap_t_0
 
         #2种方法合成t时刻的帧
@@ -156,6 +163,8 @@ class SuperSlomo:
         
         #最终输出的图
         print (self.timerates_expand, self.vmap_t_0, self.second_img_flow_0_t)
+        #Tensor("ExpandDims_2:0", shape=(6, 1, 1, 1), dtype=float32) Tensor("Sigmoid:0", shape=(6, 180, 320, 1), dtype=float32) 
+        #Tensor("dense_image_warp_5/Reshape_1:0", shape=(6, 180, 320, 3), dtype=float32)
         self.output=( (1-self.timerates_expand)*self.vmap_t_0*self.second_img_flow_0_t+self.timerates_expand*self.vmap_t_1*self.second_img_flow_1_t)/\
         ((1-self.timerates_expand)*self.vmap_t_0+self.timerates_expand*self.vmap_t_1)
         
@@ -166,6 +175,51 @@ class SuperSlomo:
         #训练过程
         self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         self.train_op = tf.train.AdamOptimizer(self.lr_rate, name="superslomo_adam").minimize(self.G_loss_all,  global_step=self.global_step)
+        
+        
+        
+        #获取数据时的一些cpu上的参数，用于扩张数据和判定时序
+        self.last_flow_init_np=np.zeros(self.flow_shape, dtype=np.float32)
+        print (self.last_flow_init_np.shape) #(180, 320, 4)
+        
+        #初始化train和test的初始0状态
+        self.last_flow_new_train=self.last_flow_init_np
+        self.last_flow_new_test=self.last_flow_init_np
+        
+        self.last_label_train='#'
+        self.last_label_test='#'
+        self.state_random_row_train=0
+        self.state_random_col_train=0
+        self.state_flip_train=False
+        
+        self.state_random_row_test=0
+        self.state_random_col_test=0
+        self.state_flip_test=False
+        
+        #为了兼容性
+        self.batchsize_inputimg=batchsize
+        self.img_size_w=img_size_w
+        self.img_size_h=img_size_h
+        
+        t_vars=tf.trainable_variables()
+        print ("trainable vars cnt:",len(t_vars))
+        self.G_para=[var for var in t_vars if var.name.startswith('first')]
+        self.D_para=[var for var in t_vars if var.name.startswith('second')]
+        self.STEP2_para=[var for var in t_vars if var.name.startswith('VGG')]
+        print ("first param len:",len(self.G_para))
+        print ("second param len:",len(self.D_para))
+        print ("VGG param len:",len(self.STEP2_para))
+        print (self.STEP2_para)
+        '''
+        trainable vars cnt: 184
+        G param len: 60
+        D param len: 16
+        STEP2 param len: 56
+        相比于前面不加第二部的128个，这里注意将VGG与step1中的VGG共享参数，否则会白白多用内存
+        '''
+        
+        # weight clipping
+        self.clip_D = [p.assign(tf.clip_by_value(p, weightclip_min, weightclip_max)) for p in self.D_para]
         
         #最后构建完成后初始化参数 
         self.sess.run(tf.global_variables_initializer())
@@ -332,7 +386,7 @@ class SuperSlomo:
                                     self.ssim, self.psnr, \
                                     self.contex_loss,  self.L1_loss_interframe,self.warp_loss, \
                                     self.local_var_loss_all,self.global_var_loss_all,  self.G_loss_all], \
-                      feed_dict={self.imgs_pla:imgdata,self.timerates:rate})
+                      feed_dict={self.imgs_pla:imgdata,self.timerates_pla:rate})
         
         #print ()
         print ("train once:")
@@ -382,7 +436,7 @@ class SuperSlomo:
                                     self.ssim, self.psnr, \
                                     self.contex_loss,  self.L1_loss_interframe,self.warp_loss, \
                                     self.local_var_loss_all,self.global_var_loss_all,  self.G_loss_all], \
-                      feed_dict={self.imgs_pla:imgdata,self.timerates:rate})
+                      feed_dict={self.imgs_pla:imgdata,self.timerates_pla:rate})
         
             kep_ssim1+=np.mean(ssim1)
             #kep_ssim2+=np.mean(ssim2)
