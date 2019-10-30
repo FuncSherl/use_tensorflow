@@ -31,7 +31,7 @@ TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 train_size=112064 
 test_size=8508
-batchsize=6  #train
+batchsize=10  #train
 batchsize_test=batchsize #here it must equal to batchsize,or the placement size will error
 
 #
@@ -174,7 +174,7 @@ class SuperSlomo:
         
         #训练过程
         self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
-        self.train_op = tf.train.AdamOptimizer(self.lr_rate, name="superslomo_adam").minimize(self.G_loss_all,  global_step=self.global_step)
+        self.train_op = tf.train.AdamOptimizer(self.lr_rate, name="superslomo_adam").minimize(self.G_loss_all,  global_step=self.global_step    )
         
         
         
@@ -456,11 +456,11 @@ class SuperSlomo:
                 
                     
             
-        print ("eval ",evalstep,' times:','\nmean ssim1:',kep_ssim1/evalstep,\
-               '\nmean psnr1:',kep_psnr1/evalstep,\
-               '\nmean l1loss1:',kep_l1loss1/evalstep,'   mean l1loss_warp:',kep_l1loss2_warp/evalstep,\
-               '\nmean contexloss1:',kep_contexloss1/evalstep,\
-               '\nmean localvar loss1:',kep_localloss1/evalstep, "   mean localvar loss2:",kep_globalloss/evalstep)
+        print ("eval ",evalstep,' times:','\nmean ssim:',kep_ssim1/evalstep,\
+               '\nmean psnr:',kep_psnr1/evalstep,\
+               '\nmean l1loss of interframe:',kep_l1loss1/evalstep,'   mean l1loss_warp:',kep_l1loss2_warp/evalstep,\
+               '\nmean contexloss:',kep_contexloss1/evalstep,\
+               '\nmean localvar loss:',kep_localloss1/evalstep, "   mean global loss:",kep_globalloss/evalstep)
         print ("write "+str(img_cnt)+" imgs to:"+kep_img_dir)
         return kep_ssim1/evalstep, kep_psnr1/evalstep, kep_l1loss1/evalstep, kep_l1loss2_warp/evalstep, kep_contexloss1/evalstep,  kep_localloss1/evalstep, kep_globalloss/evalstep
     
