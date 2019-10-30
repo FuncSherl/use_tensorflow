@@ -137,6 +137,7 @@ class SuperSlomo:
         self.first_img_flow_2_t=self.warp_op(self.frame2, -self.first_opticalflow_t_2) #!!!
         self.first_img_flow_0_t=self.warp_op(self.frame0, -self.first_opticalflow_t_0) #!!!
         
+        #虽然论文里用不到第一步的输出中间帧，但是这里也给他输出看看效果
         self.first_output=self.timerates_expand*self.first_img_flow_2_t+(1-self.timerates_expand)*self.first_img_flow_0_t
         
         #利用光流前后帧互相合成
