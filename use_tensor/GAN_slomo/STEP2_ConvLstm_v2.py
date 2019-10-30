@@ -116,12 +116,12 @@ class Step2_ConvLstm:
         print (input_pla)  #Tensor("concat_9:0", shape=(180, 320, 14), dtype=float32)
         
         with tf.variable_scope("STEP2",  reuse=tf.AUTO_REUSE) as scopevar:
-            new_flow=self.step2_network(input_pla)
+            new_flow=self.step2_network(input_pla, training=self.training)
             kep_new_flow=[new_flow]
             
             for ti in range(1,self.batchsize_inputimg):
                 input_pla=tf.concat([ self.frame0[ti], self.frame2[ti] , self.optical_0_1[ti], self.optical_1_0[ti], new_flow], -1) #14
-                new_flow=self.step2_network(input_pla)
+                new_flow=self.step2_network(input_pla, training=self.training)
                 kep_new_flow.append(new_flow)
                 
             self.flow_next=new_flow

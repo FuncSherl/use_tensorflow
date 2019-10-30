@@ -12,7 +12,7 @@ import numpy as np
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 dropout=0.5 
-leakyrelurate=0.2
+leakyrelurate=0.1
 stddev=0.01
 bias_init=0.0
 
