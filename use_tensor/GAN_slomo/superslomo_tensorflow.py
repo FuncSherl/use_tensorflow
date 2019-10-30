@@ -216,7 +216,7 @@ class SuperSlomo:
         #训练过程
         self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
         self.train_op = tf.train.AdamOptimizer(self.lr_rate, name="superslomo_adam").minimize(self.G_loss_all,  \
-                                                                                              global_step=self.global_step  , var_list=self.first_para+self.sec  )
+                                                                                              global_step=self.global_step  , var_list=self.first_para+self.sec_para  )
         
         # weight clipping
         self.clip_D = [p.assign(tf.clip_by_value(p, weightclip_min, weightclip_max)) for p in self.D_para]
