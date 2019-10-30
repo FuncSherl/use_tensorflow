@@ -170,12 +170,7 @@ class SuperSlomo:
         
         #计算loss
         self.L1_loss_interframe,self.warp_loss,self.contex_loss,self.local_var_loss_all,self.global_var_loss_all,self.ssim,self.psnr=self.loss_cal()
-        self.G_loss_all=204 * self.L1_loss_interframe + 102 * self.warp_loss + 0.005 * self.contex_loss + self.global_var_loss_all
-        
-        #训练过程
-        self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
-        self.train_op = tf.train.AdamOptimizer(self.lr_rate, name="superslomo_adam").minimize(self.G_loss_all,  global_step=self.global_step    )
-        
+        self.G_loss_all=204 * self.L1_loss_interframe + 102 * self.warp_loss + 0.005 * self.contex_loss + self.global_var_loss_all        
         
         
         #获取数据时的一些cpu上的参数，用于扩张数据和判定时序
@@ -203,13 +198,13 @@ class SuperSlomo:
         
         t_vars=tf.trainable_variables()
         print ("trainable vars cnt:",len(t_vars))
-        self.G_para=[var for var in t_vars if var.name.startswith('first')]
-        self.D_para=[var for var in t_vars if var.name.startswith('second')]
-        self.STEP2_para=[var for var in t_vars if var.name.startswith('VGG')]
-        print ("first param len:",len(self.G_para))
-        print ("second param len:",len(self.D_para))
-        print ("VGG param len:",len(self.STEP2_para))
-        print (self.STEP2_para)
+        self.first_para=[var for var in t_vars if var.name.startswith('first')]
+        self.sec_para=[var for var in t_vars if var.name.startswith('second')]
+        self.vgg_para=[var for var in t_vars if var.name.startswith('VGG')]
+        print ("first param len:",len(self.first_para))
+        print ("second param len:",len(self.sec_para))
+        print ("VGG param len:",len(self.vgg_para))
+        print (self.vgg_para)
         '''
         trainable vars cnt: 184
         G param len: 60
@@ -217,6 +212,11 @@ class SuperSlomo:
         STEP2 param len: 56
         相比于前面不加第二部的128个，这里注意将VGG与step1中的VGG共享参数，否则会白白多用内存
         '''
+        
+        #训练过程
+        self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+        self.train_op = tf.train.AdamOptimizer(self.lr_rate, name="superslomo_adam").minimize(self.G_loss_all,  \
+                                                                                              global_step=self.global_step  , var_list=self.first_para+self.sec  )
         
         # weight clipping
         self.clip_D = [p.assign(tf.clip_by_value(p, weightclip_min, weightclip_max)) for p in self.D_para]
