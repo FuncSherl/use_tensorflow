@@ -141,8 +141,8 @@ class SuperSlomo:
         self.first_output=self.timerates_expand*self.first_img_flow_2_t+(1-self.timerates_expand)*self.first_img_flow_0_t
         
         #利用光流前后帧互相合成
-        self.first_img_flow_2_0=self.warp_op(self.frame2, self.first_opticalflow_1_0)  #frame2->frame0
-        self.first_img_flow_0_2=self.warp_op(self.frame0, self.first_opticalflow_0_1)  #frame0->frame2
+        self.first_img_flow_2_0=self.warp_op(self.frame2, -self.first_opticalflow_0_1)  #frame2->frame0
+        self.first_img_flow_0_2=self.warp_op(self.frame0, -self.first_opticalflow_1_0)  #frame0->frame2
         
         #第二个unet
         with tf.variable_scope("second_unet",  reuse=tf.AUTO_REUSE) as scope:
@@ -363,10 +363,10 @@ class SuperSlomo:
     def img2tanh(self,img):
         #img=tf.cast(img,tf.float32)
         #img-=mean_dataset*3
-        return img*2.0/255-1
+        return img*1.0/255
     
     def tanh2img(self,tanhd):
-        tep= (tanhd+1)*255//2
+        tep= (tanhd)*255
         #print ('tep.shape:',tep.shape)  #tep.shape: (180, 320, 9)
         multly=int(tep.shape[-1]/len(mean_dataset))
         #print ('expanding:',multly)
