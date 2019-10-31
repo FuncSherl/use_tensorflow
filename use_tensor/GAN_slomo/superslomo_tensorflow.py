@@ -39,7 +39,7 @@ img_size_w=int (640/2)
 img_size_h=int (360/2)
 img_size=[img_size_h, img_size_w]
 
-base_lr=0.0002 #基础学习率
+base_lr=0.0001 #基础学习率
 beta1=0.5
 dropout_rate=0.5
 
@@ -171,7 +171,7 @@ class SuperSlomo:
         
         #计算loss
         self.L1_loss_interframe,self.warp_loss,self.contex_loss,self.local_var_loss_all,self.global_var_loss_all,self.ssim,self.psnr=self.loss_cal()
-        self.G_loss_all=204 * self.L1_loss_interframe + 102 * self.warp_loss + 0.005 * self.contex_loss + self.global_var_loss_all        
+        self.G_loss_all=204 * self.L1_loss_interframe + 102 * self.warp_loss + 0.005 * self.contex_loss + self.global_var_loss_all*0.01        
         
         
         #获取数据时的一些cpu上的参数，用于扩张数据和判定时序
