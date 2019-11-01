@@ -17,7 +17,7 @@ import tensorflow as tf
 from superslomo_tools import *
 from data import create_dataset_step2 as cdata
 #from data import create_dataset2 as cdata
-import skimage
+#import skimage
 
 #this version change output of g to be img
 #and chagne img-size to v2's 1/2
@@ -108,6 +108,7 @@ class SuperSlomo:
         self.timerates_expand=tf.expand_dims(self.timerates_expand, -1) #12*1*1*1
         
         print ('placeholders:\n','img_placeholder:',self.imgs_pla,self.timerates_pla)
+        #img_placeholder: Tensor("imgs_in:0", shape=(10, 180, 320, 9), dtype=float32) Tensor("timerates_in:0", shape=(10,), dtype=float32)
         
         self.frame0=self.imgs_pla[:,:,:,:img_channel]
         self.frame1=self.imgs_pla[:,:,:,img_channel:img_channel*2]
@@ -123,6 +124,8 @@ class SuperSlomo:
         self.first_opticalflow_1_0=self.first_opticalflow[:, :, :, 2:]
         self.first_opticalflow_1_0=tf.identity(self.first_opticalflow_1_0, name="first_opticalflow_1_0")
         print ('first_opticalflow_1_0:',self.first_opticalflow_1_0)
+        #first_opticalflow_0_1: Tensor("first_opticalflow_0_1:0", shape=(10, 180, 320, 2), dtype=float32)
+        #first_opticalflow_1_0: Tensor("first_opticalflow_1_0:0", shape=(10, 180, 320, 2), dtype=float32)
         
         #输出光流形状
         self.flow_size_h=self.first_opticalflow_0_1.get_shape().as_list()[1]
@@ -143,6 +146,8 @@ class SuperSlomo:
         
         #虽然论文里用不到第一步的输出中间帧，但是这里也给他输出看看效果
         self.first_output=tf.add( self.timerates_expand*self.first_img_flow_2_t, (1-self.timerates_expand)*self.first_img_flow_0_t , name="first_outputimg")
+        print ('first output img:',self.first_output)
+        #first output img: Tensor("first_outputimg:0", shape=(10, 180, 320, 3), dtype=float32)
         
         #利用光流前后帧互相合成
         self.first_img_flow_2_0=self.warp_op(self.frame2, -self.first_opticalflow_0_1)  #frame2->frame0
@@ -158,6 +163,10 @@ class SuperSlomo:
             self.second_opticalflow=my_unet( secinput, 5, withbias=True)  #注意这里是直接作为optical flow
         self.second_opticalflow_t_0=tf.add( self.second_opticalflow[:,:,:,:2],  self.first_opticalflow_t_0, name="second_opticalflow_t_0")
         self.second_opticalflow_t_1=tf.add( self.second_opticalflow[:,:,:,2:4], self.first_opticalflow_t_2, name="second_opticalflow_t_1")
+        print ('second_opticalflow_t_0:',self.second_opticalflow_t_0)
+        print ('second_opticalflow_t_1:',self.second_opticalflow_t_1)
+        #second_opticalflow_t_0: Tensor("second_opticalflow_t_0:0", shape=(10, 180, 320, 2), dtype=float32)
+        #second_opticalflow_t_1: Tensor("second_opticalflow_t_1:0", shape=(10, 180, 320, 2), dtype=float32)
         
         self.vmap_t_0=tf.expand_dims( tf.sigmoid(self.second_opticalflow[:,:,:,-1])  , -1)
         self.vmap_t_1=1-self.vmap_t_0
@@ -172,6 +181,8 @@ class SuperSlomo:
         #Tensor("dense_image_warp_5/Reshape_1:0", shape=(6, 180, 320, 3), dtype=float32)
         self.output=tf.div(  ( (1-self.timerates_expand)*self.vmap_t_0*self.second_img_flow_0_t+self.timerates_expand*self.vmap_t_1*self.second_img_flow_1_t),  \
                              ((1-self.timerates_expand)*self.vmap_t_0+self.timerates_expand*self.vmap_t_1) , name="second_outputimg" )
+        print ('second output img:',self.output)
+        #second output img: Tensor("second_outputimg:0", shape=(10, 180, 320, 3), dtype=float32)
         
         #计算loss
         self.L1_loss_interframe,self.warp_loss,self.contex_loss,self.local_var_loss_all,self.global_var_loss_all,self.ssim,self.psnr=self.loss_cal()

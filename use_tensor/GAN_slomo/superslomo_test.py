@@ -14,12 +14,7 @@ from datetime import datetime
 import imageio
 
 
-modelpath="/home/sherl/Pictures/v24/GAN_2019-08-12_15-55-54_base_lr-0.000200_batchsize-12_maxstep-240000_rid_prob_with contex loss"
-modelpath="/home/sherl/Pictures/v24/GAN_2019-08-14_14-04-50_base_lr-0.000200_batchsize-12_maxstep-240000_reset_loss_mode"
-modelpath="/home/sherl/Pictures/v24/GAN_2019-08-16_13-53-36_base_lr-0.000200_batchsize-12_maxstep-240000_add_sub_dataset_mean"
-modelpath="/home/sherl/Pictures/v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
-modelpath="/home/sherl/Pictures/v25/GAN_2019-10-15_17-25-42_base_lr-0.000200_batchsize-12_maxstep-240000_train_step1_with_step2 data"
-modelpath="/home/sherl/Pictures/v25/GAN_2019-10-27_16-11-30_base_lr-0.000200_batchsize-12_maxstep-240000_rid_GAN_ssim_down"
+
 modelpath="/home/sherl/Pictures/v25/GAN_2019-10-29_17-35-34_base_lr-0.000200_batchsize-6_maxstep-240000"
 #modelpath=r'E:\DL_models\use_tensorflow\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress'
 #modelpath=r'D:\data_DL\Gan_slomo\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress'
@@ -387,16 +382,16 @@ class Slomo_flow:
     
     def img2tanh(self,img):
         #img=tf.cast(img,tf.float32)
-        img-=mean_dataset*3
-        return img*2.0/255-1
+        #img-=mean_dataset*3
+        return img*1.0/255
     
     def tanh2img(self,tanhd):
-        tep= (tanhd+1)*255//2
+        tep= (tanhd)*255
         #print ('tep.shape:',tep.shape)  #tep.shape: (180, 320, 9)
-        multly=int(tep.shape[-1]/len(mean_dataset))  #这里由于tep的channel不确定(3or9)，这里需要判断一下，对mean_dataset进行broadcast
+        multly=int(tep.shape[-1]/len(mean_dataset))
         #print ('expanding:',multly)
-        tep+=mean_dataset*multly
-        return tep.astype(np.uint8)  
+        #tep+=mean_dataset*multly
+        return tep.astype(np.uint8)
     
     def flow_bgr(self, flow):
         # Use Hue, Saturation, Value colour model 
@@ -696,7 +691,7 @@ if __name__=='__main__':
         slomo=Slomo_flow(sess)
         #slomo=Step_two(sess)
         slomo.process_video_list(inputvideo, outputvideodir, 6)
-        #slomo.eval_on_ucf_mini(ucf_path)
+        slomo.eval_on_ucf_mini(ucf_path)
        
         
         
