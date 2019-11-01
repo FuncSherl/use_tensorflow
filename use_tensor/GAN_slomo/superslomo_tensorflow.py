@@ -101,13 +101,13 @@ class SuperSlomo:
         
         #3个placeholder， img和noise,training 
         self.imgs_pla = tf.placeholder(tf.float32, [batchsize, img_size_h, img_size_w, G_group_img_num*img_channel], name='imgs_in')
-        #self.training=tf.placeholder(tf.bool, name='training_in')
+        self.training=tf.placeholder(tf.bool, name='training_in')  #这里没用上但是为了兼容就保留了
         self.timerates_pla=tf.placeholder(tf.float32, [batchsize], name='timerates_in')
         self.timerates_expand=tf.expand_dims(self.timerates_pla, -1)
         self.timerates_expand=tf.expand_dims(self.timerates_expand, -1)
         self.timerates_expand=tf.expand_dims(self.timerates_expand, -1) #12*1*1*1
         
-        print ('placeholders:\n','img_placeholder:',self.imgs_pla)
+        print ('placeholders:\n','img_placeholder:',self.imgs_pla,self.timerates_pla)
         
         self.frame0=self.imgs_pla[:,:,:,:img_channel]
         self.frame1=self.imgs_pla[:,:,:,img_channel:img_channel*2]
@@ -118,7 +118,11 @@ class SuperSlomo:
             self.first_opticalflow=my_unet( firstinput, 4, withbias=True)  #注意这里是直接作为optical flow
             
         self.first_opticalflow_0_1=self.first_opticalflow[:, :, :, :2]
+        self.first_opticalflow_0_1=tf.identity(self.first_opticalflow_0_1, name="first_opticalflow_0_1")
+        print ('first_opticalflow_0_1:',self.first_opticalflow_0_1)
         self.first_opticalflow_1_0=self.first_opticalflow[:, :, :, 2:]
+        self.first_opticalflow_1_0=tf.identity(self.first_opticalflow_1_0, name="first_opticalflow_1_0")
+        print ('first_opticalflow_1_0:',self.first_opticalflow_1_0)
         
         #输出光流形状
         self.flow_size_h=self.first_opticalflow_0_1.get_shape().as_list()[1]
@@ -138,7 +142,7 @@ class SuperSlomo:
         self.first_img_flow_0_t=self.warp_op(self.frame0, -self.first_opticalflow_t_0) #!!!
         
         #虽然论文里用不到第一步的输出中间帧，但是这里也给他输出看看效果
-        self.first_output=self.timerates_expand*self.first_img_flow_2_t+(1-self.timerates_expand)*self.first_img_flow_0_t
+        self.first_output=tf.add( self.timerates_expand*self.first_img_flow_2_t, (1-self.timerates_expand)*self.first_img_flow_0_t , name="first_outputimg")
         
         #利用光流前后帧互相合成
         self.first_img_flow_2_0=self.warp_op(self.frame2, -self.first_opticalflow_0_1)  #frame2->frame0
@@ -152,8 +156,8 @@ class SuperSlomo:
                                 self.first_img_flow_2_t, self.first_img_flow_0_t], -1)
             print (secinput)
             self.second_opticalflow=my_unet( secinput, 5, withbias=True)  #注意这里是直接作为optical flow
-        self.second_opticalflow_t_0=self.second_opticalflow[:,:,:,:2]+self.first_opticalflow_t_0
-        self.second_opticalflow_t_1=self.second_opticalflow[:,:,:,2:4]+self.first_opticalflow_t_2
+        self.second_opticalflow_t_0=tf.add( self.second_opticalflow[:,:,:,:2],  self.first_opticalflow_t_0, name="second_opticalflow_t_0")
+        self.second_opticalflow_t_1=tf.add( self.second_opticalflow[:,:,:,2:4], self.first_opticalflow_t_2, name="second_opticalflow_t_1")
         
         self.vmap_t_0=tf.expand_dims( tf.sigmoid(self.second_opticalflow[:,:,:,-1])  , -1)
         self.vmap_t_1=1-self.vmap_t_0
@@ -166,8 +170,8 @@ class SuperSlomo:
         print (self.timerates_expand, self.vmap_t_0, self.second_img_flow_0_t)
         #Tensor("ExpandDims_2:0", shape=(6, 1, 1, 1), dtype=float32) Tensor("Sigmoid:0", shape=(6, 180, 320, 1), dtype=float32) 
         #Tensor("dense_image_warp_5/Reshape_1:0", shape=(6, 180, 320, 3), dtype=float32)
-        self.output=( (1-self.timerates_expand)*self.vmap_t_0*self.second_img_flow_0_t+self.timerates_expand*self.vmap_t_1*self.second_img_flow_1_t)/\
-        ((1-self.timerates_expand)*self.vmap_t_0+self.timerates_expand*self.vmap_t_1)
+        self.output=tf.div(  ( (1-self.timerates_expand)*self.vmap_t_0*self.second_img_flow_0_t+self.timerates_expand*self.vmap_t_1*self.second_img_flow_1_t),  \
+                             ((1-self.timerates_expand)*self.vmap_t_0+self.timerates_expand*self.vmap_t_1) , name="second_outputimg" )
         
         #计算loss
         self.L1_loss_interframe,self.warp_loss,self.contex_loss,self.local_var_loss_all,self.global_var_loss_all,self.ssim,self.psnr=self.loss_cal()
@@ -490,7 +494,7 @@ class SuperSlomo:
             ret[row:row+self.img_size_h, col:col+self.img_size_w]=self.flow_bgr(step1_flow_1_0[j])
             col+=self.img_size_w+gap
             #5
-            mean_l1=np.mean( np.abs(step1_imgout[j]-imgdata[j, :,:,1*img_channel:(1+1)*img_channel]) )*2/255
+            mean_l1=np.mean( np.abs(  self.img2tanh(step1_imgout[j])  -   self.img2tanh(imgdata[j, :,:,1*img_channel:(1+1)*img_channel] ) ) )
             ret[row:row+self.img_size_h, col:col+self.img_size_w]=cv2.putText(step1_imgout[j],'GT_step1_L1loss:'+str(mean_l1),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
             col+=self.img_size_w+gap
             #6
@@ -500,7 +504,7 @@ class SuperSlomo:
             ret[row:row+self.img_size_h, col:col+self.img_size_w]=self.flow_bgr(step2_flow_1_0[j])
             col+=self.img_size_w+gap
             #8
-            mean_l1=np.mean( np.abs(step2_outimg[j]-imgdata[j, :,:,1*img_channel:(1+1)*img_channel]) )*2/255
+            mean_l1=np.mean( np.abs(  self.img2tanh(step2_outimg[j]) - self.img2tanh(imgdata[j, :,:,1*img_channel:(1+1)*img_channel]) ) )
             ret[row:row+self.img_size_h, col:col+self.img_size_w]=cv2.putText(step2_outimg[j],'GT_step2_L1loss:'+str(mean_l1),(0,20),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255),1)
             col+=self.img_size_w+gap
         return ret
@@ -536,7 +540,8 @@ if __name__ == '__main__':
         
         logwriter = tf.summary.FileWriter(logdir,   sess.graph)
         
-        all_saver = tf.train.Saver(max_to_keep=2) 
+        # 注意这里制定了保存的参数，避免包含进VGG的参数
+        all_saver = tf.train.Saver(var_list=gan.first_para+gan.sec_para,  max_to_keep=2) 
 
 
         begin_t=time.time()
