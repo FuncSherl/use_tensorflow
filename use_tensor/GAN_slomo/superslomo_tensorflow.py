@@ -189,7 +189,7 @@ class SuperSlomo:
         self.second_L1_loss_interframe,self.first_warp_loss,self.second_contex_loss,self.second_local_var_loss_all,self.second_global_var_loss_all,self.second_ssim,self.second_psnr,\
                 self.first_L1_loss_interframe, self.first_ssim, self.first_psnr=self.loss_cal_all()
                 
-        self.G_loss_all=204 * self.second_L1_loss_interframe + 102 * self.first_warp_loss + 0.005 * self.second_contex_loss + self.second_global_var_loss_all*0.01        
+        self.G_loss_all=204 * self.second_L1_loss_interframe + 102 * self.first_warp_loss + 0.005 * self.second_contex_loss + self.second_global_var_loss_all        
         
         
         #获取数据时的一些cpu上的参数，用于扩张数据和判定时序
