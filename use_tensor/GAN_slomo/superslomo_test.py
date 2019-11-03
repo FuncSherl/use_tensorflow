@@ -15,14 +15,14 @@ import imageio
 
 
 
-modelpath="/home/sherl/Pictures/v25/GAN_2019-10-29_17-35-34_base_lr-0.000200_batchsize-6_maxstep-240000"
+modelpath="/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-02_13-56-35_base_lr-0.000100_batchsize-10_maxstep-240000_original_paper"
 #modelpath=r'E:\DL_models\use_tensorflow\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress'
 #modelpath=r'D:\data_DL\Gan_slomo\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress'
 meta_name=r'model_keep-239999.meta'
 
 ucf_path=r'/media/sherl/本地磁盘/data_DL/UCF101_results'
 
-version='Superslomo_'
+version='Superslomo_v1_'
 
 inputvideodir='./testing_gif'
 outputvideodir='./outputvideos'   #输出的video的路径，会在该路径下新建文件夹
