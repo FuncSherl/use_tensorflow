@@ -278,7 +278,7 @@ class SuperSlomo:
         self.clip_D = [p.assign(tf.clip_by_value(p, weightclip_min, weightclip_max)) for p in self.D_para]
         
         #D训练过程
-        self.train_op_D= tf.train.AdamOptimizer(self.lr_rate  , beta1=beta1, nmae="superslomo_adam_D").minimize(self.D_loss_all, var_list=self.D_para)
+        self.train_op_D= tf.train.AdamOptimizer(self.lr_rate  , beta1=beta1, name="superslomo_adam_D").minimize(self.D_loss_all, var_list=self.D_para)
         
         #最后构建完成后初始化参数 
         self.sess.run(tf.global_variables_initializer())
