@@ -217,12 +217,22 @@ class SuperSlomo:
         print ('second output img:',self.second_output)
         #second output img: Tensor("second_outputimg:0", shape=(10, 180, 320, 3), dtype=float32)
         
+        #判别器的网络构建
+        self.D_1_net_F, self.D_1_net_F_logit=Discriminator_net(self.second_output, name="D1", training=self.training)
+        self.D_1_net_T, self.D_1_net_T_logit=Discriminator_net(self.frame1, name="D1", training=self.training)
+        #D的loss计算
+        self.D_1_net_loss_sum, _, _=self.D_loss_TandF_logits(self.D_1_net_T_logit, self.D_1_net_F_logit, "D_1_net")
+        
         #计算loss
         self.second_L1_loss_interframe,self.first_warp_loss,self.second_contex_loss,self.second_local_var_loss_all,self.second_global_var_loss_all,self.second_ssim,self.second_psnr,\
-                self.first_L1_loss_interframe, self.first_ssim, self.first_psnr=self.loss_cal_all()
+                self.first_L1_loss_interframe, self.first_ssim, self.first_psnr, self.second_GAN_loss_mean_D1=self.loss_cal_all()
                 
-        self.G_loss_all=204 * self.second_L1_loss_interframe + 102 * self.first_warp_loss + 0.005 * self.second_contex_loss + self.second_global_var_loss_all        
+        #训练G的总loss
+        self.G_loss_all=204 * self.second_L1_loss_interframe + 102 * self.first_warp_loss + 0.005 * self.second_contex_loss + self.second_global_var_loss_all \
+                        + self.second_GAN_loss_mean_D1       
         
+        #训练D的总loss
+        self.D_loss_all=self.D_1_net_loss_sum
         
         
         #####################################
@@ -246,9 +256,11 @@ class SuperSlomo:
         self.first_para=[var for var in t_vars if var.name.startswith('first')]
         self.sec_para=[var for var in t_vars if var.name.startswith('second')]
         self.vgg_para=[var for var in t_vars if var.name.startswith('VGG')]
+        self.D_para=[var for var in t_vars if var.name.startswith('D')]
         print ("first param len:",len(self.first_para))
         print ("second param len:",len(self.sec_para))
         print ("VGG param len:",len(self.vgg_para))
+        print ("D param len:",len(self.D_para))
         print (self.vgg_para)
         '''
         trainable vars cnt: 144
@@ -257,17 +269,48 @@ class SuperSlomo:
         VGG param len: 52
         '''
         
-        #训练过程
+        #G训练过程
         self.lr_rate = tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
-        self.train_op = tf.train.AdamOptimizer(self.lr_rate, name="superslomo_adam").minimize(self.G_loss_all,  \
+        self.train_op_G = tf.train.AdamOptimizer(self.lr_rate, beta1=beta1, name="superslomo_adam_G").minimize(self.G_loss_all,  \
                                                                                               global_step=self.global_step  , var_list=self.first_para+self.sec_para  )
         
         # weight clipping
-        #self.clip_D = [p.assign(tf.clip_by_value(p, weightclip_min, weightclip_max)) for p in self.D_para]
+        self.clip_D = [p.assign(tf.clip_by_value(p, weightclip_min, weightclip_max)) for p in self.D_para]
+        
+        #D训练过程
+        self.train_op_D= tf.train.AdamOptimizer(self.lr_rate  , beta1=beta1, nmae="superslomo_adam_D").minimize(self.D_loss_all, var_list=self.D_para)
         
         #最后构建完成后初始化参数 
         self.sess.run(tf.global_variables_initializer())
         
+    
+    def D_loss_TandF_logits(self, logits_t, logits_f, summaryname='default'):
+        self.D_loss_fir=-logits_t #tf.nn.sigmoid_cross_entropy_with_logits(logits=logits_t, labels=tf.ones_like(logits_t))   #real
+        
+        self.D_loss_sec=logits_f #tf.nn.sigmoid_cross_entropy_with_logits(logits=logits_f, labels=tf.zeros_like(logits_f))  #fake
+        
+       
+        #testing target
+        real_loss_mean=tf.reduce_mean(self.D_loss_fir)
+        fake_loss_mean=tf.reduce_mean(self.D_loss_sec)
+        tf.summary.scalar(summaryname+'_real_loss_mean',real_loss_mean)
+        tf.summary.scalar(summaryname+'_fake_loss_mean',fake_loss_mean)
+        
+        loss_mean=real_loss_mean+fake_loss_mean
+        
+        tf.summary.scalar(summaryname+'_sum_loss_mean',loss_mean)        
+        ############################################################
+        
+        return loss_mean,real_loss_mean,fake_loss_mean
+        
+    
+    def G_loss_F_logits(self, logits, summaryname='default'):
+        self.G_loss_fir=-logits #tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=tf.ones_like(logits))
+        loss_mean = tf.reduce_mean(self.G_loss_fir)
+        tf.summary.scalar(summaryname+'_loss_mean',loss_mean)
+        
+        return loss_mean    
+    
         
     def loss_cal_all(self,name='superslomo'):           
         #1、conceptual loss
@@ -325,9 +368,12 @@ class SuperSlomo:
             first_psnr = tf.image.psnr(self.first_output, self.frame1, max_val=2.0, name="step1_frame1_psnr")
             print ("first_psnr:", first_psnr) #
             
-        
+        #8 GAN loss
+        with tf.variable_scope(name,  reuse=tf.AUTO_REUSE):
+            G_loss_mean_D1=self.G_loss_F_logits(self.D_1_net_F_logit, 'step2_frame1_GAN')
+            print ("G_loss_mean_D1:",G_loss_mean_D1)
             
-        return L1_loss_interframe,warp_loss,contex_loss,local_var_loss_all,global_var_loss_all,ssim,psnr,first_L1_loss_interframe, first_ssim, first_psnr
+        return L1_loss_interframe,warp_loss,contex_loss,local_var_loss_all,global_var_loss_all,ssim,psnr,first_L1_loss_interframe, first_ssim, first_psnr, G_loss_mean_D1
 
     def warp_op(self, images, flow, timerates=1):
         '''
@@ -433,16 +479,16 @@ class SuperSlomo:
             self.last_flow_new_train=self.last_flow_init_np
             print ('start from a zero flow!!!')
         
-        _, self.last_flow_new_train,\
+        _,_,_, self.last_flow_new_train,\
         sec_ssim,sec_psnr,      \
         sec_contexloss, sec_L1_loss,first_loss_warp, \
-        sec_localloss,sec_globalloss,loss_all,\
-        first_L1_loss, first_ssim, first_psnr=self.sess.run([self.train_op, self.second_batch_last_flow,\
+        sec_localloss,sec_globalloss,sec_GAN_loss, loss_all,D_loss_all,\
+        first_L1_loss, first_ssim, first_psnr=self.sess.run([self.train_op_D, self.clip_D, self.train_op_G, self.second_batch_last_flow,\
                                     self.second_ssim, self.second_psnr, \
                                     self.second_contex_loss,  self.second_L1_loss_interframe,self.first_warp_loss, \
-                                    self.second_local_var_loss_all,self.second_global_var_loss_all,  self.G_loss_all, \
+                                    self.second_local_var_loss_all,self.second_global_var_loss_all,  self.second_GAN_loss_mean_D1, self.G_loss_all, self.D_loss_all,\
                                     self.first_L1_loss_interframe, self.first_ssim, self.first_psnr], \
-                      feed_dict={self.imgs_pla:imgdata,self.timerates_pla:rate, self.last_optical_flow:self.last_flow_new_train})
+                      feed_dict={self.imgs_pla:imgdata,self.timerates_pla:rate, self.last_optical_flow:self.last_flow_new_train, self.training:True})
         
         #print ()
         print ("train once:")
@@ -456,13 +502,14 @@ class SuperSlomo:
         #print ("contexloss2:",contexloss2)
         print ("second local var loss:",sec_localloss)
         print ("second global var loss:",sec_globalloss)
+        print ("second GAN loss:",sec_GAN_loss)
         
         print ("first  l1_loss_all:",first_L1_loss)
         print ("second l1_loss_all:",sec_L1_loss)
         
         print ("first l1_loss_warp:",first_loss_warp)
-        print ("loss_all :",loss_all)
-        #print ("loss_all 2:",loss_all2)
+        print ("G loss_all :",loss_all)
+        print ("D loss_all:",D_loss_all)
         
         return loss_all
 
@@ -475,7 +522,7 @@ class SuperSlomo:
         kep_psnr1=0.0
         kep_l1loss1=0.0
         kep_l1loss2=0.0
-        kep_contexloss1=0.0
+        kep_G_GAN_loss1=0.0
         kep_localloss2=0
         kep_ssim2=0.0
         kep_psnr2=0.0
@@ -495,14 +542,14 @@ class SuperSlomo:
             step1_flow_0_1,step1_flow_1_0,step1_imgout,step2_flow_t_0,step2_flow_t_1,step2_outimg   ,\
             ssim1,ssim2,psnr1, psnr2,     \
             contexloss2, L1_loss1, L1_loss2,L1_loss_warp1, \
-            localloss2,globalloss2,loss_all=self.sess.run([self.second_batch_last_flow,\
+            localloss2,globalloss2,G_GAN_loss1, loss_all=self.sess.run([self.second_batch_last_flow,\
                                     self.first_opticalflow_0_1,self.first_opticalflow_1_0,self.first_output ,self.second_opticalflow_t_0,self.second_opticalflow_t_1, self.second_output              ,\
                                     self.first_ssim,self.second_ssim, self.first_psnr, self.second_psnr,\
                                     self.second_contex_loss,  self.first_L1_loss_interframe, self.second_L1_loss_interframe,self.first_warp_loss, \
-                                    self.second_local_var_loss_all,self.second_global_var_loss_all,  self.G_loss_all,\
+                                    self.second_local_var_loss_all,self.second_global_var_loss_all,  self.second_GAN_loss_mean_D1, self.G_loss_all,\
                                     ], \
-                      feed_dict={self.imgs_pla:imgdata,self.timerates_pla:rate, self.last_optical_flow:self.last_flow_new_test})
-        
+                      feed_dict={self.imgs_pla:imgdata,self.timerates_pla:rate, self.last_optical_flow:self.last_flow_new_test, self.training:False})
+            kep_G_GAN_loss1+=G_GAN_loss1
             kep_ssim1+=np.mean(ssim1)
             kep_ssim2+=np.mean(ssim2)
             kep_psnr1+=np.mean(psnr1)
@@ -535,8 +582,11 @@ class SuperSlomo:
         print ('mean contexloss2:', kep_contexloss2/evalstep)
         print ('mean localvar loss2:',kep_localloss2/evalstep)
         print ("mean global loss2:",kep_globalloss2/evalstep)
+        print ("mean G_GAN loss2:",kep_G_GAN_loss1/evalstep)
+        
         print ("write "+str(img_cnt)+" imgs to:"+kep_img_dir)
-        return [kep_ssim1/evalstep,kep_ssim2/evalstep], [kep_psnr1/evalstep,kep_psnr2/evalstep], [kep_l1loss1/evalstep,kep_l1loss2/evalstep], kep_loss_warp1/evalstep, kep_contexloss2/evalstep,  kep_localloss2/evalstep, kep_globalloss2/evalstep
+        return [kep_ssim1/evalstep,kep_ssim2/evalstep], [kep_psnr1/evalstep,kep_psnr2/evalstep], [kep_l1loss1/evalstep,kep_l1loss2/evalstep], \
+            kep_loss_warp1/evalstep, kep_contexloss2/evalstep,  kep_localloss2/evalstep, kep_globalloss2/evalstep, kep_G_GAN_loss1/evalstep
     
     def form_bigimg(self, imgdata,step1_flow_0_1,step1_flow_1_0,step1_imgout,step2_flow_0_1,step2_flow_1_0,step2_outimg):
         #imgdata:[12,180,320,9]
@@ -620,7 +670,7 @@ if __name__ == '__main__':
                    
             if i==0 or (i+1)%2000==0:#一次测试
                 print ('begining to eval:')
-                ssim_mean, psnr_mean,interframeloss,warploss, contexloss,localvarloss,globalloss=gan.eval_once(i)
+                ssim_mean, psnr_mean,interframeloss,warploss, contexloss,localvarloss,globalloss, G_GAN_loss=gan.eval_once(i)
                 
                 #自己构建summary
                 tsummary = tf.Summary()
@@ -630,6 +680,7 @@ if __name__ == '__main__':
                 tsummary.value.add(tag='second mean L1_loss of G and GT', simple_value=interframeloss[1]) 
                 tsummary.value.add(tag='first mean L1_loss of warps', simple_value=warploss)           
                 tsummary.value.add(tag='second mean contexloss', simple_value=contexloss)
+                tsummary.value.add(tag='second G GAN loss', simple_value=G_GAN_loss)
                 tsummary.value.add(tag='second mean localvar loss', simple_value=localvarloss)
                 tsummary.value.add(tag='first mean ssim', simple_value=ssim_mean[0])
                 tsummary.value.add(tag='second mean ssim', simple_value=ssim_mean[1])
