@@ -228,8 +228,8 @@ class SuperSlomo:
                 self.first_L1_loss_interframe, self.first_ssim, self.first_psnr, self.second_GAN_loss_mean_D1=self.loss_cal_all()
                 
         #训练G的总loss
-        self.G_loss_all=204 * self.second_L1_loss_interframe + 102 * self.first_warp_loss + 0.005 * self.second_contex_loss + self.second_global_var_loss_all \
-                        + self.second_GAN_loss_mean_D1   
+        self.G_loss_all=204 * self.second_L1_loss_interframe + 102 * self.first_warp_loss + 0.05 * self.second_contex_loss + self.second_global_var_loss_all \
+                        + self.second_GAN_loss_mean_D1*0.03   
         
         #训练D的总loss
         self.D_loss_all=self.D_1_net_loss_sum
