@@ -116,7 +116,7 @@ class SuperSlomo:
         
         with tf.variable_scope("first_unet",  reuse=tf.AUTO_REUSE) as scope:
             firstinput=tf.concat([self.frame0, self.frame2], -1)
-            self.first_opticalflow=my_unet( firstinput, 4, withbias=True)  #注意这里是直接作为optical flow
+            self.first_opticalflow=my_unet( firstinput, 4,training=self.training , withbias=True)  #注意这里是直接作为optical flow
             
         self.first_opticalflow_0_1=self.first_opticalflow[:, :, :, :2]
         self.first_opticalflow_0_1=tf.identity(self.first_opticalflow_0_1, name="first_opticalflow_0_1")
@@ -176,7 +176,7 @@ class SuperSlomo:
             secinput=tf.expand_dims(secinput, 0)
             print ("secinput:",secinput)#secinput: Tensor("second_unet/ExpandDims:0", shape=(1, 180, 320, 25), dtype=float32)
             
-            new_step2_flow=my_unet( secinput, self.step2_flow_channel, withbias=True)  #注意这里是直接作为optical flow
+            new_step2_flow=my_unet( secinput, self.step2_flow_channel,training=self.training , withbias=True)  #注意这里是直接作为optical flow
             kep_step2_flow=[new_step2_flow]
             print ("new_step2_flow:",new_step2_flow)
             #new_step2_flow: Tensor("second_unet/unet_end0_relu/LeakyRelu:0", shape=(1, 180, 320, 5), dtype=float32)
@@ -229,7 +229,7 @@ class SuperSlomo:
                 
         #训练G的总loss
         self.G_loss_all=204 * self.second_L1_loss_interframe + 102 * self.first_warp_loss + 0.005 * self.second_contex_loss + self.second_global_var_loss_all \
-                        + self.second_GAN_loss_mean_D1*10    
+                        + self.second_GAN_loss_mean_D1   
         
         #训练D的总loss
         self.D_loss_all=self.D_1_net_loss_sum

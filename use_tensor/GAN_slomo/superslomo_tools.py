@@ -19,7 +19,7 @@ def unet_up(inputdata, outchannel,skipcon, scopename,filterlen=3, training=True,
 
     tep=tf.image.resize_bilinear(inputdata, (inputshape[1]*2, inputshape[2]*2) )
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=1, withbias=withbias)
-    #tep=my_batchnorm( tep,training, scopename+'_bn1')
+    tep=my_batchnorm( tep,training, scopename+'_bn1')
     tep=my_lrelu(tep, scopename, 0.1)
 
     
@@ -32,7 +32,7 @@ def unet_up(inputdata, outchannel,skipcon, scopename,filterlen=3, training=True,
     
     #单个conv无法拟合
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv3', stride=1, withbias=withbias)
-    #tep=my_batchnorm( tep,training, scopename+'_bn3')
+    tep=my_batchnorm( tep,training, scopename+'_bn3')
     tep=my_lrelu(tep, scopename, 0.1)
     
     return tep
@@ -44,11 +44,11 @@ def unet_down(inputdata, outchannel, scopename,stride=1, filterlen=3,training=Tr
     tep=tf.layers.average_pooling2d(inputdata, 2, 2)
 
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv1', stride=stride, withbias=withbias)
-    #tep=my_batchnorm( tep,training, scopename+'_bn1')
+    tep=my_batchnorm( tep,training, scopename+'_bn1')
     tep=my_lrelu(tep, scopename, 0.1)
     
     tep=my_conv(tep, filterlen, outchannel, scopename+'_conv2', stride=1, withbias=withbias)
-    #tep=my_batchnorm( tep,training, scopename+'_bn2')
+    tep=my_batchnorm( tep,training, scopename+'_bn2')
     tep=my_lrelu(tep, scopename, 0.1)
     
     return tep
@@ -90,7 +90,7 @@ def my_unet(inputdata, outChannels, training=True,  withbias=True):
     #final
     tep=my_conv(tep, 3, outChannels, scopename='unet_end0', stride=1, withbias=withbias)
     
-    #tep=my_batchnorm( tep,training, 'unet_up_end0_bn2')
+    tep=my_batchnorm( tep,training, 'unet_up_end0_bn2')
     tep=my_lrelu(tep, 'unet_end0_relu', 0.1)
     print (tep)
     
