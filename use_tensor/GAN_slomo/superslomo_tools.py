@@ -129,7 +129,7 @@ def my_unet_split(inputdata, outChannels, training=True,  withbias=True, withbn=
     frame2_tep1=my_conv(frame2, 7, 16, scopename='unet_start0', stride=1,  withbias=withbias)
     frame2_tep1=my_lrelu(frame2_tep1, 'unet_start0', 0.1)
     
-    frame2_tep2=my_conv(frame2_tep1, 7, 32, scopename='unet_start1', stride=1,  withbias=withbias)
+    frame2_tep2=my_conv(frame2_tep1, 7, 16, scopename='unet_start1', stride=1,  withbias=withbias)
     frame2_tep2=my_lrelu(frame2_tep2, 'unet_start1', 0.1)
     
     print (frame2_tep2)
