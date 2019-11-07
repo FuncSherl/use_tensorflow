@@ -116,8 +116,8 @@ class SuperSlomo:
         
         with tf.variable_scope("first_unet",  reuse=tf.AUTO_REUSE) as scope:
             firstinput=tf.concat([self.frame0, self.frame2], -1)
-            #self.first_opticalflow=my_unet( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
-            self.first_opticalflow=my_unet_split( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
+            self.first_opticalflow=my_unet( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
+            #self.first_opticalflow=my_unet_split( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
             
         self.first_opticalflow_0_1=self.first_opticalflow[:, :, :, :2]
         self.first_opticalflow_0_1=tf.identity(self.first_opticalflow_0_1, name="first_opticalflow_0_1")
@@ -177,7 +177,7 @@ class SuperSlomo:
             secinput=tf.expand_dims(secinput, 0)
             print ("secinput:",secinput)#secinput: Tensor("second_unet/ExpandDims:0", shape=(1, 180, 320, 25), dtype=float32)
             
-            step2_withbn=False
+            step2_withbn=True
             new_step2_flow=my_unet( secinput, self.step2_flow_channel,training=self.training , withbias=True, withbn=step2_withbn)  #注意这里是直接作为optical flow
             kep_step2_flow=[new_step2_flow]
             print ("new_step2_flow:",new_step2_flow)
