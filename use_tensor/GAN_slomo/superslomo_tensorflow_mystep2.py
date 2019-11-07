@@ -116,8 +116,8 @@ class SuperSlomo:
         
         with tf.variable_scope("first_unet",  reuse=tf.AUTO_REUSE) as scope:
             firstinput=tf.concat([self.frame0, self.frame2], -1)
-            self.first_opticalflow=my_unet( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
-            #self.first_opticalflow=my_unet_split( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
+            #self.first_opticalflow=my_unet( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
+            self.first_opticalflow=my_unet_split( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
             
         self.first_opticalflow_0_1=self.first_opticalflow[:, :, :, :2]
         self.first_opticalflow_0_1=tf.identity(self.first_opticalflow_0_1, name="first_opticalflow_0_1")
@@ -177,7 +177,7 @@ class SuperSlomo:
             secinput=tf.expand_dims(secinput, 0)
             print ("secinput:",secinput)#secinput: Tensor("second_unet/ExpandDims:0", shape=(1, 180, 320, 25), dtype=float32)
             
-            step2_withbn=True
+            step2_withbn=False
             new_step2_flow=my_unet( secinput, self.step2_flow_channel,training=self.training , withbias=True, withbn=step2_withbn)  #注意这里是直接作为optical flow
             kep_step2_flow=[new_step2_flow]
             print ("new_step2_flow:",new_step2_flow)
@@ -230,7 +230,7 @@ class SuperSlomo:
                 self.first_L1_loss_interframe, self.first_ssim, self.first_psnr, self.second_GAN_loss_mean_D1=self.loss_cal_all()
                 
         #训练G的总loss
-        self.G_loss_all=204 * self.second_L1_loss_interframe + 102 * self.first_warp_loss + 0.05 * self.second_contex_loss + self.second_global_var_loss_all 
+        self.G_loss_all=204 * self.second_L1_loss_interframe + 102 * self.first_warp_loss + 0.05 * self.second_contex_loss + self.second_global_var_loss_all*0.004
                         #+ self.second_GAN_loss_mean_D1*0.03   
         
         #训练D的总loss
