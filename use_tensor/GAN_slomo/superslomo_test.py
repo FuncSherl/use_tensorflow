@@ -54,6 +54,7 @@ class Slomo_flow:
         self.img_pla= self.graph.get_tensor_by_name('imgs_in:0')
         self.training= self.graph.get_tensor_by_name("training_in:0")
         self.timerates= self.graph.get_tensor_by_name("timerates_in:0")
+        #self.last_optical_flow=self.graph.get_tensor_by_name("second_last_flow:0")
         
         print (self.outimg)
         
@@ -426,6 +427,39 @@ class Slomo_flow:
         img = cv2.erode(img, kernel, iterations=1)
         return img
 
+class Slomo_step2(Slomo_flow): 
+    def __init__(self, sess):
+        Slomo_flow.__init__(self, sess)
+        self.last_optical_flow=self.graph.get_tensor_by_name("second_last_flow:0")
+        self.last_optical_flow_shape=self.last_optical_flow.get_shape().as_list()
+        
+        self.kep_last_flow=np.zeros(self.last_optical_flow_shape)
+        
+    def getframes_throw_flow(self, frame0, frame2):
+        '''
+        重写父类中的该函数，对应加上time step的网络
+        这里是第一种方法获取中间帧，直接获得通过网络G输出的帧而不是光流，但这样帧的大小是固定的
+        cnt:中间插入几帧,这里由于
+        '''
+        cnt=self.batch
+        if cnt>self.batch: 
+            print ('error:insert frames cnt should <= batchsize:',self.batch)
+            return None
+            
+        timerates=[i*1.0/(cnt+1) for i in range(1,self.batch+1)]
+        
+        frame0=cv2.resize(frame0, self.imgshape)
+        frame2=cv2.resize(frame2, self.imgshape)
+        
+        placetep=np.zeros(self.placeimgshape)
+        for i in range(cnt):
+            placetep[i,:,:,:3]=frame0
+            placetep[i,:,:,6:]=frame2
+        
+        placetep=self.img2tanh(placetep)
+        out=self.sess.run([self.outimg, ], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates, self.last_optical_flow:self.kep_last_flow})
+        return self.tanh2img(out[:cnt])
+
 
 class Step_two(Slomo_flow):      
     def process_video_list(self, invideolist, outdir, interpola_cnt=7):
@@ -688,10 +722,11 @@ class Step_two(Slomo_flow):
 
 if __name__=='__main__':
     with tf.Session() as sess:
-        slomo=Slomo_flow(sess)
+        #slomo=Slomo_flow(sess)
+        slomo=Slomo_step2(sess)
         #slomo=Step_two(sess)
         slomo.process_video_list(inputvideo, outputvideodir, 6)
-        slomo.eval_on_ucf_mini(ucf_path)
+        #slomo.eval_on_ucf_mini(ucf_path)
        
         
         
