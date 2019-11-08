@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'
 
-pc_id=1
+pc_id=2
 
 if pc_id==0: #
     videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
