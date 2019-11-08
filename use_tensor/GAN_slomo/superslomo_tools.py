@@ -102,6 +102,7 @@ def my_unet_split(inputdata, outChannels, training=True,  withbias=True, withbn=
     layercnt:下降和上升各有几层,原则上应该是一对一
     inputdata:[b, h, w, 6]
     '''
+    #print ("my_unet_split:",inputdata)  #Tensor("first_unet/concat:0", shape=(10, 180, 320, 6), dtype=float32)
     frame0=inputdata[:, :, :, :3]
     frame2=inputdata[:, :, :, 3:]
     
@@ -145,7 +146,7 @@ def my_unet_split(inputdata, outChannels, training=True,  withbias=True, withbn=
     frame2_down5=unet_down(frame2_down4, 256, 'unet_down_4', filterlen=3, training=training,withbias=withbias, withbn=withbn)
     
    
-   
+    
     ##############################################################################################unet up
     tep=unet_up(tf.concat([frame0_down5, frame2_down5], -1), 512, tf.concat([frame0_down4, frame2_down4], -1),'unet_up_0', training=training,withbias=withbias, withbn=withbn)
     

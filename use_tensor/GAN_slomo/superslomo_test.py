@@ -10,14 +10,14 @@ import os.path as op
 import matplotlib.pyplot as plt
 import cv2,os,time
 from datetime import datetime
-#import skimage
+import skimage
 import imageio
 
 
 
-modelpath="/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-02_13-56-35_base_lr-0.000100_batchsize-10_maxstep-240000_original_paper"
-#modelpath=r'E:\DL_models\use_tensorflow\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress'
-#modelpath=r'D:\data_DL\Gan_slomo\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress'
+modelpath="/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-03_20-16-01_base_lr-0.000100_batchsize-10_maxstep-240000_add_step2_time_sequence"
+#modelpath=r'/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-02_13-56-35_base_lr-0.000100_batchsize-10_maxstep-240000_original_paper'
+
 meta_name=r'model_keep-239999.meta'
 
 ucf_path=r'/media/sherl/本地磁盘/data_DL/UCF101_results'
@@ -229,6 +229,82 @@ class Slomo_flow:
                 print ('video:',ind,"/",len(invideolist),"  ",i,'->', outputvideo)
                 self.process_one_video(interpola_cnt, i, outputvideo, True)
     
+    def eval_video_list(self, invideolist,  interpola_cnt=7):
+        '''
+        入口函数
+        输入一个list包含每个video的完整路径：invideolist
+        一个输出ideo的路径
+        '''
+        TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
+        
+        for ind,i in enumerate(invideolist):
+            self.eval_on_one_video(interpola_cnt, i)
+            
+    def eval_on_one_video(self, interpola_cnt, inpath):
+        '''
+        inpath:inputvideo's full path
+        outpath:output video's full path
+        keep_shape:if use direct G's output or calculate with optical flow to resize images
+        '''
+        videoCapture = cv2.VideoCapture(inpath)  
+        
+        size = (int(videoCapture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        fps=int (videoCapture.get(cv2.CAP_PROP_FPS) )
+        frame_cnt=videoCapture.get(cv2.CAP_PROP_FRAME_COUNT) 
+        
+        print ('\nvideo:',inpath)
+        print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
+        
+        success=True
+        seri_frames=[]
+        inter_frames=[]
+        kep_psnr=[]
+        kep_ssim=[]
+        
+        cnt=0
+        while success:     
+            success, frame= videoCapture.read()
+            cnt+=1
+            
+            if frame is not None:
+                frame=cv2.resize(frame, self.videoshape)
+                
+                if (cnt-1)%(interpola_cnt+1) ==0  : seri_frames.append(frame)
+                else: inter_frames.append(frame)
+                
+                
+                if len(seri_frames)<2: continue
+            else: success=False
+            
+            if len(seri_frames)<2: break
+            
+            sttime=time.time()              
+            
+            outimgs=self.getframes_throw_flow(seri_frames[0], seri_frames[1], interpola_cnt)
+            
+            print ("len duibi;", outimgs.shape, len(inter_frames))
+            
+            #print ('get iner frame shape:',outimgs.shape, outimgs.dtype)
+            for ind,i in enumerate(outimgs):      
+                #print (i.shape) 
+                psnr=skimage.measure.compare_psnr(inter_frames[ind], i, 255)
+                ssim=skimage.measure.compare_ssim(inter_frames[ind], i, multichannel=True)
+                    
+                kep_psnr.append(psnr)
+                kep_ssim.append(ssim)
+                
+            #cv2.imshow('t', tepimg)
+            #cv2.waitKey()
+            
+            seri_frames=[seri_frames[-1] ]
+            inter_frames=[]
+
+            print (cnt,'/',frame_cnt,'  time gap:',time.time()-sttime)
+                        
+        videoCapture.release()
+        print ("mean psnr:", np.mean(kep_psnr))
+        print ("mean ssim:", np.mean(kep_ssim))
+        
     
     def process_one_video(self, interpola_cnt, inpath, outpath, keep_shape=True):
         '''
@@ -365,7 +441,7 @@ class Slomo_flow:
         print ('writing to gif:', outgif)
         imageio.mimsave(outgif, frames_kep, 'GIF', duration = 1.0/fps)
         
-        
+    
         
     
     def show_video_info(self, inpath):
@@ -433,32 +509,161 @@ class Slomo_step2(Slomo_flow):
         self.last_optical_flow=self.graph.get_tensor_by_name("second_last_flow:0")
         self.last_optical_flow_shape=self.last_optical_flow.get_shape().as_list()
         
-        self.kep_last_flow=np.zeros(self.last_optical_flow_shape)
+        self.out_last_flow=self.graph.get_tensor_by_name("second_unet/strided_slice_89:0")
         
-    def getframes_throw_flow(self, frame0, frame2):
+        
+    def process_one_video(self, interpola_cnt, inpath, outpath, keep_shape=False):
+        '''
+        inpath:inputvideo's full path
+        outpath:output video's full path
+        #keep_shape:if use direct G's output or calculate with optical flow to resize images
+        '''
+        videoCapture = cv2.VideoCapture(inpath)  
+        
+        size = (int(videoCapture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        fps=int (videoCapture.get(cv2.CAP_PROP_FPS) )
+        frame_cnt=videoCapture.get(cv2.CAP_PROP_FRAME_COUNT) 
+        
+        print ('video:',inpath)
+        print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
+        
+
+        videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
+        print ('output video:',outpath,'\nsize:',self.videoshape, '  fps:', fps)
+        
+        kep_last_flow=np.zeros(self.last_optical_flow_shape)
+        
+        success=True
+        seri_frames=[]
+        
+        cnt=0
+        while success:     
+            success, frame= videoCapture.read()
+            
+            if frame is not None:
+                frame=cv2.resize(frame, self.videoshape)
+                seri_frames.append(frame)
+                if len(seri_frames)<self.batch+1: continue
+            else: success=False
+            
+            sttime=time.time()              
+            #outimgs  [interpolate, len(seri_frames)-1]
+            outimgs, kep_last_flow=self.getframes_throw_flow(seri_frames, interpola_cnt, kep_last_flow)
+            #write imgs to video
+            for i in range(len(seri_frames)-1):
+                videoWrite.write(seri_frames[i])
+                for j in range(interpola_cnt):
+                    videoWrite.write( outimgs[j][i] )
+            
+            cnt+=len(seri_frames)-1
+            print (cnt,'/',frame_cnt,'  time gap:',time.time()-sttime)
+            seri_frames=[ seri_frames[-1]  ]
+            
+            
+        videoWrite.write(seri_frames[-1])
+        
+        videoWrite.release()
+        videoCapture.release()
+        self.show_video_info( outpath)
+        
+        outgifpath=op.splitext(outpath)[0]+'.gif'
+        print ('for convent, converting mp4->gif:',outpath,'->',outgifpath)
+        self.convert_mp42gif(outpath, outgifpath)
+        
+        print ("for ppt show,merging two videos:")
+        outgifpath=op.splitext(outpath)[0]+'_merged.gif'
+        self.merge_two_videos(inpath, outpath, outgifpath)
+        
+    def getframes_throw_flow(self, seri_frames, interpola_cnt, last_flow):
         '''
         重写父类中的该函数，对应加上time step的网络
         这里是第一种方法获取中间帧，直接获得通过网络G输出的帧而不是光流，但这样帧的大小是固定的
         cnt:中间插入几帧,这里由于
         '''
-        cnt=self.batch
-        if cnt>self.batch: 
-            print ('error:insert frames cnt should <= batchsize:',self.batch)
-            return None
-            
-        timerates=[i*1.0/(cnt+1) for i in range(1,self.batch+1)]
-        
-        frame0=cv2.resize(frame0, self.imgshape)
-        frame2=cv2.resize(frame2, self.imgshape)
-        
+        timerates=[i*1.0/(interpola_cnt+1) for i in range(1,interpola_cnt+1)]
         placetep=np.zeros(self.placeimgshape)
-        for i in range(cnt):
-            placetep[i,:,:,:3]=frame0
-            placetep[i,:,:,6:]=frame2
         
-        placetep=self.img2tanh(placetep)
-        out=self.sess.run([self.outimg, ], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:timerates, self.last_optical_flow:self.kep_last_flow})
-        return self.tanh2img(out[:cnt])
+        ret=[]
+        
+        for i in range(interpola_cnt):
+            for j in range( len(seri_frames)-1 ):
+                placetep[j,:,:,:3]=cv2.resize(seri_frames[j], self.imgshape)
+                placetep[j,:,:,6:]=cv2.resize(seri_frames[j+1], self.imgshape)
+                
+            placetep=self.img2tanh(placetep)
+            outimg, outflow=self.sess.run([self.outimg, self.out_last_flow], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:[timerates[i]]*self.batch, self.last_optical_flow:last_flow})
+            
+            ret.append(self.tanh2img(  outimg[:len(seri_frames)-1]   ))
+            
+        return ret, outflow
+
+    
+    
+    def eval_on_one_video(self, interpola_cnt, inpath):
+        '''
+        inpath:inputvideo's full path
+        outpath:output video's full path
+        #keep_shape:if use direct G's output or calculate with optical flow to resize images
+        '''
+        videoCapture = cv2.VideoCapture(inpath)  
+        
+        size = (int(videoCapture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        fps=int (videoCapture.get(cv2.CAP_PROP_FPS) )
+        frame_cnt=videoCapture.get(cv2.CAP_PROP_FRAME_COUNT) 
+        
+        print ('\nvideo:',inpath)
+        print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
+        
+        kep_last_flow=np.zeros(self.last_optical_flow_shape)
+        
+        success=True
+        seri_frames=[]
+        inter_frames=[]
+        kep_psnr=[]
+        kep_ssim=[]
+        
+        cnt=0
+        while success:     
+            success, frame= videoCapture.read()
+            cnt+=1
+            
+            if frame is not None:
+                frame=cv2.resize(frame, self.videoshape)
+                
+                if (cnt-1)%(interpola_cnt+1) ==0  : seri_frames.append(frame)
+                else: inter_frames.append(frame)
+                
+                
+                if len(seri_frames)<self.batch+1: continue
+            else: success=False
+            
+            if len(seri_frames)<2: break
+            
+            sttime=time.time()              
+            
+            outimgs, kep_last_flow=self.getframes_throw_flow(seri_frames, interpola_cnt, kep_last_flow)
+            #write imgs to video
+            #outimgs  [interpolate, len(seri_frames)-1]
+            inter_frames_cnt=0
+            for i in range(len(seri_frames)-1):
+                for j in range(interpola_cnt):
+                    psnr=skimage.measure.compare_psnr(inter_frames[inter_frames_cnt], outimgs[j][i], 255)
+                    ssim=skimage.measure.compare_ssim(inter_frames[inter_frames_cnt], outimgs[j][i], multichannel=True)
+                    
+                    kep_psnr.append(psnr)
+                    kep_ssim.append(ssim)
+                    
+                    inter_frames_cnt+=1
+                    
+                    
+            print (cnt,'/',frame_cnt,'  time gap:',time.time()-sttime)
+            seri_frames=[ seri_frames[-1]  ]
+            inter_frames=[]
+            
+        videoCapture.release()
+        
+        print ("mean psnr:", np.mean(kep_psnr))
+        print ("mean ssim:", np.mean(kep_ssim))
 
 
 class Step_two(Slomo_flow):      
@@ -725,7 +930,8 @@ if __name__=='__main__':
         #slomo=Slomo_flow(sess)
         slomo=Slomo_step2(sess)
         #slomo=Step_two(sess)
-        slomo.process_video_list(inputvideo, outputvideodir, 6)
+        #slomo.process_video_list(inputvideo, outputvideodir, 6)
+        slomo.eval_video_list(inputvideo,  2)
         #slomo.eval_on_ucf_mini(ucf_path)
        
         
