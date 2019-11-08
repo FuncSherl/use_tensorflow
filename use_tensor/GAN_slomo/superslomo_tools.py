@@ -159,10 +159,17 @@ def my_unet_split(inputdata, outChannels, training=True,  withbias=True, withbn=
     tep=unet_up(tep, 32, tf.concat([frame0_tep2, frame2_tep2], -1),'unet_up_4', training=training,withbias=withbias, withbn=withbn)
     
     #final
-    tep=my_conv(tep, 3, outChannels, scopename='unet_end0', stride=1, withbias=withbias)
+    tep=my_conv(tep, 3, outChannels*2, scopename='unet_end0', stride=1, withbias=withbias)
     
     if withbn: tep=my_batchnorm( tep,training, 'unet_up_end0_bn2')
     tep=my_lrelu(tep, 'unet_end0_relu', 0.1)
+    print (tep)
+    
+    #final2
+    tep=my_conv(tep, 3, outChannels, scopename='unet_end1', stride=1, withbias=withbias)
+    
+    if withbn: tep=my_batchnorm( tep,training, 'unet_up_end1_bn2')
+    tep=my_lrelu(tep, 'unet_end1_relu', 0.1)
     print (tep)
     
     
