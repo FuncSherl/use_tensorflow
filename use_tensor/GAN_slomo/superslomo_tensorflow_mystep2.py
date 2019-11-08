@@ -194,6 +194,7 @@ class SuperSlomo:
                 kep_step2_flow.append(new_step2_flow)
             
             self.second_batch_last_flow=new_step2_flow[0]
+            #self.second_batch_last_flow=tf.identity(self.second_batch_last_flow, name="second_batch_last_flow")
             print ("second_batch_last_flow:",self.second_batch_last_flow) #Tensor("second_unet/strided_slice_89:0", shape=(180, 320, 5), dtype=float32)
             self.second_opticalflow=tf.concat(kep_step2_flow, 0)  
             print ("self.second_opticalflow:",self.second_opticalflow) #self.second_opticalflow: Tensor("second_unet/concat_60:0", shape=(10, 180, 320, 5), dtype=float32)
