@@ -116,8 +116,8 @@ class SuperSlomo:
         
         with tf.variable_scope("first_unet",  reuse=tf.AUTO_REUSE) as scope:
             firstinput=tf.concat([self.frame0, self.frame2], -1)
-            #self.first_opticalflow=my_unet( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
-            self.first_opticalflow=my_unet_split( firstinput, 4,training=self.training , withbias=True, withbn=True)  #注意这里是直接作为optical flow
+            self.first_opticalflow=my_unet( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
+            #self.first_opticalflow=my_unet_split( firstinput, 4,training=self.training , withbias=True, withbn=True)  #注意这里是直接作为optical flow
             
         self.first_opticalflow_0_1=self.first_opticalflow[:, :, :, :2]
         self.first_opticalflow_0_1=tf.identity(self.first_opticalflow_0_1, name="first_opticalflow_0_1")
@@ -136,12 +136,16 @@ class SuperSlomo:
         ########################################################
         self.step2_flow_channel=5
         self.flow_shape=[ self.flow_size_h, self.flow_size_w, self.step2_flow_channel]
+        
+        #lstm的每个状态（c，h）的形状
+        self.state_shape=[2, 1, self.flow_size_h, self.flow_size_w, self.step2_flow_channel]
+        
         #获取数据时的一些cpu上的参数，用于扩张数据和判定时序
-        self.last_flow_init_np=np.zeros(self.flow_shape, dtype=np.float32)
+        self.last_flow_init_np=np.zeros(self.state_shape, dtype=np.float32)
         print (self.last_flow_init_np.shape) #(180, 320, 5)
         ##############################################################
         
-        self.last_optical_flow=tf.placeholder(tf.float32, self.flow_shape, name='second_last_flow')
+        self.last_optical_flow=tf.placeholder(tf.float32, self.state_shape, name='second_last_flow')
         
         #初始化train和test的初始0状态
         self.last_flow_new_train=self.last_flow_init_np
@@ -169,35 +173,36 @@ class SuperSlomo:
         ####################################################################################################################3
         #第二个unet
         with tf.variable_scope("second_unet",  reuse=tf.AUTO_REUSE) as scope:
-            secinput=tf.concat([self.frame0[0], self.frame2[0], \
-                                self.first_opticalflow_0_1[0], self.first_opticalflow_1_0[0], \
-                                self.first_opticalflow_t_2[0], self.first_opticalflow_t_0[0],\
-                                self.first_img_flow_2_t[0], self.first_img_flow_0_t[0],\
-                                self.last_optical_flow], -1)            
+            secinput=tf.concat([self.frame0, self.frame2, \
+                                self.first_opticalflow_0_1, self.first_opticalflow_1_0, \
+                                self.first_opticalflow_t_2, self.first_opticalflow_t_0,\
+                                self.first_img_flow_2_t, self.first_img_flow_0_t,\
+                                ], -1) #self.last_optical_flow     
             secinput=tf.expand_dims(secinput, 0)
-            print ("secinput:",secinput)#secinput: Tensor("second_unet/ExpandDims:0", shape=(1, 180, 320, 25), dtype=float32)
+            print ("secinput:",secinput)#secinput: Tensor("second_unet/ExpandDims:0", shape=(1, 10, 180, 320, 20), dtype=float32)  
+                
             
-            step2_withbn=False
-            new_step2_flow=my_unet( secinput, self.step2_flow_channel,training=self.training , withbias=True, withbn=step2_withbn)  #注意这里是直接作为optical flow
-            kep_step2_flow=[new_step2_flow]
-            print ("new_step2_flow:",new_step2_flow)
-            #new_step2_flow: Tensor("second_unet/unet_end0_relu/LeakyRelu:0", shape=(1, 180, 320, 5), dtype=float32)
             
-            for ti in range(1, batchsize):
-                secinput=tf.concat([self.frame0[ti], self.frame2[ti], \
-                                self.first_opticalflow_0_1[ti], self.first_opticalflow_1_0[ti], \
-                                self.first_opticalflow_t_2[ti], self.first_opticalflow_t_0[ti],\
-                                self.first_img_flow_2_t[ti], self.first_img_flow_0_t[ti],\
-                                new_step2_flow[0] ], -1) 
-                secinput=tf.expand_dims(secinput, 0)
-                new_step2_flow=my_unet( secinput, self.step2_flow_channel, withbias=True, withbn=step2_withbn)
-                kep_step2_flow.append(new_step2_flow)
+            lstm_input_channel=secinput.get_shape().as_list()[-1]
+            self.cell = tf.contrib.rnn.ConvLSTMCell(conv_ndims=2, input_shape=[self.flow_size_h, self.flow_size_w, lstm_input_channel], \
+                                                    output_channels=self.step2_flow_channel, kernel_shape=[5, 5])
             
-            self.second_batch_last_flow=new_step2_flow[0]
-            #self.second_batch_last_flow=tf.identity(self.second_batch_last_flow, name="second_batch_last_flow")
-            print ("second_batch_last_flow:",self.second_batch_last_flow) #Tensor("second_unet/strided_slice_89:0", shape=(180, 320, 5), dtype=float32)
-            self.second_opticalflow=tf.concat(kep_step2_flow, 0)  
-            print ("self.second_opticalflow:",self.second_opticalflow) #self.second_opticalflow: Tensor("second_unet/concat_60:0", shape=(10, 180, 320, 5), dtype=float32)
+            lstm_outputs, lstm_state_final = tf.nn.dynamic_rnn(self.cell, inputs =secinput , \
+                                            initial_state = tf.nn.rnn_cell.LSTMStateTuple(self.last_optical_flow[0], self.last_optical_flow[1]), time_major = False)
+            
+            
+            
+            
+            
+            self.second_batch_last_flow=tf.stack([lstm_state_final.c, lstm_state_final.h], 0)
+            self.second_batch_last_flow=tf.identity(self.second_batch_last_flow, name="second_batch_last_flow")
+            print ("second_batch_last_flow:",self.second_batch_last_flow) 
+            #second_batch_last_flow: Tensor("second_unet/second_batch_last_flow:0", shape=(2, 1, 180, 320, 5), dtype=float32)
+            
+            self.second_opticalflow=lstm_outputs[0]  
+            print ("self.second_opticalflow:",self.second_opticalflow) 
+            #self.second_opticalflow: Tensor("second_unet/strided_slice_2:0", shape=(10, 180, 320, 5), dtype=float32)
+            
         self.second_opticalflow_t_0=tf.add( self.second_opticalflow[:,:,:,:2],  self.first_opticalflow_t_0, name="second_opticalflow_t_0")
         self.second_opticalflow_t_1=tf.add( self.second_opticalflow[:,:,:,2:4], self.first_opticalflow_t_2, name="second_opticalflow_t_1")
         print ('second_opticalflow_t_0:',self.second_opticalflow_t_0)
@@ -214,8 +219,8 @@ class SuperSlomo:
         
         #最终输出的图
         print (self.timerates_expand, self.vmap_t_0, self.second_img_flow_0_t)
-        #Tensor("ExpandDims_2:0", shape=(6, 1, 1, 1), dtype=float32) Tensor("Sigmoid:0", shape=(6, 180, 320, 1), dtype=float32) 
-        #Tensor("dense_image_warp_5/Reshape_1:0", shape=(6, 180, 320, 3), dtype=float32)
+        #Tensor("ExpandDims_2:0", shape=(10, 1, 1, 1), dtype=float32) Tensor("ExpandDims_3:0", shape=(10, 180, 320, 1), dtype=float32) 
+        #Tensor("dense_image_warp_5/Reshape_1:0", shape=(10, 180, 320, 3), dtype=float32)
         self.second_output=tf.div(  ( (1-self.timerates_expand)*self.vmap_t_0*self.second_img_flow_0_t+self.timerates_expand*self.vmap_t_1*self.second_img_flow_1_t),  \
                              ((1-self.timerates_expand)*self.vmap_t_0+self.timerates_expand*self.vmap_t_1) , name="second_outputimg" )
         print ('second output img:',self.second_output)
@@ -232,8 +237,8 @@ class SuperSlomo:
                 self.first_L1_loss_interframe, self.first_ssim, self.first_psnr, self.second_GAN_loss_mean_D1=self.loss_cal_all()
                 
         #训练G的总loss
-        self.G_loss_all=100 * self.second_L1_loss_interframe + 30 *( self.first_L1_loss_interframe + self.first_warp_loss ) + 0.05 * self.second_contex_loss 
-                    #self.second_global_var_loss_all
+        self.G_loss_all=204 * self.second_L1_loss_interframe + 102 *  self.first_warp_loss  + 0.005 * self.second_contex_loss \
+                    +self.second_global_var_loss_all
                     #+ self.second_GAN_loss_mean_D1*0.03   
         
         #训练D的总loss
