@@ -16,7 +16,7 @@ import imageio
 
 
 modelpath="/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-03_20-16-01_base_lr-0.000100_batchsize-10_maxstep-240000_add_step2_time_sequence"
-modelpath=r'/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-02_13-56-35_base_lr-0.000100_batchsize-10_maxstep-240000_original_paper'
+#modelpath=r'/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-02_13-56-35_base_lr-0.000100_batchsize-10_maxstep-240000_original_paper'
 
 meta_name=r'model_keep-239999.meta'
 
@@ -927,12 +927,12 @@ class Step_two(Slomo_flow):
 
 if __name__=='__main__':
     with tf.Session() as sess:
-        slomo=Slomo_flow(sess)
-        #slomo=Slomo_step2(sess)
+        #slomo=Slomo_flow(sess)
+        slomo=Slomo_step2(sess)
         #slomo=Step_two(sess)
-        #slomo.process_video_list(inputvideo, outputvideodir, 6)
+        slomo.process_video_list(inputvideo, outputvideodir, 6)
         #slomo.eval_video_list(inputvideo,  2)
-        slomo.eval_on_ucf_mini(ucf_path)
+        #slomo.eval_on_ucf_mini(ucf_path)
        
         
         
