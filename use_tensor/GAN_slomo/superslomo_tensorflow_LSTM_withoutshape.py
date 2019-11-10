@@ -29,8 +29,8 @@ from data import create_dataset_step2 as cdata
 print ('tensorflow version:',tf.__version__,'  path:',tf.__path__)
 TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
-train_size=112064 
-test_size=8508
+train_size=10100 
+test_size=800
 batchsize=10  #train
 batchsize_test=batchsize #here it must equal to batchsize,or the placement size will error
 
@@ -101,6 +101,7 @@ class SuperSlomo:
         
         #3个placeholder， img和noise,training 
         self.imgs_pla = tf.placeholder(tf.float32, [batchsize, img_size_h, img_size_w, G_group_img_num*img_channel], name='imgs_in')
+        self.imgs_pla_eval = tf.placeholder(tf.float32, [batchsize, img_size_h*2, img_size_w*2, G_group_img_num*img_channel], name='imgs_in_eval')
         self.training=tf.placeholder(tf.bool, name='training_in')  #这里没用上但是为了兼容就保留了
         self.timerates_pla=tf.placeholder(tf.float32, [batchsize], name='timerates_in')
         self.timerates_expand=tf.expand_dims(self.timerates_pla, -1)
@@ -114,9 +115,17 @@ class SuperSlomo:
         self.frame1=self.imgs_pla[:,:,:,img_channel:img_channel*2]
         self.frame2=self.imgs_pla[:,:,:,img_channel*2:]
         
+        #这里用来进行evaluate注意这里只用于输出最终图        
+        self.frame0_eval=self.imgs_pla_eval[:,:,:,:img_channel]
+        self.frame1_eval=self.imgs_pla_eval[:,:,:,img_channel:img_channel*2]
+        self.frame2_eval=self.imgs_pla_eval[:,:,:,img_channel*2:]
+        
         with tf.variable_scope("first_unet",  reuse=tf.AUTO_REUSE) as scope:
             firstinput=tf.concat([self.frame0, self.frame2], -1)
             self.first_opticalflow=my_unet( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
+            
+            firstinput=tf.concat([self.frame0_eval, self.frame2_eval], -1)
+            self.first_opticalflow_eval=my_unet( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
             #self.first_opticalflow=my_unet_split( firstinput, 4,training=self.training , withbias=True, withbn=True)  #注意这里是直接作为optical flow
             
         self.first_opticalflow_0_1=self.first_opticalflow[:, :, :, :2]
@@ -127,11 +136,17 @@ class SuperSlomo:
         print ('first_opticalflow_1_0:',self.first_opticalflow_1_0)
         #first_opticalflow_0_1: Tensor("first_opticalflow_0_1:0", shape=(10, 180, 320, 2), dtype=float32)
         #first_opticalflow_1_0: Tensor("first_opticalflow_1_0:0", shape=(10, 180, 320, 2), dtype=float32)
+        self.first_opticalflow_0_1_eval=self.first_opticalflow_eval[:, :, :, :2]
+        self.first_opticalflow_1_0_eval=self.first_opticalflow_eval[:, :, :, 2:]
         
         #输出光流形状
         self.flow_size_h=self.first_opticalflow_0_1.get_shape().as_list()[1]
         self.flow_size_w=self.first_opticalflow_0_1.get_shape().as_list()[2]
         self.flow_channel=self.first_opticalflow_0_1.get_shape().as_list()[-1]
+        
+        #eval shape
+        self.flow_size_h_eval=self.first_opticalflow_eval.get_shape().as_list()[1]
+        self.flow_size_w_eval=self.first_opticalflow_eval.get_shape().as_list()[2]
         
         ########################################################
         self.step2_flow_channel=5
@@ -139,13 +154,16 @@ class SuperSlomo:
         
         #lstm的每个状态（c，h）的形状
         self.state_shape=[2, 1, self.flow_size_h, self.flow_size_w, self.step2_flow_channel]
+        self.state_shape_eval=[2, 1, self.flow_size_h_eval, self.flow_size_w_eval, self.step2_flow_channel]
         
         #获取数据时的一些cpu上的参数，用于扩张数据和判定时序
         self.last_flow_init_np=np.zeros(self.state_shape, dtype=np.float32)
-        print (self.last_flow_init_np.shape) #(180, 320, 5)
+        self.last_flow_init_np_eval=np.zeros(self.state_shape_eval, dtype=np.float32)
+        print (self.last_flow_init_np.shape, self.last_flow_init_np_eval.shape) #(2, 1, 180, 320, 5) (2, 1, 360, 640, 5)
         ##############################################################
         
         self.last_optical_flow=tf.placeholder(tf.float32, self.state_shape, name='second_last_flow')
+        self.last_optical_flow_eval=tf.placeholder(tf.float32, self.state_shape_eval, name='second_last_flow_eval')
         
         #初始化train和test的初始0状态
         self.last_flow_new_train=self.last_flow_init_np
@@ -156,10 +174,20 @@ class SuperSlomo:
                                       self.timerates_expand*self.timerates_expand*self.first_opticalflow_1_0 , name="first_opticalflow_t_0")
         self.first_opticalflow_t_2=tf.add( (1-self.timerates_expand)*(1-self.timerates_expand)*self.first_opticalflow_0_1 ,\
                                       self.timerates_expand*(self.timerates_expand-1)*self.first_opticalflow_1_0, name="first_opticalflow_t_2")
+        
+        #反向光流算中间帧
+        self.first_opticalflow_t_0_eval=tf.add( -(1-self.timerates_expand)*self.timerates_expand*self.first_opticalflow_0_1_eval ,\
+                                      self.timerates_expand*self.timerates_expand*self.first_opticalflow_1_0_eval , name="first_opticalflow_t_0_eval")
+        self.first_opticalflow_t_2_eval=tf.add( (1-self.timerates_expand)*(1-self.timerates_expand)*self.first_opticalflow_0_1_eval ,\
+                                      self.timerates_expand*(self.timerates_expand-1)*self.first_opticalflow_1_0_eval, name="first_opticalflow_t_2_eval")
 
         #2种方法合成t时刻的帧
         self.first_img_flow_2_t=self.warp_op(self.frame2, -self.first_opticalflow_t_2) #!!!
         self.first_img_flow_0_t=self.warp_op(self.frame0, -self.first_opticalflow_t_0) #!!!
+        
+        #2种方法合成t时刻的帧
+        self.first_img_flow_2_t_eval=self.warp_op(self.frame2_eval, -self.first_opticalflow_t_2_eval) #!!!
+        self.first_img_flow_0_t_eval=self.warp_op(self.frame0_eval, -self.first_opticalflow_t_0_eval) #!!!
         
         #虽然论文里用不到第一步的输出中间帧，但是这里也给他输出看看效果
         self.first_output=tf.add( self.timerates_expand*self.first_img_flow_2_t, (1-self.timerates_expand)*self.first_img_flow_0_t , name="first_outputimg")
@@ -180,6 +208,14 @@ class SuperSlomo:
                                 ], -1) #self.last_optical_flow     
             secinput=tf.expand_dims(secinput, 0)
             print ("secinput:",secinput)#secinput: Tensor("second_unet/ExpandDims:0", shape=(1, 10, 180, 320, 20), dtype=float32)  
+            
+            secinput_eval=tf.concat([self.frame0_eval, self.frame2_eval, \
+                                self.first_opticalflow_0_1_eval, self.first_opticalflow_1_0_eval, \
+                                self.first_opticalflow_t_2_eval, self.first_opticalflow_t_0_eval,\
+                                self.first_img_flow_2_t_eval, self.first_img_flow_0_t_eval,\
+                                ], -1) #self.last_optical_flow     
+            secinput_eval=tf.expand_dims(secinput_eval, 0)
+            print ("secinput_eval:",secinput_eval)#secinput_eval: Tensor("second_unet/ExpandDims_1:0", shape=(1, 10, 360, 640, 20), dtype=float32)
                 
             
             
@@ -187,10 +223,14 @@ class SuperSlomo:
             self.cell = tf.contrib.rnn.ConvLSTMCell(conv_ndims=2, input_shape=[self.flow_size_h, self.flow_size_w, lstm_input_channel], \
                                                     output_channels=self.step2_flow_channel, kernel_shape=[5, 5])
             
+            self.cell_eval = tf.contrib.rnn.ConvLSTMCell(conv_ndims=2, input_shape=[self.flow_size_h_eval, self.flow_size_w_eval, lstm_input_channel], \
+                                                    output_channels=self.step2_flow_channel, kernel_shape=[5, 5])
+            
             lstm_outputs, lstm_state_final = tf.nn.dynamic_rnn(self.cell, inputs =secinput , \
                                             initial_state = tf.nn.rnn_cell.LSTMStateTuple(self.last_optical_flow[0], self.last_optical_flow[1]), time_major = False)
             
-            
+            lstm_outputs_eval, lstm_state_final_eval = tf.nn.dynamic_rnn(self.cell_eval, inputs =secinput_eval , \
+                                            initial_state = tf.nn.rnn_cell.LSTMStateTuple(self.last_optical_flow_eval[0], self.last_optical_flow_eval[1]), time_major = False)
             
             
             
@@ -199,9 +239,18 @@ class SuperSlomo:
             print ("second_batch_last_flow:",self.second_batch_last_flow) 
             #second_batch_last_flow: Tensor("second_unet/second_batch_last_flow:0", shape=(2, 1, 180, 320, 5), dtype=float32)
             
+            self.second_batch_last_flow_eval=tf.stack([lstm_state_final_eval.c, lstm_state_final_eval.h], 0)
+            self.second_batch_last_flow_eval=tf.identity(self.second_batch_last_flow_eval, name="second_batch_last_flow_eval")
+            print ("second_batch_last_flow_eval:",self.second_batch_last_flow_eval)
+            #Tensor("second_unet/second_batch_last_flow_eval:0", shape=(2, 1, 360, 640, 5), dtype=float32)
+            
             self.second_opticalflow=lstm_outputs[0]  
             print ("self.second_opticalflow:",self.second_opticalflow) 
             #self.second_opticalflow: Tensor("second_unet/strided_slice_2:0", shape=(10, 180, 320, 5), dtype=float32)
+            
+            self.second_opticalflow_eval=lstm_outputs_eval[0]  
+            print ("self.second_opticalflow_eval:",self.second_opticalflow_eval)
+            #Tensor("second_unet/strided_slice_5:0", shape=(10, 360, 640, 5), dtype=float32)
             
         self.second_opticalflow_t_0=tf.add( self.second_opticalflow[:,:,:,:2],  self.first_opticalflow_t_0, name="second_opticalflow_t_0")
         self.second_opticalflow_t_1=tf.add( self.second_opticalflow[:,:,:,2:4], self.first_opticalflow_t_2, name="second_opticalflow_t_1")
@@ -210,12 +259,26 @@ class SuperSlomo:
         #second_opticalflow_t_0: Tensor("second_opticalflow_t_0:0", shape=(10, 180, 320, 2), dtype=float32)
         #second_opticalflow_t_1: Tensor("second_opticalflow_t_1:0", shape=(10, 180, 320, 2), dtype=float32)
         
+        self.second_opticalflow_t_0_eval=tf.add( self.second_opticalflow_eval[:,:,:,:2],  self.first_opticalflow_t_0_eval, name="second_opticalflow_t_0_eval")
+        self.second_opticalflow_t_1_eval=tf.add( self.second_opticalflow_eval[:,:,:,2:4], self.first_opticalflow_t_2_eval, name="second_opticalflow_t_1_eval")
+        print ('second_opticalflow_t_0_eval:',self.second_opticalflow_t_0_eval)
+        print ('second_opticalflow_t_1_eval:',self.second_opticalflow_t_1_eval)
+        #second_opticalflow_t_0_eval: Tensor("second_opticalflow_t_0_eval:0", shape=(10, 360, 640, 2), dtype=float32)
+        #second_opticalflow_t_1_eval: Tensor("second_opticalflow_t_1_eval:0", shape=(10, 360, 640, 2), dtype=float32)
+        
         self.vmap_t_0=tf.expand_dims( tf.sigmoid(self.second_opticalflow[:,:,:,-1])  , -1)
         self.vmap_t_1=1-self.vmap_t_0
+        
+        self.vmap_t_0_eval=tf.expand_dims( tf.sigmoid(self.second_opticalflow_eval[:,:,:,-1])  , -1)
+        self.vmap_t_1_eval=1-self.vmap_t_0_eval
 
         #2种方法合成t时刻的帧
         self.second_img_flow_1_t=self.warp_op(self.frame2, -self.second_opticalflow_t_1) #!!!
         self.second_img_flow_0_t=self.warp_op(self.frame0, -self.second_opticalflow_t_0) #!!!
+        
+        #2种方法合成t时刻的帧
+        self.second_img_flow_1_t_eval=self.warp_op(self.frame2_eval, -self.second_opticalflow_t_1_eval) #!!!
+        self.second_img_flow_0_t_eval=self.warp_op(self.frame0_eval, -self.second_opticalflow_t_0_eval) #!!!
         
         #最终输出的图
         print (self.timerates_expand, self.vmap_t_0, self.second_img_flow_0_t)
@@ -225,6 +288,11 @@ class SuperSlomo:
                              ((1-self.timerates_expand)*self.vmap_t_0+self.timerates_expand*self.vmap_t_1) , name="second_outputimg" )
         print ('second output img:',self.second_output)
         #second output img: Tensor("second_outputimg:0", shape=(10, 180, 320, 3), dtype=float32)
+        
+        self.second_output_eval=tf.div(  ( (1-self.timerates_expand)*self.vmap_t_0_eval*self.second_img_flow_0_t_eval+self.timerates_expand*self.vmap_t_1_eval*self.second_img_flow_1_t_eval),  \
+                             ((1-self.timerates_expand)*self.vmap_t_0_eval+self.timerates_expand*self.vmap_t_1_eval) , name="second_outputimg_eval" )
+        print ('second output img_eval:',self.second_output_eval)
+        #second output img_eval: Tensor("second_outputimg_eval:0", shape=(10, 360, 640, 3), dtype=float32)
         
         #判别器的网络构建
         self.D_1_net_F, self.D_1_net_F_logit=Discriminator_net(self.second_output, name="D1", training=self.training)
