@@ -384,7 +384,7 @@ class Slomo_flow:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  #将bgr格式的opencv读取图片转化为rgb
             kep_frames.append(frame)
             cnt+=1
-            print (cnt,'/',frame_cnt)
+            #print (cnt,'/',frame_cnt)
             success, frame= videoCapture.read()
         videoCapture.release()
         #将帧合成gif
@@ -662,8 +662,8 @@ class Slomo_step2(Slomo_flow):
             
         videoCapture.release()
         
-        print ("mean psnr:", np.mean(kep_psnr))
-        print ("mean ssim:", np.mean(kep_ssim))
+        print ("mean psnr:",len(kep_psnr),"->", np.mean(kep_psnr))
+        print ("mean ssim:",len(kep_ssim),"->", np.mean(kep_ssim))
         
 
 if __name__=='__main__':
@@ -672,7 +672,7 @@ if __name__=='__main__':
         slomo=Slomo_step2(sess)
         #slomo=Step_two(sess)
         slomo.process_video_list(inputvideo, outputvideodir, 6)
-        #slomo.eval_video_list(inputvideo,  2)
+        #slomo.eval_video_list(inputvideo,  1)
         #slomo.eval_on_ucf_mini(ucf_path)
        
         
