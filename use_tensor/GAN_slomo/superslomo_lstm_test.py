@@ -671,8 +671,8 @@ if __name__=='__main__':
         #slomo=Slomo_flow(sess)
         slomo=Slomo_step2(sess)
         #slomo=Step_two(sess)
-        slomo.process_video_list(inputvideo, outputvideodir, 6)
-        #slomo.eval_video_list(inputvideo,  1)
+        #slomo.process_video_list(inputvideo, outputvideodir, 6)
+        slomo.eval_video_list(inputvideo,  1)
         #slomo.eval_on_ucf_mini(ucf_path)
        
         
