@@ -21,6 +21,7 @@ modelpath="/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-03_20-16-01_base_l
 meta_name=r'model_keep-239999.meta'
 
 ucf_path=r'/media/sherl/本地磁盘/data_DL/UCF101_results'
+middleburey_path=r"/media/sherl/本地磁盘/data_DL/eval-color-allframes"
 
 version='Superslomo_lstm_'
 
@@ -663,6 +664,61 @@ class Slomo_step2(Slomo_flow):
         print ("mean psnr:", np.mean(kep_psnr))
         print ("mean ssim:", np.mean(kep_ssim))
         
+        
+    def eval_on_one_frame_dir(self, interpola_cnt, inpath, outpath):
+        '''
+        :处理一个分解后的帧的目录，同video一个道理，但是这里是已经将video分解了
+        '''
+        print (inpath,"-->",outpath)
+        frame_list=os.listdir(inpath)
+        frame_list.sort()
+        kep_last_flow=np.zeros(self.last_optical_flow_shape)
+        seri_frames=[]
+        kep_img_names=[]
+        cnt=0
+        
+        for ind,i in enumerate(frame_list):
+            tepdir=op.join(inpath, i)
+            tepimg=cv2.imread(tepdir)
+            imgshape=tepimg.shape
+            seri_frames.append(cv2.resize(tepimg, self.videoshape))
+            kep_img_names.append( op.splitext(i)[0][5:] )
+            cnt+=1
+            
+            if ind<( len(frame_list)-1) and len(seri_frames)<self.batch+1: continue
+            if len(seri_frames)<=1: break
+            
+            sttime=time.time()              
+            
+            outimgs, kep_last_flow=self.getframes_throw_flow(seri_frames, interpola_cnt, kep_last_flow)
+            print (cnt,'/',len(frame_list),'  time gap:',time.time()-sttime)
+            
+            
+            
+            for j in range(len(seri_frames)-1):
+                for k in range(interpola_cnt):
+                    tep_image=cv2.resize(outimgs[k][j], (imgshape[1], imgshape[0]) )
+                    
+                    outimgname="frame%si%s.png"%(kep_img_names[j],  kep_img_names[j+1])
+                    outname=op.join(outpath, outimgname)
+                    cv2.imwrite( outname  ,tep_image)
+                    
+                    
+            seri_frames=[ seri_frames[-1]  ]
+            kep_img_names=[ kep_img_names[-1] ]
+        
+        
+    def eval_on_middlebury_allframes(self, middleburey_path, interpolate_cnt=1):
+        inputdir=op.join(middleburey_path, "eval-data")
+        outdir=op.join(middleburey_path, "output_interframes")
+        os.makedirs(outdir,  exist_ok=True)
+        
+        for i in os.listdir(inputdir):
+            tep_in=op.join(inputdir, i)
+            tep_out=op.join(outdir, i)
+            os.makedirs(tep_out, exist_ok=True)
+            self.eval_on_one_frame_dir(interpolate_cnt, tep_in, tep_out)
+            
 
 if __name__=='__main__':
     with tf.Session() as sess:
@@ -670,8 +726,9 @@ if __name__=='__main__':
         slomo=Slomo_step2(sess)
         #slomo=Step_two(sess)
         #slomo.process_video_list(inputvideo, outputvideodir, 6)
-        slomo.eval_video_list(inputvideo,  2)
+        #slomo.eval_video_list(inputvideo,  2)
         #slomo.eval_on_ucf_mini(ucf_path)
+        slomo.eval_on_middlebury_allframes(middleburey_path)
        
         
         
