@@ -7,7 +7,7 @@ Created on Apr 9, 2019
 import tensorflow as tf
 import numpy as np
 import os.path as op
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import cv2,os,time
 from datetime import datetime
 import skimage
