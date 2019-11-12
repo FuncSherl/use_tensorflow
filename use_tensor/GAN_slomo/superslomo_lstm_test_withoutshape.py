@@ -15,15 +15,14 @@ import imageio
 
 
 
-modelpath="/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-03_20-16-01_base_lr-0.000100_batchsize-10_maxstep-240000_add_step2_time_sequence"
-#modelpath=r'/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-02_13-56-35_base_lr-0.000100_batchsize-10_maxstep-240000_original_paper'
+modelpath="/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-10_21-07-26_base_lr-0.000100_batchsize-10_maxstep-240000_LSTM_version_320p"
 
 meta_name=r'model_keep-239999.meta'
 
 ucf_path=r'/media/sherl/本地磁盘/data_DL/UCF101_results'
 middleburey_path=r"/media/sherl/本地磁盘/data_DL/eval-color-allframes"
 
-version='Superslomo_lstm_'
+version='Superslomo_lstm_640p_'
 
 inputvideodir='./testing_gif'
 outputvideodir='./outputvideos'   #输出的video的路径，会在该路径下新建文件夹
@@ -383,7 +382,7 @@ class Slomo_flow:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  #将bgr格式的opencv读取图片转化为rgb
             kep_frames.append(frame)
             cnt+=1
-            print (cnt,'/',frame_cnt)
+            #print (cnt,'/',frame_cnt)
             success, frame= videoCapture.read()
         videoCapture.release()
         #将帧合成gif
@@ -722,14 +721,11 @@ class Slomo_step2(Slomo_flow):
 
 if __name__=='__main__':
     with tf.Session() as sess:
-        #slomo=Slomo_flow(sess)
         slomo=Slomo_step2(sess)
-        #slomo=Step_two(sess)
         #slomo.process_video_list(inputvideo, outputvideodir, 6)
-        #slomo.eval_video_list(inputvideo,  2)
-        #slomo.eval_on_ucf_mini(ucf_path)
+        slomo.eval_video_list(inputvideo,  2)
         slomo.eval_on_middlebury_allframes(middleburey_path)
-       
+        
         
         
         
