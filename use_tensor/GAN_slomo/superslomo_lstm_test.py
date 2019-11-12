@@ -10,9 +10,9 @@ import os.path as op
 #import matplotlib.pyplot as plt
 import cv2,os,time
 from datetime import datetime
-import skimage
-import imageio
-from skimage.restoration import inpaint
+#import skimage
+#import imageio
+
 
 
 homepath=os.path.expanduser('~')
@@ -570,7 +570,7 @@ class Slomo_step2(Slomo_flow):
         videoWrite.release()
         videoCapture.release()
         self.show_video_info( outpath)
-        
+        '''
         outgifpath=op.splitext(outpath)[0]+'.gif'
         print ('for convent, converting mp4->gif:',outpath,'->',outgifpath)
         self.convert_mp42gif(outpath, outgifpath)
@@ -578,6 +578,7 @@ class Slomo_step2(Slomo_flow):
         print ("for ppt show,merging two videos:")
         outgifpath=op.splitext(outpath)[0]+'_merged.gif'
         self.merge_two_videos(inpath, outpath, outgifpath)
+        '''
         
     def getframes_throw_flow(self, seri_frames, interpola_cnt, last_flow):
         '''
@@ -731,8 +732,8 @@ if __name__=='__main__':
         #slomo=Slomo_flow(sess)
         slomo=Slomo_step2(sess)
         #slomo=Step_two(sess)
-        #slomo.process_video_list(inputvideo, outputvideodir, 6)
-        slomo.eval_video_list(inputvideo,  1)
+        slomo.process_video_list(inputvideo, outputvideodir, 6)
+        #slomo.eval_video_list(inputvideo,  1)
         #slomo.eval_on_ucf_mini(ucf_path)
         #slomo.eval_on_middlebury_allframes(middleburey_path)
        
