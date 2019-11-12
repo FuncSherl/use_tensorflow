@@ -14,9 +14,12 @@ import skimage
 import imageio
 
 
-
-modelpath="/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-03_20-16-01_base_lr-0.000100_batchsize-10_maxstep-240000_add_step2_time_sequence"
+homepath=os.path.expanduser('~')
+print (homepath)
+modelpath="Pictures/superslomo/SuperSlomo_2019-11-03_20-16-01_base_lr-0.000100_batchsize-10_maxstep-240000_add_step2_time_sequence"
 #modelpath=r'/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-02_13-56-35_base_lr-0.000100_batchsize-10_maxstep-240000_original_paper'
+
+modelpath=op.join(homepath, modelpath)
 
 meta_name=r'model_keep-239999.meta'
 

@@ -14,8 +14,11 @@ import skimage
 import imageio
 
 
+homepath=os.path.expanduser('~')
+print (homepath)
+modelpath="Pictures/superslomo/SuperSlomo_2019-11-10_21-07-26_base_lr-0.000100_batchsize-10_maxstep-240000_LSTM_version_320p"
 
-modelpath="/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-10_21-07-26_base_lr-0.000100_batchsize-10_maxstep-240000_LSTM_version_320p"
+modelpath=op.join(homepath, modelpath)
 
 meta_name=r'model_keep-239999.meta'
 

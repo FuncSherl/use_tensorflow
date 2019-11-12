@@ -15,9 +15,12 @@ import imageio
 from skimage.restoration import inpaint
 
 
+homepath=os.path.expanduser('~')
+print (homepath)
+modelpath="Pictures/superslomo/SuperSlomo_2019-11-09_15-57-28_base_lr-0.000100_batchsize-10_maxstep-240000_LSTM_Version_fixshape"
+#modelpath=r'Pictures/superslomo/SuperSlomo_2019-11-02_13-56-35_base_lr-0.000100_batchsize-10_maxstep-240000_original_paper'
 
-modelpath="/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-09_15-57-28_base_lr-0.000100_batchsize-10_maxstep-240000_LSTM_Version_fixshape"
-#modelpath=r'/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-02_13-56-35_base_lr-0.000100_batchsize-10_maxstep-240000_original_paper'
+modelpath=op.join(homepath, modelpath)
 
 meta_name=r'model_keep-239999.meta'
 
@@ -729,9 +732,9 @@ if __name__=='__main__':
         slomo=Slomo_step2(sess)
         #slomo=Step_two(sess)
         #slomo.process_video_list(inputvideo, outputvideodir, 6)
-        #slomo.eval_video_list(inputvideo,  1)
+        slomo.eval_video_list(inputvideo,  1)
         #slomo.eval_on_ucf_mini(ucf_path)
-        slomo.eval_on_middlebury_allframes(middleburey_path)
+        #slomo.eval_on_middlebury_allframes(middleburey_path)
        
         
         
