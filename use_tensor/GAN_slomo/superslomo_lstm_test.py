@@ -10,8 +10,8 @@ import os.path as op
 #import matplotlib.pyplot as plt
 import cv2,os,time
 from datetime import datetime
-#import skimage
-#import imageio
+import skimage
+import imageio
 
 
 
@@ -446,7 +446,14 @@ class Slomo_flow:
         print ('writing to gif:', outgif)
         imageio.mimsave(outgif, frames_kep, 'GIF', duration = 1.0/fps)
         
-    
+    def convert_mp4_h264(self, inpath, outpath):
+        cmdstr="ffmpeg -i %s -vcodec libx264 -f mp4 %s"%(inpath, outpath)
+        print (cmdstr)
+        retn = os.system(cmdstr)
+        if retn:
+            print ("error exec:",cmdstr)
+            return None
+        return outpath
         
     
     def show_video_info(self, inpath):
@@ -532,8 +539,9 @@ class Slomo_step2(Slomo_flow):
         print ('video:',inpath)
         print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
         
-
-        videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
+        outpath=op.splitext(outpath)[0]+".mp4"
+        videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc(*'MJPG'), int (fps), self.videoshape )
+        #videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc(*'X264'), int (fps), self.videoshape )
         print ('output video:',outpath,'\nsize:',self.videoshape, '  fps:', fps)
         
         kep_last_flow=np.zeros(self.last_optical_flow_shape)
@@ -570,6 +578,8 @@ class Slomo_step2(Slomo_flow):
         videoWrite.release()
         videoCapture.release()
         self.show_video_info( outpath)
+        
+        return self.convert_mp4_h264(outpath, op.splitext(outpath)[0]+"_h264.mp4")
         '''
         outgifpath=op.splitext(outpath)[0]+'.gif'
         print ('for convent, converting mp4->gif:',outpath,'->',outgifpath)

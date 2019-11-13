@@ -488,21 +488,14 @@ class Slomo_flow:
         '''
         return bgr
     
-    def after_process(self, img, kernel_size=10):
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
-        #erosion = cv2.erode(img, kernel)  # 腐蚀
-        #dilation = cv2.dilate(img, kernel)  # 膨胀
-        '''
-        先腐蚀后膨胀叫开运算
-        opening = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)  # 开运算
-        closing = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)  # 闭运算
-        膨胀：求局部最大值
-        腐蚀：局部最小值(与膨胀相反)
-        '''
-        
-        img = cv2.dilate(img, kernel, iterations=1)
-        img = cv2.erode(img, kernel, iterations=1)
-        return img
+    def convert_mp4_h264(self, inpath, outpath):
+        cmdstr="ffmpeg -i %s -vcodec libx264 -f mp4 %s"%(inpath, outpath)
+        print (cmdstr)
+        retn = os.system(cmdstr)
+        if retn:
+            print ("error exec:",cmdstr)
+            return None
+        return outpath
 
 class Slomo_step2(Slomo_flow): 
     def __init__(self, sess):
@@ -527,7 +520,7 @@ class Slomo_step2(Slomo_flow):
         
         print ('video:',inpath)
         print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
-        
+        print ("target input shape:",self.videoshape)
 
         videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
         print ('output video:',outpath,'\nsize:',self.videoshape, '  fps:', fps)
@@ -566,7 +559,8 @@ class Slomo_step2(Slomo_flow):
         videoWrite.release()
         videoCapture.release()
         self.show_video_info( outpath)
-        
+        return self.convert_mp4_h264(outpath, op.splitext(outpath)[0]+"_h264.mp4")
+        '''
         outgifpath=op.splitext(outpath)[0]+'.gif'
         print ('for convent, converting mp4->gif:',outpath,'->',outgifpath)
         self.convert_mp42gif(outpath, outgifpath)
@@ -574,6 +568,7 @@ class Slomo_step2(Slomo_flow):
         print ("for ppt show,merging two videos:")
         outgifpath=op.splitext(outpath)[0]+'_merged.gif'
         self.merge_two_videos(inpath, outpath, outgifpath)
+        '''
         
     def getframes_throw_flow(self, seri_frames, interpola_cnt, last_flow):
         '''
@@ -725,9 +720,9 @@ class Slomo_step2(Slomo_flow):
 if __name__=='__main__':
     with tf.Session() as sess:
         slomo=Slomo_step2(sess)
-        #slomo.process_video_list(inputvideo, outputvideodir, 6)
-        slomo.eval_video_list(inputvideo,  2)
-        slomo.eval_on_middlebury_allframes(middleburey_path)
+        slomo.process_video_list(inputvideo, outputvideodir, 6)
+        #slomo.eval_video_list(inputvideo,  2)
+        #slomo.eval_on_middlebury_allframes(middleburey_path)
         
         
         
