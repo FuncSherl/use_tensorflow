@@ -740,7 +740,7 @@ class Step_two(Slomo_flow):
             frame_list=[ frame_list[-1] ]
             
             
-        videoWrite.write(frame_list[-1])
+        if len(frame_list)>=1: videoWrite.write(frame_list[-1])
         
         videoWrite.release()
         videoCapture.release()

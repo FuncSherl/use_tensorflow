@@ -575,7 +575,7 @@ class Slomo_step2(Slomo_flow):
             seri_frames=[ seri_frames[-1]  ]
             
             
-        videoWrite.write(seri_frames[-1])
+        if len(seri_frames)>=1: videoWrite.write(seri_frames[-1])
         
         videoWrite.release()
         videoCapture.release()
