@@ -496,6 +496,15 @@ class Slomo_flow:
             print ("error exec:",cmdstr)
             return None
         return outpath
+    
+    def convert_fps(self,inpath, outpath, fps):
+        cmdstr="ffmpeg -r %d -i %s -vcodec libx264 -f mp4 %s"%(int(fps), inpath, outpath)
+        print (cmdstr)
+        retn = os.system(cmdstr)
+        if retn:
+            print ("error exec:",cmdstr)
+            return None
+        return outpath
 
 class Slomo_step2(Slomo_flow): 
     def __init__(self, sess):

@@ -394,6 +394,23 @@ class Slomo_flow:
         print ('writing to gif:', outgif)
         imageio.mimsave(outgif, kep_frames, 'GIF', duration = 1.0/fps)
         
+    def convert_mp4_h264(self, inpath, outpath):
+        cmdstr="ffmpeg -i %s -vcodec libx264 -f mp4 %s"%(inpath, outpath)
+        print (cmdstr)
+        retn = os.system(cmdstr)
+        if retn:
+            print ("error exec:",cmdstr)
+            return None
+        return outpath
+    
+    def convert_fps(self,inpath, outpath, fps):
+        cmdstr="ffmpeg -r %d -i %s -vcodec libx264 -f mp4 %s"%(int(fps), inpath, outpath)
+        print (cmdstr)
+        retn = os.system(cmdstr)
+        if retn:
+            print ("error exec:",cmdstr)
+            return None
+        return outpath
         
     def merge_two_videos(self, video1, video2, outgif):
         videoCapture1 = cv2.VideoCapture(video1)
