@@ -559,6 +559,8 @@ class Slomo_step2(Slomo_flow):
                 if len(seri_frames)<self.batch+1: continue
             else: success=False
             
+            if len(seri_frames)<2: continue
+            
             sttime=time.time()              
             #outimgs  [interpolate, len(seri_frames)-1]
             outimgs, kep_last_flow=self.getframes_throw_flow(seri_frames, interpola_cnt, kep_last_flow)
