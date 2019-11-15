@@ -17,6 +17,7 @@ import imageio
 homepath=os.path.expanduser('~')
 print (homepath)
 modelpath="Pictures/superslomo/SuperSlomo_2019-11-10_21-07-26_base_lr-0.000100_batchsize-10_maxstep-240000_LSTM_version_320p"
+#modelpath="Pictures/superslomo/SuperSlomo_2019-11-13_17-49-29_base_lr-0.000100_batchsize-10_maxstep-240000_LSTM_train_with_crop"
 
 modelpath=op.join(homepath, modelpath)
 
@@ -731,8 +732,8 @@ class Slomo_step2(Slomo_flow):
 if __name__=='__main__':
     with tf.Session() as sess:
         slomo=Slomo_step2(sess)
-        slomo.process_video_list(inputvideo, outputvideodir, 6)
-        #slomo.eval_video_list(inputvideo,  2)
+        #slomo.process_video_list(inputvideo, outputvideodir, 6)
+        slomo.eval_video_list(inputvideo,  2)
         #slomo.eval_on_middlebury_allframes(middleburey_path)
         
         
