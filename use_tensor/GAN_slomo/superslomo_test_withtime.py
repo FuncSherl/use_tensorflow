@@ -87,7 +87,8 @@ class Slomo_step2(Slomo_flow):
         videoWrite.release()
         videoCapture.release()
         self.show_video_info( outpath)
-        
+        return fps
+        '''
         outgifpath=op.splitext(outpath)[0]+'.gif'
         print ('for convent, converting mp4->gif:',outpath,'->',outgifpath)
         self.convert_mp42gif(outpath, outgifpath)
@@ -95,6 +96,7 @@ class Slomo_step2(Slomo_flow):
         print ("for ppt show,merging two videos:")
         outgifpath=op.splitext(outpath)[0]+'_merged.gif'
         self.merge_two_videos(inpath, outpath, outgifpath)
+        '''
         
     def getframes_throw_flow(self, seri_frames, interpola_cnt, last_flow):
         '''
