@@ -216,7 +216,7 @@ class Slomo_flow:
             cv2.imwrite(frame1_my_p, outf)
         
     
-    def process_video_list(self, invideolist, outdir, interpola_cnt=7,version=version,  keep_shape=False):
+    def process_video_list(self, invideolist, outdir, interpola_cnt=7,version=version,  keep_shape=True):
         '''
         入口函数
         输入一个list包含每个video的完整路径：invideolist
