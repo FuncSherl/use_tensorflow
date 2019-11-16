@@ -33,11 +33,11 @@ class Slomo_step2(Slomo_flow):
             print ("loading second_unet/strided_slice_89:0 error, give it to the child")
         
         
-    def process_one_video(self, interpola_cnt, inpath, outpath, keep_shape=False):
+    def process_one_video(self, interpola_cnt, inpath, outpath, keep_shape=True):
         '''
         inpath:inputvideo's full path
         outpath:output video's full path
-        #keep_shape:if use direct G's output or calculate with optical flow to resize images
+        keep_shape:if true:keep original video's shape  false:resize to net shape
         '''
         videoCapture = cv2.VideoCapture(inpath)  
         
@@ -49,7 +49,7 @@ class Slomo_step2(Slomo_flow):
         print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
         
 
-        videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
+        videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), (self.videoshape if not keep_shape else size) )
         print ('output video:',outpath)
         print ("keep shape:",keep_shape)
         if keep_shape: print ('size:',size, '  fps:', fps)
@@ -59,7 +59,7 @@ class Slomo_step2(Slomo_flow):
         
         success=True
         seri_frames=[]
-        
+
         cnt=0
         while success:     
             success, frame= videoCapture.read()
@@ -76,10 +76,12 @@ class Slomo_step2(Slomo_flow):
             outimgs, kep_last_flow=self.getframes_throw_flow(seri_frames, interpola_cnt, kep_last_flow)
             #write imgs to video
             for i in range(len(seri_frames)-1):
+                #print (seri_frames[i].shape)
                 videoWrite.write(seri_frames[i])
                 for j in range(interpola_cnt):
                     tepimgs=outimgs[j][i]
                     if keep_shape: tepimgs=cv2.resize(tepimgs, size)
+                    #print (tepimgs.shape)
                     videoWrite.write( tepimgs )
             
             cnt+=len(seri_frames)-1
@@ -87,7 +89,9 @@ class Slomo_step2(Slomo_flow):
             seri_frames=[ seri_frames[-1]  ]
             
             
-        if len(seri_frames)>=1: videoWrite.write(seri_frames[-1])
+        if len(seri_frames)>=1: 
+            #print (seri_frames[-1].shape)
+            videoWrite.write(seri_frames[-1])
         
         videoWrite.release()
         videoCapture.release()
