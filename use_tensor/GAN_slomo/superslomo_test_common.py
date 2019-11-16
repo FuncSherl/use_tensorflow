@@ -16,30 +16,35 @@ import imageio
 
 homepath=os.path.expanduser('~')
 print (homepath)
-modelpath="Pictures/superslomo/SuperSlomo_2019-11-03_20-16-01_base_lr-0.000100_batchsize-10_maxstep-240000_add_step2_time_sequence"
-#modelpath=r'/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-02_13-56-35_base_lr-0.000100_batchsize-10_maxstep-240000_original_paper'
+#modelpath="Pictures/superslomo/SuperSlomo_2019-11-03_20-16-01_base_lr-0.000100_batchsize-10_maxstep-240000_add_step2_time_sequence"
+modelpath=r'/home/sherl/Pictures/superslomo/SuperSlomo_2019-11-02_13-56-35_base_lr-0.000100_batchsize-10_maxstep-240000_original_paper'
 
 modelpath=op.join(homepath, modelpath)
 
 meta_name=r'model_keep-239999.meta'
 
 ucf_path=r'/media/sherl/本地磁盘/data_DL/UCF101_results'
+middleburey_path=r"/media/sherl/本地磁盘/data_DL/eval-color-allframes"
 
 version='Superslomo_v1_'
 
 inputvideodir='./testing_gif'
 outputvideodir='./outputvideos'   #输出的video的路径，会在该路径下新建文件夹
-video_lists=os.listdir(inputvideodir)  #['original.mp4', 'car-turn.mp4']  #
-inputvideo = [op.join(inputvideodir, i.strip()) for i in video_lists ]  #这里保存所有需要测的video的fullpath，后面根据这里的list进行测试
 
 os.makedirs(inputvideodir,  exist_ok=True)
 os.makedirs(outputvideodir,  exist_ok=True)
 
+video_lists=os.listdir(inputvideodir)  #['original.mp4', 'car-turn.mp4']  #
+inputvideo = [op.join(inputvideodir, i.strip()) for i in video_lists ]  #这里保存所有需要测的video的fullpath，后面根据这里的list进行测试
+
+
+
 mean_dataset=[102.1, 109.9, 110.0]
 
 class Slomo_flow:
-    def __init__(self,sess):
+    def __init__(self,sess, modelpath=modelpath):
         self.sess=sess
+        print ("loading model:",modelpath)
         saver = tf.train.import_meta_graph(op.join(modelpath, meta_name) )
         saver.restore(self.sess, tf.train.latest_checkpoint(modelpath))
         
@@ -211,7 +216,7 @@ class Slomo_flow:
             cv2.imwrite(frame1_my_p, outf)
         
     
-    def process_video_list(self, invideolist, outdir, interpola_cnt=7, directout=True, keep_shape=False):
+    def process_video_list(self, invideolist, outdir, interpola_cnt=7,version=version, directout=True, keep_shape=False):
         '''
         入口函数
         输入一个list包含每个video的完整路径：invideolist
@@ -224,7 +229,7 @@ class Slomo_flow:
         for ind,i in enumerate(invideolist):
             fpath,fname=op.split(i.strip())
             if directout:
-                outputvideo=op.join( outputdir, "180p_slomo_"+fname)
+                outputvideo=op.join( outputdir, "180por360p_slomo_"+fname)
                 print ('video:',ind,"/",len(invideolist),"  ",i,'->', outputvideo)
                 self.process_one_video(interpola_cnt, i, outputvideo, False)
             if keep_shape: 
@@ -394,23 +399,60 @@ class Slomo_flow:
         print ('writing to gif:', outgif)
         imageio.mimsave(outgif, kep_frames, 'GIF', duration = 1.0/fps)
         
-    def convert_mp4_h264(self, inpath, outpath):
+    def convert_mp4_h264(self, inpath, outpath, delete=True):
         cmdstr="ffmpeg -i %s -vcodec libx264 -f mp4 %s"%(inpath, outpath)
         print (cmdstr)
         retn = os.system(cmdstr)
         if retn:
-            print ("error exec:",cmdstr)
-            return None
+            print ("error %d exec:%s"%(retn, cmdstr))
+            if op.exists(outpath): os.remove(outpath)
+            return inpath
+        if delete and op.exists(inpath): os.remove(inpath)
         return outpath
     
-    def convert_fps(self,inpath, outpath, fps):
+    def convert_fps(self,inpath, outpath, fps, delete=True):
+        '''
+        通过调整帧率来控制播放速度，这种由于fps为整数，可能会不够准确，准确的话应该用convert_fps_insert，通过自定插入帧数将每个帧扩充n倍
+        '''
         cmdstr="ffmpeg -r %d -i %s -vcodec libx264 -f mp4 %s"%(int(fps), inpath, outpath)
         print (cmdstr)
         retn = os.system(cmdstr)
         if retn:
-            print ("error exec:",cmdstr)
-            return None
+            print ("error %d exec:%s"%(retn, cmdstr))
+            if op.exists(outpath): os.remove(outpath)
+            return inpath
+        if delete and op.exists(inpath): os.remove(inpath)
         return outpath
+    
+    def convert_fps_insert(self, inpath, outpath, intercnt, delete=True):
+        '''
+        将每个帧（除了最后一个）扩充intercnt倍，用于补帧对比
+        '''
+        videoCapture1 = cv2.VideoCapture(inpath)
+        frame_cnt1=videoCapture1.get(cv2.CAP_PROP_FRAME_COUNT)
+        fps1=int (videoCapture1.get(cv2.CAP_PROP_FPS) )
+        size1 = (int(videoCapture1.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture1.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        print ("frame cnt:",frame_cnt1)
+        tep_path=op.splitext(inpath)[0]+"_tep.mp4"
+        
+        videoWrite = cv2.VideoWriter(tep_path, cv2.VideoWriter_fourcc(*'MJPG'), int (fps1),  size1)
+        
+        target_framecnt=(frame_cnt1-1)*(intercnt+1)+1
+        cnt=0
+        success, frame= videoCapture1.read()
+        while success and (frame is not None) and cnt<target_framecnt:
+            for i in range(intercnt+1):
+                if cnt<target_framecnt:
+                    videoWrite.write(frame)
+                    cnt+=1
+            success, frame= videoCapture1.read() 
+        
+        videoCapture1.release()
+        videoWrite.release()
+        if delete and op.exists(inpath): os.remove(inpath)
+        
+        return self.convert_mp4_h264(tep_path, outpath, delete)
+    
         
     def merge_two_videos(self, video1, video2, outgif):
         videoCapture1 = cv2.VideoCapture(video1)
@@ -523,167 +565,6 @@ class Slomo_flow:
         img = cv2.erode(img, kernel, iterations=1)
         return img
 
-class Slomo_step2(Slomo_flow): 
-    def __init__(self, sess):
-        Slomo_flow.__init__(self, sess)
-        self.last_optical_flow=self.graph.get_tensor_by_name("second_last_flow:0")
-        self.last_optical_flow_shape=self.last_optical_flow.get_shape().as_list()
-        
-        self.out_last_flow=self.graph.get_tensor_by_name("second_unet/strided_slice_89:0")
-        
-        
-    def process_one_video(self, interpola_cnt, inpath, outpath, keep_shape=False):
-        '''
-        inpath:inputvideo's full path
-        outpath:output video's full path
-        #keep_shape:if use direct G's output or calculate with optical flow to resize images
-        '''
-        videoCapture = cv2.VideoCapture(inpath)  
-        
-        size = (int(videoCapture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-        fps=int (videoCapture.get(cv2.CAP_PROP_FPS) )
-        frame_cnt=videoCapture.get(cv2.CAP_PROP_FRAME_COUNT) 
-        
-        print ('video:',inpath)
-        print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
-        
-
-        videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
-        print ('output video:',outpath,'\nsize:',self.videoshape, '  fps:', fps)
-        
-        kep_last_flow=np.zeros(self.last_optical_flow_shape)
-        
-        success=True
-        seri_frames=[]
-        
-        cnt=0
-        while success:     
-            success, frame= videoCapture.read()
-            
-            if frame is not None:
-                frame=cv2.resize(frame, self.videoshape)
-                seri_frames.append(frame)
-                if len(seri_frames)<self.batch+1: continue
-            else: success=False
-            
-            sttime=time.time()              
-            #outimgs  [interpolate, len(seri_frames)-1]
-            outimgs, kep_last_flow=self.getframes_throw_flow(seri_frames, interpola_cnt, kep_last_flow)
-            #write imgs to video
-            for i in range(len(seri_frames)-1):
-                videoWrite.write(seri_frames[i])
-                for j in range(interpola_cnt):
-                    videoWrite.write( outimgs[j][i] )
-            
-            cnt+=len(seri_frames)-1
-            print (cnt,'/',frame_cnt,'  time gap:',time.time()-sttime)
-            seri_frames=[ seri_frames[-1]  ]
-            
-            
-        videoWrite.write(seri_frames[-1])
-        
-        videoWrite.release()
-        videoCapture.release()
-        self.show_video_info( outpath)
-        
-        outgifpath=op.splitext(outpath)[0]+'.gif'
-        print ('for convent, converting mp4->gif:',outpath,'->',outgifpath)
-        self.convert_mp42gif(outpath, outgifpath)
-        
-        print ("for ppt show,merging two videos:")
-        outgifpath=op.splitext(outpath)[0]+'_merged.gif'
-        self.merge_two_videos(inpath, outpath, outgifpath)
-        
-    def getframes_throw_flow(self, seri_frames, interpola_cnt, last_flow):
-        '''
-        重写父类中的该函数，对应加上time step的网络
-        这里是第一种方法获取中间帧，直接获得通过网络G输出的帧而不是光流，但这样帧的大小是固定的
-        cnt:中间插入几帧,这里由于
-        '''
-        timerates=[i*1.0/(interpola_cnt+1) for i in range(1,interpola_cnt+1)]
-        placetep=np.zeros(self.placeimgshape)
-        
-        ret=[]
-        
-        for i in range(interpola_cnt):
-            for j in range( len(seri_frames)-1 ):
-                placetep[j,:,:,:3]=cv2.resize(seri_frames[j], self.imgshape)
-                placetep[j,:,:,6:]=cv2.resize(seri_frames[j+1], self.imgshape)
-                
-            placetep=self.img2tanh(placetep)
-            outimg, outflow=self.sess.run([self.outimg, self.out_last_flow], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:[timerates[i]]*self.batch, self.last_optical_flow:last_flow})
-            
-            ret.append(self.tanh2img(  outimg[:len(seri_frames)-1]   ))
-            
-        return ret, outflow
-
-    
-    
-    def eval_on_one_video(self, interpola_cnt, inpath):
-        '''
-        inpath:inputvideo's full path
-        outpath:output video's full path
-        #keep_shape:if use direct G's output or calculate with optical flow to resize images
-        '''
-        videoCapture = cv2.VideoCapture(inpath)  
-        
-        size = (int(videoCapture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(videoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-        fps=int (videoCapture.get(cv2.CAP_PROP_FPS) )
-        frame_cnt=videoCapture.get(cv2.CAP_PROP_FRAME_COUNT) 
-        
-        print ('\nvideo:',inpath)
-        print ('size:',size, '  fps:',fps,'  frame_cnt:',frame_cnt)
-        
-        kep_last_flow=np.zeros(self.last_optical_flow_shape)
-        
-        success=True
-        seri_frames=[]
-        inter_frames=[]
-        kep_psnr=[]
-        kep_ssim=[]
-        
-        cnt=0
-        while success:     
-            success, frame= videoCapture.read()
-            cnt+=1
-            
-            if frame is not None:
-                frame=cv2.resize(frame, self.videoshape)
-                
-                if (cnt-1)%(interpola_cnt+1) ==0  : seri_frames.append(frame)
-                else: inter_frames.append(frame)
-                
-                
-                if len(seri_frames)<self.batch+1: continue
-            else: success=False
-            
-            if len(seri_frames)<2: break
-            
-            sttime=time.time()              
-            
-            outimgs, kep_last_flow=self.getframes_throw_flow(seri_frames, interpola_cnt, kep_last_flow)
-            #write imgs to video
-            #outimgs  [interpolate, len(seri_frames)-1]
-            inter_frames_cnt=0
-            for i in range(len(seri_frames)-1):
-                for j in range(interpola_cnt):
-                    psnr=skimage.measure.compare_psnr(inter_frames[inter_frames_cnt], outimgs[j][i], 255)
-                    ssim=skimage.measure.compare_ssim(inter_frames[inter_frames_cnt], outimgs[j][i], multichannel=True)
-                    
-                    kep_psnr.append(psnr)
-                    kep_ssim.append(ssim)
-                    
-                    inter_frames_cnt+=1
-                    
-                    
-            print (cnt,'/',frame_cnt,'  time gap:',time.time()-sttime)
-            seri_frames=[ seri_frames[-1]  ]
-            inter_frames=[]
-            
-        videoCapture.release()
-        
-        print ("mean psnr:", np.mean(kep_psnr))
-        print ("mean ssim:", np.mean(kep_ssim))
 
 
 class Step_two(Slomo_flow):      
@@ -947,8 +828,8 @@ class Step_two(Slomo_flow):
 
 if __name__=='__main__':
     with tf.Session() as sess:
-        #slomo=Slomo_flow(sess)
-        slomo=Slomo_step2(sess)
+        slomo=Slomo_flow(sess)
+
         #slomo=Step_two(sess)
         slomo.process_video_list(inputvideo, outputvideodir, 6)
         #slomo.eval_video_list(inputvideo,  2)
