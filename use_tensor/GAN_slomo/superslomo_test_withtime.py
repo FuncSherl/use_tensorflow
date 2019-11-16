@@ -62,7 +62,7 @@ class Slomo_step2(Slomo_flow):
             success, frame= videoCapture.read()
             
             if frame is not None:
-                frame=cv2.resize(frame, self.videoshape)
+                if not keep_shape: frame=cv2.resize(frame, self.videoshape)
                 seri_frames.append(frame)
                 if len(seri_frames)<self.batch+1: continue
             else: success=False
@@ -75,7 +75,9 @@ class Slomo_step2(Slomo_flow):
             for i in range(len(seri_frames)-1):
                 videoWrite.write(seri_frames[i])
                 for j in range(interpola_cnt):
-                    videoWrite.write( outimgs[j][i] )
+                    tepimgs=outimgs[j][i]
+                    if keep_shape: tepimgs=cv2.resize(tepimgs, size)
+                    videoWrite.write( tepimgs )
             
             cnt+=len(seri_frames)-1
             print (cnt,'/',frame_cnt,'  time gap:',time.time()-sttime)
@@ -152,11 +154,9 @@ class Slomo_step2(Slomo_flow):
             cnt+=1
             
             if frame is not None:
-                frame=cv2.resize(frame, self.videoshape)
-                
+                #frame=cv2.resize(frame, self.videoshape)                
                 if (cnt-1)%(interpola_cnt+1) ==0  : seri_frames.append(frame)
-                else: inter_frames.append(frame)
-                
+                else: inter_frames.append(frame)                
                 
                 if len(seri_frames)<self.batch+1: continue
             else: success=False
@@ -171,8 +171,8 @@ class Slomo_step2(Slomo_flow):
             inter_frames_cnt=0
             for i in range(len(seri_frames)-1):
                 for j in range(interpola_cnt):
-                    psnr=skimage.measure.compare_psnr(inter_frames[inter_frames_cnt], outimgs[j][i], 255)
-                    ssim=skimage.measure.compare_ssim(inter_frames[inter_frames_cnt], outimgs[j][i], multichannel=True)
+                    psnr=skimage.measure.compare_psnr(inter_frames[inter_frames_cnt], cv2.resize(outimgs[j][i],  size ), 255)
+                    ssim=skimage.measure.compare_ssim(inter_frames[inter_frames_cnt], cv2.resize(outimgs[j][i],  size ), multichannel=True)
                     
                     kep_psnr.append(psnr)
                     kep_ssim.append(ssim)

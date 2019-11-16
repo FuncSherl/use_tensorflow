@@ -216,7 +216,7 @@ class Slomo_flow:
             cv2.imwrite(frame1_my_p, outf)
         
     
-    def process_video_list(self, invideolist, outdir, interpola_cnt=7,version=version, directout=True, keep_shape=False):
+    def process_video_list(self, invideolist, outdir, interpola_cnt=7,version=version,  keep_shape=False):
         '''
         入口函数
         输入一个list包含每个video的完整路径：invideolist
@@ -228,14 +228,13 @@ class Slomo_flow:
         
         for ind,i in enumerate(invideolist):
             fpath,fname=op.split(i.strip())
-            if directout:
-                outputvideo=op.join( outputdir, "180por360p_slomo_"+fname)
-                print ('video:',ind,"/",len(invideolist),"  ",i,'->', outputvideo)
-                self.process_one_video(interpola_cnt, i, outputvideo, False)
-            if keep_shape: 
-                outputvideo=op.join( outputdir, "origin_slomo_"+fname)
-                print ('video:',ind,"/",len(invideolist),"  ",i,'->', outputvideo)
-                self.process_one_video(interpola_cnt, i, outputvideo, True)
+            
+            fname="Slomo_reshape_"+fname
+            if keep_shape: fname="Slomo_origin_"+fname            
+            
+            outputvideo=op.join( outputdir, fname)
+            print ('video:',ind,"/",len(invideolist),"  ",i,'->', outputvideo)
+            self.process_one_video(interpola_cnt, i, outputvideo, keep_shape)
     
     def eval_video_list(self, invideolist,  interpola_cnt=7):
         '''

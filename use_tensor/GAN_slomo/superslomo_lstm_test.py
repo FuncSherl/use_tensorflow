@@ -32,11 +32,6 @@ class Slomo_step2_LSTM(Slomo_step2):
         self.out_last_flow=self.graph.get_tensor_by_name("second_unet/second_batch_last_flow:0")
 
 
-        
-    
-            
-        
-
 if __name__=='__main__':
     with tf.Session() as sess:
         #slomo=Slomo_flow(sess)
