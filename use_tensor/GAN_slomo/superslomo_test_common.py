@@ -25,6 +25,9 @@ meta_name=r'model_keep-239999.meta'
 
 ucf_path=r'/media/sherl/本地磁盘/data_DL/UCF101_results'
 middleburey_path=r"/media/sherl/本地磁盘/data_DL/eval-color-allframes"
+slowflow_train="/media/sherl/本地磁盘/data_DL/slow_flow/slow_flow_teaser/sequence"  #
+MPI_sintel_clean="/media/sherl/本地磁盘/data_DL/MPI_Sintel/MPI-Sintel-complete/training/clean"
+
 
 version='Superslomo_v1_'
 

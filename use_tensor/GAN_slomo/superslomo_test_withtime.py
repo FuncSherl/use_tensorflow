@@ -135,8 +135,7 @@ class Slomo_step2(Slomo_flow):
     def eval_on_one_video(self, interpola_cnt, inpath):
         '''
         inpath:inputvideo's full path
-        outpath:output video's full path
-        #keep_shape:if use direct G's output or calculate with optical flow to resize images
+        interpolatecnt:中间拿出来多少帧作为GT与结果进行评估
         '''
         videoCapture = cv2.VideoCapture(inpath)  
         
@@ -197,9 +196,9 @@ class Slomo_step2(Slomo_flow):
         print ("mean ssim:", np.mean(kep_ssim))
 
 
-    def eval_on_one_frame_dir(self, interpola_cnt, inpath, outpath):
+    def process_on_one_frame_dir(self, interpola_cnt, inpath, outpath):
         '''
-        :处理一个分解后的帧的目录，同video一个道理，但是这里是已经将video分解了
+        注意这里是进行补帧的过程而不是evaluate，同video一个道理，但是这里是已经将video分解了
         '''
         print (inpath,"-->",outpath)
         frame_list=os.listdir(inpath)
@@ -213,6 +212,7 @@ class Slomo_step2(Slomo_flow):
             tepdir=op.join(inpath, i)
             tepimg=cv2.imread(tepdir)
             imgshape=tepimg.shape
+            print (imgshape,"-->",self.videoshape)
             seri_frames.append(cv2.resize(tepimg, self.videoshape))
             kep_img_names.append( op.splitext(i)[0][5:] )
             cnt+=1
@@ -231,7 +231,7 @@ class Slomo_step2(Slomo_flow):
                 for k in range(interpola_cnt):
                     tep_image=cv2.resize(outimgs[k][j], (imgshape[1], imgshape[0]) )
                     
-                    outimgname="frame%si%s.png"%(kep_img_names[j],  kep_img_names[j+1])
+                    outimgname="frame%s_%d_%s.png"%(kep_img_names[j], k,  kep_img_names[j+1])
                     outname=op.join(outpath, outimgname)
                     cv2.imwrite( outname  ,tep_image)
                     
@@ -240,7 +240,10 @@ class Slomo_step2(Slomo_flow):
             kep_img_names=[ kep_img_names[-1] ]
         
         
-    def eval_on_middlebury_allframes(self, middleburey_path, interpolate_cnt=1):
+    def generate_middlebury_allframes(self, middleburey_path=middleburey_path, interpolate_cnt=1):
+        '''
+        针对middlebury数据的benchmark进行生成中间帧的代码，这里数据集中的中间帧需要提交到官网进行评估
+        '''
         inputdir=op.join(middleburey_path, "eval-data")
         outdir=op.join(middleburey_path, "output_interframes")
         os.makedirs(outdir,  exist_ok=True)
@@ -249,9 +252,69 @@ class Slomo_step2(Slomo_flow):
             tep_in=op.join(inputdir, i)
             tep_out=op.join(outdir, i)
             os.makedirs(tep_out, exist_ok=True)
-            self.eval_on_one_frame_dir(interpolate_cnt, tep_in, tep_out)
+            self.process_on_one_frame_dir(interpolate_cnt, tep_in, tep_out)
 
+    def eval_on_one_framedir(self, interpola_cnt, inpath, scale=0.5):
+        '''
+        inpath:inputvideo's full path
+        interpolatecnt:中间拿出来多少帧作为GT与结果进行评估
+        scale:输入图像分辨率乘上scale是两者共同要达到的分辨率，即图像和生成帧都resize到这个分辨率
+        '''
+        print ("Evaluating frame dir:",inpath)
+        frame_list=os.listdir(inpath)
+        frame_list.sort()
+        frame_list=[var for var in frame_list if op.splitext(var)[-1].lower() in ['.png','.jpg','.tif']]
+        kep_last_flow=np.zeros(self.last_optical_flow_shape)
+        seri_frames=[]
+        inter_frames=[]
+        kep_psnr=[]
+        kep_ssim=[]
+
+        for ind,i in enumerate(frame_list): 
+            tepdir=op.join(inpath, i)
+            tepimg=cv2.imread(tepdir)
+            if tepimg is None:print (tepdir)
+            targetimgshape= (np.array( tepimg.shape)*scale ).astype(np.int)
+            targetimgshape=(targetimgshape[1], targetimgshape[0])
+            tepimg=cv2.resize(tepimg, targetimgshape)
+            
+            if (ind)%(interpola_cnt+1) ==0  : seri_frames.append(tepimg)
+            else: inter_frames.append(tepimg)                
+                
+            if ind<( len(frame_list)-1) and len(seri_frames)<self.batch+1: continue
+            
+            if len(seri_frames)<2: break
+            
+            sttime=time.time()              
+            
+            outimgs, kep_last_flow=self.getframes_throw_flow(seri_frames, interpola_cnt, kep_last_flow)
+            #write imgs to video
+            #outimgs  [interpolate, len(seri_frames)-1]
+            inter_frames_cnt=0
+            for i in range(len(seri_frames)-1):
+                for j in range(interpola_cnt):
+                    psnr=skimage.measure.compare_psnr(inter_frames[inter_frames_cnt], cv2.resize(outimgs[j][i],  targetimgshape ), 255)
+                    ssim=skimage.measure.compare_ssim(inter_frames[inter_frames_cnt], cv2.resize(outimgs[j][i],  targetimgshape ), multichannel=True)
+                    
+                    kep_psnr.append(psnr)
+                    kep_ssim.append(ssim)
+                    
+                    inter_frames_cnt+=1
+                    
+                    
+            print (ind,'/',len(frame_list),'  time gap:',time.time()-sttime)
+            seri_frames=[ seri_frames[-1]  ]
+            inter_frames=[]        
+        print ("mean psnr:", np.mean(kep_psnr))
+        print ("mean ssim:", np.mean(kep_ssim))
         
+    def eval_on_framdirs(self, interpola_cnt, rootdir, scale=0.5):
+        for i in os.listdir(rootdir):
+            tepdir=op.join(rootdir, i)
+            if op.isdir(tepdir):  
+                #print ("evalutating dir:",tepdir)
+                self.eval_on_one_framedir(interpola_cnt, tepdir)
+            
 
 if __name__=='__main__':
     with tf.Session() as sess:
