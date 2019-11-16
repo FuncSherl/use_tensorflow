@@ -50,7 +50,10 @@ class Slomo_step2(Slomo_flow):
         
 
         videoWrite = cv2.VideoWriter(outpath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps), self.videoshape )
-        print ('output video:',outpath,'\nsize:',self.videoshape, '  fps:', fps)
+        print ('output video:',outpath)
+        print ("keep shape:",keep_shape)
+        if keep_shape: print ('size:',size, '  fps:', fps)
+        else : print ('size:',self.videoshape, '  fps:', fps)
         
         kep_last_flow=np.zeros(self.last_optical_flow_shape)
         

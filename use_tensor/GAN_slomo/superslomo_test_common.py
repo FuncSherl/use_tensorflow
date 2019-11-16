@@ -233,7 +233,7 @@ class Slomo_flow:
             if keep_shape: fname="Slomo_origin_"+fname            
             
             outputvideo=op.join( outputdir, fname)
-            print ('video:',ind,"/",len(invideolist),"  ",i,'->', outputvideo)
+            print ('\nvideo:',ind,"/",len(invideolist),"  ",i,'->', outputvideo)
             self.process_one_video(interpola_cnt, i, outputvideo, keep_shape)
     
     def eval_video_list(self, invideolist,  interpola_cnt=7):
