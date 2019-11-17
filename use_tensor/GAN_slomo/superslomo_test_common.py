@@ -191,7 +191,7 @@ class Slomo_flow:
         return out
         
     
-    def eval_on_ucf_mini(self, ucf_path, outdir="my_frames"):
+    def eval_on_ucf_mini(self, ucf_path=ucf_path, outdir="my_frames"):
         '''
         :在ucf的superslomo提供的结果数据上进行生成并对比
         '''

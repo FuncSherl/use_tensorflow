@@ -41,8 +41,8 @@ if __name__=='__main__':
         #slomo.eval_video_list(inputvideo,  2)
         #slomo.eval_on_ucf_mini(ucf_path)
         #slomo.generate_middlebury_allframes(middleburey_path, 1)
-        slomo.eval_on_framdirs(31, slowflow_train)  #31 slowflow_train    #1 7 MPI_sintel_clean
-       
+        #slomo.eval_on_framdirs(31, slowflow_train, -1)  #31 slowflow_train    #1 7 MPI_sintel_clean
+        slomo.eval_on_ucf_mini()
         
         
         

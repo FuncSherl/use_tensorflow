@@ -112,12 +112,13 @@ class Slomo_step2(Slomo_flow):
         重写父类中的该函数，对应加上time step的网络
         这里是第一种方法获取中间帧，直接获得通过网络G输出的帧而不是光流，但这样帧的大小是固定的
         cnt:中间插入几帧,这里由于
+        return :[interpola_cnt, len(seri_frames)-1]个图片，列优先便利是时序
         '''
         timerates=[i*1.0/(interpola_cnt+1) for i in range(1,interpola_cnt+1)]
         placetep=np.zeros(self.placeimgshape)
         
         ret=[]
-        
+        st=time.time()
         for i in range(interpola_cnt):
             for j in range( len(seri_frames)-1 ):
                 placetep[j,:,:,:3]=cv2.resize(seri_frames[j], self.imgshape)
@@ -127,7 +128,7 @@ class Slomo_step2(Slomo_flow):
             outimg, outflow=self.sess.run([self.outimg, self.out_last_flow], feed_dict={  self.img_pla:placetep , self.training:False, self.timerates:[timerates[i]]*self.batch, self.last_optical_flow:last_flow})
             
             ret.append(self.tanh2img(  outimg[:len(seri_frames)-1]   ))
-            
+        print ("run %d iters, time:%f"%(interpola_cnt, time.time()-st))
         return ret, outflow
 
     
@@ -274,8 +275,11 @@ class Slomo_step2(Slomo_flow):
             tepdir=op.join(inpath, i)
             tepimg=cv2.imread(tepdir)
             if tepimg is None:print (tepdir)
-            targetimgshape= (np.array( tepimg.shape)*scale ).astype(np.int)
-            targetimgshape=(targetimgshape[1], targetimgshape[0])
+            if scale>0: #scale大于0则将图片缩放到scale，否者就按照网络输出大小判定
+                targetimgshape= (np.array( tepimg.shape)*scale ).astype(np.int)
+                targetimgshape=(targetimgshape[1], targetimgshape[0])
+            else:
+                targetimgshape=self.videoshape
             tepimg=cv2.resize(tepimg, targetimgshape)
             
             if (ind)%(interpola_cnt+1) ==0  : seri_frames.append(tepimg)
@@ -313,7 +317,40 @@ class Slomo_step2(Slomo_flow):
             tepdir=op.join(rootdir, i)
             if op.isdir(tepdir):  
                 #print ("evalutating dir:",tepdir)
-                self.eval_on_one_framedir(interpola_cnt, tepdir)
+                self.eval_on_one_framedir(interpola_cnt, tepdir, scale)
+                
+    def eval_on_ucf_mini(self, ucf_path=ucf_path, outdir="my_frames"):
+        '''
+        :在ucf的superslomo提供的结果数据上进行生成并对比(lstm version)
+        '''
+        outframepath=op.join(ucf_path, outdir)
+        os.makedirs(outframepath, exist_ok=True)
+        
+        kep_last_flow=np.zeros(self.last_optical_flow_shape)
+        
+        inframepath=op.join(ucf_path, "ucf101_interp_ours")
+        ind_dirs=os.listdir(inframepath)
+        for ind,i in enumerate(ind_dirs):
+            tep_in=op.join(inframepath, i)
+            tep_out=op.join(outframepath, i)
+            os.makedirs(tep_out, exist_ok=True)
+            
+            frame0_p=op.join(tep_in, "frame_00.png")
+            frame2_p=op.join(tep_in, "frame_02.png")
+            
+            frame1_my_p=op.join(tep_out, "frame_01_my.png")
+            
+            frame0=cv2.imread(frame0_p)
+            frame2=cv2.imread(frame2_p)
+            
+            seri_frames=[frame0, frame2]
+            outimgs, _=self.getframes_throw_flow(seri_frames, 1, kep_last_flow)
+            #[interpola_cnt, len(seri_frames)-1]个图片，列优先便利是时序
+            outf=outimgs[0][0]
+            
+            print (ind,"/",len(ind_dirs),outf.shape)
+            outf=cv2.resize(outf, (256, 256))
+            cv2.imwrite(frame1_my_p, outf)
             
 
 if __name__=='__main__':
