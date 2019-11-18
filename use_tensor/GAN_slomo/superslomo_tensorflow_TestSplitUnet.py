@@ -15,7 +15,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from superslomo_tools import *
-from data import create_dataset_step2 as cdata
+#from data import create_dataset_step2 as cdata
+from data import create_dataset2 as cdata
 from superslomo_tensorflow import *
 #from data import create_dataset2 as cdata
 #import skimage
@@ -26,17 +27,7 @@ from superslomo_tensorflow import *
 #my_novel_conv
 #use l2 loss for img clear
 #use global rate to mult square loss
-version="_TestSplitUnet"
 
-logdir="./logs_superslomo/SuperSlomo_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))+version
-
-kepimgdir=op.join(logdir, "zerostateimgs")
-os.makedirs(kepimgdir,  exist_ok=True)
-
-#设置GPU显存按需增长
-gpu_options = tf.GPUOptions(allow_growth=True)
-config=tf.ConfigProto(gpu_options=gpu_options)
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 class SuperSlomo_TestSplitUnet(SuperSlomo):
     def __init__(self, sess):
@@ -138,7 +129,7 @@ class SuperSlomo_TestSplitUnet(SuperSlomo):
         self.second_L1_loss_interframe,self.first_warp_loss,self.second_contex_loss,self.second_local_var_loss_all,self.second_global_var_loss_all,self.second_ssim,self.second_psnr,\
                 self.first_L1_loss_interframe, self.first_ssim, self.first_psnr=self.loss_cal_all()
                 
-        self.G_loss_all=204 * self.second_L1_loss_interframe + 102 * self.first_warp_loss + 0.005 * self.second_contex_loss + self.second_global_var_loss_all        
+        self.G_loss_all=204 * self.second_L1_loss_interframe + 1 * self.first_warp_loss + 0.005 * self.second_contex_loss + 0.001*self.second_global_var_loss_all        
         
         
         #获取数据时的一些cpu上的参数，用于扩张数据和判定时序
@@ -364,7 +355,7 @@ class SuperSlomo_TestSplitUnet(SuperSlomo):
 
 if __name__ == '__main__':
     with tf.Session(config=config) as sess:     
-        gan = SuperSlomo(sess)
+        gan = SuperSlomo_TestSplitUnet(sess)
         
         logwriter = tf.summary.FileWriter(logdir,   sess.graph)
         
