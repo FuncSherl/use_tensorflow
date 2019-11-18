@@ -7,7 +7,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#细微的改动，在返回数据时（proprocess_img）里面不进行resize，而是直接返回img，在训练中用crop
+#读第二步的数据，时序数据，细微的改动，在返回数据时（proprocess_img）里面不进行resize，而是直接返回img，在训练中用crop,test返回同网络输入大小一致
 
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'

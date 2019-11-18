@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #本文件是想要实验一下step2的训练数据用于第一步时的效果，看看是loss函数的影响还是数据的影响导致第二部训练时第一部分效果不如原来
 #因此这里是第二部的数据，用的获取数据方法是第一步的方式
+#以读第二部分的数据，以时序方式获取数据，获取train数据时经过resize->crop->flip输出同输入网络大小一样的图，test输出同网络大小一样
 
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'

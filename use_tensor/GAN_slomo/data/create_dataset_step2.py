@@ -7,6 +7,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#读第二个时序版本的数据，以时序的方式获取训练数据，在prepross时，返回的train数据要大6pixel，test则和输入大小相同
 
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'

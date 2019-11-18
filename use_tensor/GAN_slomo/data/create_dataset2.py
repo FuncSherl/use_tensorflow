@@ -7,6 +7,8 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#用第一版数据，完全乱序，train数据resize->crop->flip，大小=test大小=网络输入大小
+#这里test数据直接由原图resize到网络输入大小
 
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'

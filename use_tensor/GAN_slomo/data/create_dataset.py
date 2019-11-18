@@ -6,6 +6,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#读版本一的数据，完全乱序，train和test均用rezie->crop->flip到网络输入大小
 
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'
