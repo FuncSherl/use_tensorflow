@@ -19,7 +19,7 @@ modelpath="Pictures/superslomo/SuperSlomo_2019-11-03_20-16-01_base_lr-0.000100_b
 
 modelpath=op.join(homepath, modelpath)
 
-version='Superslomo_v1_'
+version='Superslomo_v1_withtime_'
 
 class Slomo_step2(Slomo_flow): 
     def __init__(self, sess, modelpath=modelpath):
@@ -363,8 +363,8 @@ if __name__=='__main__':
         #slomo=Slomo_flow(sess)
         slomo=Slomo_step2(sess)
         #slomo=Step_two(sess)
-        #slomo.process_video_list(inputvideo, outputvideodir, 6, version)
-        slomo.eval_video_list(inputvideo,  2)
+        slomo.process_video_list(inputvideo, outputvideodir, 1, version)
+        #slomo.eval_video_list(inputvideo,  2)
         #slomo.eval_on_ucf_mini(ucf_path)
        
         

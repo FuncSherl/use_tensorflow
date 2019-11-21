@@ -16,11 +16,11 @@ from superslomo_test_withtime import *
 
 
 modelpath="Pictures/superslomo/SuperSlomo_2019-11-09_15-57-28_base_lr-0.000100_batchsize-10_maxstep-240000_LSTM_Version_fixshape"
-modelpath="Pictures/superslomo/SuperSlomo_2019-11-13_17-28-10_base_lr-0.000100_batchsize-6_maxstep-240000_TrainWith360pVersion"
+#modelpath="Pictures/superslomo/SuperSlomo_2019-11-13_17-28-10_base_lr-0.000100_batchsize-6_maxstep-240000_TrainWith360pVersion"
 
 modelpath=op.join(homepath, modelpath)
 
-version='Superslomo_v2_lstm_360p_'
+version='Superslomo_v2_lstm_fixshape_'
 
 class Slomo_step2_LSTM(Slomo_step2): 
     def __init__(self, sess, modelpath=modelpath):
