@@ -21,15 +21,16 @@ homepath=os.path.expanduser('~')
 DL_path=r'/media/sherl/本地磁盘/data_DL'
 
 if sys == "Windows":
-    homepath="D:\DL_model"
-    DL_path="D:\data_DL"
+    homepath="D:/DL_model"
+    DL_path="D:/data_DL"
 
 
 print (homepath)
 #modelpath="Pictures/superslomo/SuperSlomo_2019-11-03_20-16-01_base_lr-0.000100_batchsize-10_maxstep-240000_add_step2_time_sequence"
-modelpath=r'/Pictures/superslomo/SuperSlomo_2019-11-02_13-56-35_base_lr-0.000100_batchsize-10_maxstep-240000_original_paper'
+modelpath=r'Pictures/superslomo/SuperSlomo_2019-11-02_13-56-35_base_lr-0.000100_batchsize-10_maxstep-240000_original_paper'
 
 modelpath=op.join(homepath, modelpath)
+#print (modelpath)
 
 meta_name=r'model_keep-239999.meta'
 
@@ -840,10 +841,10 @@ class Step_two(Slomo_flow):
 
 if __name__=='__main__':
     with tf.Session() as sess:
-        slomo=Slomo_flow(sess)
+        slomo=Slomo_flow(sess, modelpath)
 
         #slomo=Step_two(sess)
-        slomo.process_video_list(inputvideo, outputvideodir, 6)
+        slomo.process_video_list(inputvideo, outputvideodir, 1)
         #slomo.eval_video_list(inputvideo,  2)
         #slomo.eval_on_ucf_mini(ucf_path)
        
