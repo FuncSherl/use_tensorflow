@@ -15,6 +15,8 @@ import imageio
 import platform
 sys = platform.system()
 
+print ('tensorflow version:',tf.__version__,'  path:',tf.__path__)
+
 homepath=os.path.expanduser('~')
 DL_path=r'/media/sherl/本地磁盘/data_DL'
 
