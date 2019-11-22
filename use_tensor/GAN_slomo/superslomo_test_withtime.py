@@ -159,7 +159,7 @@ class Slomo_step2(Slomo_flow):
         inter_frames=[]
         kep_psnr=[]
         kep_ssim=[]
-        
+        video_sttime=time.time()
         cnt=0
         while success:     
             success, frame= videoCapture.read()
@@ -200,6 +200,7 @@ class Slomo_step2(Slomo_flow):
         
         print ("mean psnr:", np.mean(kep_psnr))
         print ("mean ssim:", np.mean(kep_ssim))
+        print ("this video timeused:",time.time()-video_sttime)
 
 
     def process_on_one_frame_dir(self, interpola_cnt, inpath, outpath):
