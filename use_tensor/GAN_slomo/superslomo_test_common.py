@@ -13,7 +13,6 @@ from datetime import datetime
 import skimage
 import imageio
 import platform
-from sympy.series.formal import fps
 sys = platform.system()
 
 print ('tensorflow version:',tf.__version__,'  path:',tf.__path__)
