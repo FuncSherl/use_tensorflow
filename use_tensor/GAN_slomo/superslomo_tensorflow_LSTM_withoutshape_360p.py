@@ -309,12 +309,12 @@ class SuperSlomo:
                     +self.second_global_var_loss_all\
                     + self.second_GAN_loss_mean_D1*0.01   
         self.G_loss_all=tf.identity(self.G_loss_all, name="G_loss_all")
-        print ("self.G_loss_all:", self.G_loss_all)
+        print ("self.G_loss_all:", self.G_loss_all) #G_loss_all:0
 
         #训练D的总loss
         self.D_loss_all=self.D_1_net_loss_sum
         self.D_loss_all=tf.identity(self.D_loss_all, name="D_loss_all")
-        print ("self.D_loss_all:", self.D_loss_all)
+        print ("self.D_loss_all:", self.D_loss_all)#D_loss_all:0
         
         '''
         self.G_loss_all: Tensor("add_7:0", shape=(), dtype=float32)
