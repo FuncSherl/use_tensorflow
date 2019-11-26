@@ -310,6 +310,11 @@ class SuperSlomo:
                     + self.second_GAN_loss_mean_D1*0.01   
         self.G_loss_all=tf.identity(self.G_loss_all, name="G_loss_all")
         print ("self.G_loss_all:", self.G_loss_all) #G_loss_all:0
+        #后面用于finetune时使用的的损失
+        self.G_loss_all_for_finetune=180 * self.second_L1_loss_interframe + 65 *  self.first_warp_loss  + 0.05 * self.second_contex_loss \
+                    +self.second_global_var_loss_all
+        self.G_loss_all_for_finetune=tf.identity(self.G_loss_all_for_finetune, name="G_loss_all_for_finetune")
+        print ("self.G_loss_all_for_finetune:", self.G_loss_all_for_finetune) #G_loss_all_for_finetune:0
 
         #训练D的总loss
         self.D_loss_all=self.D_1_net_loss_sum

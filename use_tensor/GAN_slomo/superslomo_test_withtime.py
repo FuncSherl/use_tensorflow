@@ -112,6 +112,9 @@ class Slomo_step2(Slomo_flow):
         self.merge_two_videos(inpath, outpath, outgifpath)
         '''
         
+    def train_once(self):
+        
+        
     def getframes_throw_flow(self, seri_frames, interpola_cnt, last_flow):
         '''
         重写父类中的该函数，对应加上time step的网络
