@@ -21,9 +21,9 @@ if pc_id==0: #
     modelpath=r"E:\DL_models\use_tensorflow\v24\GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
     
 elif pc_id==1: #lab pc
-    videodir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/original_high_fps_videos' #
-    extratdir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/extracted_videos' #
-    tfrec_dir=r'/media/sherl/本地磁盘/data_DL/Adobe240fps/tfrecords_step2' #
+    videodir=r'/media/sherl/本地磁盘1/data_DL/Adobe240fps/original_high_fps_videos' #
+    extratdir=r'/media/sherl/本地磁盘1/data_DL/Adobe240fps/extracted_videos' #
+    tfrec_dir=r'/media/sherl/本地磁盘1/data_DL/Adobe240fps/tfrecords_step2' #
     modelpath = "/home/sherl/Pictures/v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
     modelpath="/home/sherl/Pictures/v25/GAN_2019-10-27_16-11-30_base_lr-0.000200_batchsize-12_maxstep-240000_rid_GAN_ssim_down"
     modelpath="/home/sherl/Pictures/v25/GAN_2019-10-29_17-35-34_base_lr-0.000200_batchsize-6_maxstep-240000"

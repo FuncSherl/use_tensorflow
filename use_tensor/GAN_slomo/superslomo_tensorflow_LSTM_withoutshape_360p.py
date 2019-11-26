@@ -80,7 +80,7 @@ img_channel=3
 eval_step=int (test_size/batchsize/G_group_img_num)
 mean_dataset=[102.1, 109.9, 110.0]  #0->1 is [0.4, 0.43, 0.43]
 
-logdir="./logs_superslomo/SuperSlomo_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
+logdir="./logs_superslomo/SuperSlomo_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))+"_360p"
 
 kepimgdir=op.join(logdir, "zerostateimgs")
 os.makedirs(kepimgdir,  exist_ok=True)
@@ -305,15 +305,21 @@ class SuperSlomo:
                 self.first_L1_loss_interframe, self.first_ssim, self.first_psnr, self.second_GAN_loss_mean_D1=self.loss_cal_all()
                 
         #训练G的总loss
-        self.G_loss_all=204 * self.second_L1_loss_interframe + 102 *  self.first_warp_loss  + 0.005 * self.second_contex_loss \
-                    +self.second_global_var_loss_all
-                    #+ self.second_GAN_loss_mean_D1*0.03   
+        self.G_loss_all=180 * self.second_L1_loss_interframe + 65 *  self.first_warp_loss  + 0.05 * self.second_contex_loss \
+                    +self.second_global_var_loss_all\
+                    + self.second_GAN_loss_mean_D1*0.01   
         #self.G_loss_all=tf.identity(self.G_loss_all, name="G_loss_all")
         print ("self.G_loss_all:", self.G_loss_all)
+
         #训练D的总loss
         self.D_loss_all=self.D_1_net_loss_sum
         #self.D_loss_all=tf.identity(self.D_loss_all, name="D_loss_all")
         print ("self.D_loss_all:", self.D_loss_all)
+        
+        '''
+        self.G_loss_all: Tensor("add_7:0", shape=(), dtype=float32)
+        self.D_loss_all: Tensor("add_4:0", shape=(), dtype=float32)
+        '''
         
         
         #####################################
