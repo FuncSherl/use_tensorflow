@@ -21,6 +21,11 @@ modelpath=op.join(homepath, modelpath)
 
 version='Superslomo_v1_withtime_'
 
+base_lr=0.0001
+beta1=0.5
+lr_rate = base_lr #tf.train.exponential_decay(base_lr,  global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate)
+
+
 class Slomo_step2(Slomo_flow): 
     def __init__(self, sess, modelpath=modelpath):
         super().__init__( sess, modelpath)
@@ -29,11 +34,17 @@ class Slomo_step2(Slomo_flow):
         
         try:
             self.out_last_flow=self.graph.get_tensor_by_name("second_unet/strided_slice_89:0")
+            self.G_loss_all_for_finetune=self.graph.get_tensor_by_name("G_loss_all_for_finetune:0")
+            
+            self.train_op_G = tf.train.AdamOptimizer(lr_rate, beta1=beta1, name="superslomo_adam_G_fintune").minimize(self.G_loss_all_for_finetune,  \
+                                                                                               var_list=self.first_para+self.sec_para  )
+            
+            
         except Exception as e:
             print ("loading second_unet/strided_slice_89:0 error, give it to the child")
         
         
-    def process_one_video(self, interpola_cnt, inpath, outpath, keep_shape=True):
+    def process_one_video(self, interpola_cnt, inpath, outpath, keep_shape=True, withtrain=False):
         '''
         inpath:inputvideo's full path
         outpath:output video's full path
@@ -56,6 +67,7 @@ class Slomo_step2(Slomo_flow):
         else : print ('size:',self.videoshape, '  fps:', fps)
         
         kep_last_flow=np.zeros(self.last_optical_flow_shape)
+        kep_last_flow_train=np.zeros(self.last_optical_flow_shape)
         
         success=True
         seri_frames=[]
@@ -67,15 +79,20 @@ class Slomo_step2(Slomo_flow):
             if frame is not None:
                 if not keep_shape: frame=cv2.resize(frame, self.videoshape)
                 seri_frames.append(frame)
-                if len(seri_frames)<self.batch+1: continue
+                if len(seri_frames)<self.batch+2: continue
             else: success=False
+            
+            #训练一次
+            if withtrain and len(seri_frames)==self.batch+2: 
+                _,kep_last_flow_train=self.train_once(seri_frames,  kep_last_flow_train)
             
             if len(seri_frames)<2: continue
             sttime=time.time()              
             #outimgs  [interpolate, len(seri_frames)-1]
-            outimgs, kep_last_flow=self.getframes_throw_flow(seri_frames, interpola_cnt, kep_last_flow)
+            end_frame_ind=min( len(seri_frames), int(self.batch+1) )
+            outimgs, kep_last_flow=self.getframes_throw_flow(seri_frames[: end_frame_ind ], interpola_cnt, kep_last_flow)
             #write imgs to video
-            for i in range(len(seri_frames)-1):
+            for i in range(end_frame_ind-1):
                 #print (seri_frames[i].shape)
                 videoWrite.write(seri_frames[i])
                 for j in range(interpola_cnt):
@@ -84,9 +101,9 @@ class Slomo_step2(Slomo_flow):
                     #print (tepimgs.shape)
                     videoWrite.write( tepimgs )
             
-            cnt+=len(seri_frames)-1
+            cnt+=end_frame_ind-1
             print (cnt,'/',frame_cnt,'  time gap:',time.time()-sttime)
-            seri_frames=[ seri_frames[-1]  ]
+            seri_frames=seri_frames[end_frame_ind-1:]
             
             
         if len(seri_frames)>=1: 
@@ -112,8 +129,23 @@ class Slomo_step2(Slomo_flow):
         self.merge_two_videos(inpath, outpath, outgifpath)
         '''
         
-    def train_once(self):
+    def train_once(self, seri_frames, lastflow, timerates=0.5):
+        seri_frames_len=len(seri_frames)
+        if seri_frames_len<self.batch+2:  return None
         
+        placetep=np.zeros(self.placeimgshape)
+        st=time.time()
+        for j in range( seri_frames_len-2 ):
+            placetep[j,:,:,:3]=cv2.resize(seri_frames[j], self.imgshape)
+            placetep[j,:,:,3:6]=cv2.resize(seri_frames[j+1], self.imgshape)
+            placetep[j,:,:,6:]=cv2.resize(seri_frames[j+2], self.imgshape)
+        placetep=self.img2tanh(placetep)
+        timerates_extend=np.array(timerates)*np.ones(self.batch, dtype=np.float32)  #这么写可以自动扩展，自适应timerates为sacale或list
+        
+        G_loss_all_for_finetune, outflow, _=self.sess.run([self.G_loss_all_for_finetune, self.out_last_flow, self.train_op_G], \
+                        feed_dict={  self.img_pla:placetep , self.training:True, self.timerates:timerates_extend, self.last_optical_flow:lastflow})
+        print (  "train once(one batch), time:%f , loss:%f "%(time.time()-st, G_loss_all_for_finetune  )  ) 
+        return G_loss_all_for_finetune, outflow
         
     def getframes_throw_flow(self, seri_frames, interpola_cnt, last_flow):
         '''

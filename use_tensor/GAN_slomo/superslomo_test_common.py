@@ -89,6 +89,21 @@ class Slomo_flow:
         self.outimgshape=self.outimg.get_shape().as_list() #self.outimgshape: [12, 180, 320, 3]
         self.videoshape=(self.outimgshape[2], self.outimgshape[1]) #w*h
         
+        t_vars=tf.trainable_variables()
+        print ("trainable vars cnt:",len(t_vars))
+        self.first_para=[var for var in t_vars if var.name.startswith('first')]
+        self.sec_para=[var for var in t_vars if var.name.startswith('second')]
+        self.vgg_para=[var for var in t_vars if var.name.startswith('VGG')]
+        self.D_para=[var for var in t_vars if var.name.startswith('D')]
+        self.G_para=[var for var in t_vars if var.name.startswith('G')]
+        print ("first param len:",len(self.first_para))
+        print ("second param len:",len(self.sec_para))
+        print ("VGG param len:",len(self.vgg_para))
+        print ("D param len:",len(self.D_para))
+        print ("G param len:",len(self.G_para))
+        
+        
+        
     def getframes_throw_flow(self, frame0, frame2, cnt):
         '''
         这里是第一种方法获取中间帧，直接获得通过网络G输出的帧而不是光流，但这样帧的大小是固定的
