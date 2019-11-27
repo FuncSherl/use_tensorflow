@@ -20,6 +20,7 @@ print ('tensorflow version:',tf.__version__,'  path:',tf.__path__)
 homepath=os.path.expanduser('~')
 DL_path=r'/media/sherl/本地磁盘/data_DL'
 
+
 if sys == "Windows":
     homepath="D:/DL_model"
     DL_path="D:/data_DL"
@@ -42,7 +43,7 @@ MPI_sintel_clean=op.join(DL_path, "MPI_Sintel/MPI-Sintel-complete/training/clean
 
 version='Superslomo_v1_'
 
-inputvideodir='./testing_gif'
+inputvideodir=op.join(DL_path, "my_test_viedeos")
 outputvideodir='./outputvideos'   #输出的video的路径，会在该路径下新建文件夹
 
 os.makedirs(inputvideodir,  exist_ok=True)
