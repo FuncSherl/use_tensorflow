@@ -61,6 +61,7 @@ class Slomo_flow:
         self.sess=sess
         print ("loading model:",modelpath)
         saver = tf.train.import_meta_graph(op.join(modelpath, meta_name) )
+        #self.sess.run(tf.global_variables_initializer())
         saver.restore(self.sess, tf.train.latest_checkpoint(modelpath))
         
         # get weights
@@ -246,7 +247,7 @@ class Slomo_flow:
             cv2.imwrite(frame1_my_p, outf)
         
     
-    def process_video_list(self, invideolist, outdir, interpola_cnt=7,version=version,  keep_shape=True):
+    def process_video_list(self, invideolist, outdir, interpola_cnt=7,version=version,  keep_shape=True, withtraining=False):
         '''
         入口函数
         输入一个list包含每个video的完整路径：invideolist
@@ -264,7 +265,7 @@ class Slomo_flow:
             
             outputvideo=op.join( outputdir, fname)
             print ('\nvideo:',ind,"/",len(invideolist),"  ",i,'->', outputvideo)
-            self.process_one_video(interpola_cnt, i, outputvideo, keep_shape)
+            self.process_one_video(interpola_cnt, i, outputvideo, keep_shape, withtraining)
     
     def eval_video_list(self, invideolist,  interpola_cnt=7):
         '''
@@ -343,11 +344,12 @@ class Slomo_flow:
         print ("mean ssim:", np.mean(kep_ssim))
         
     
-    def process_one_video(self, interpola_cnt, inpath, outpath, keep_shape=True):
+    def process_one_video(self, interpola_cnt, inpath, outpath, keep_shape=True, withtraining=False):
         '''
         inpath:inputvideo's full path
         outpath:output video's full path
         keep_shape:if use direct G's output or calculate with optical flow to resize images
+        #这里的withtraining没有实现效果，在其子类中有相关实现
         '''
         videoCapture = cv2.VideoCapture(inpath)  
         

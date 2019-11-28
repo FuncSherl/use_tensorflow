@@ -34,15 +34,15 @@ class Slomo_step2(Slomo_flow):
         
         try:
             self.out_last_flow=self.graph.get_tensor_by_name("second_unet/strided_slice_89:0")
-            self.G_loss_all_for_finetune=self.graph.get_tensor_by_name("G_loss_all_for_finetune:0")
             
-            self.train_op_G = tf.train.AdamOptimizer(lr_rate, beta1=beta1, name="superslomo_adam_G_fintune").minimize(self.G_loss_all_for_finetune,  \
-                                                                                               var_list=self.first_para+self.sec_para  )
-            
+            self.G_loss_all_for_finetune=self.graph.get_tensor_by_name("G_loss_all_for_finetune:0")           
             
         except Exception as e:
+            self.G_loss_all_for_finetune=self.graph.get_tensor_by_name("add_7:0")
             print ("loading second_unet/strided_slice_89:0 error, give it to the child")
-        
+            
+        self.train_op_G = tf.train.AdamOptimizer(lr_rate, beta1=beta1, name="superslomo_adam_G_fintune").minimize(self.G_loss_all_for_finetune,  \
+                                                                                               var_list=self.first_para+self.sec_para  )
         
     def process_one_video(self, interpola_cnt, inpath, outpath, keep_shape=True, withtrain=False):
         '''

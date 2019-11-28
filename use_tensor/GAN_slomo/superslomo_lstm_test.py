@@ -37,8 +37,8 @@ if __name__=='__main__':
         #slomo=Slomo_flow(sess)
         slomo=Slomo_step2_LSTM(sess)
         #slomo=Step_two(sess)
-        #slomo.process_video_list(inputvideo, outputvideodir, 1, version, keep_shape=True)
-        slomo.eval_video_list(inputvideo,  1)
+        slomo.process_video_list(inputvideo, outputvideodir, 1, version, keep_shape=True,withtraining=True)
+        #slomo.eval_video_list(inputvideo,  1)
         #slomo.eval_on_ucf_mini(ucf_path)
         #slomo.generate_middlebury_allframes(middleburey_path, 1)
         #slomo.eval_on_framdirs(31, slowflow_train, -1)  #31 slowflow_train    #1 7 MPI_sintel_clean
