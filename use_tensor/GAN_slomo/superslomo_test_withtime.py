@@ -233,6 +233,7 @@ class Slomo_step2(Slomo_flow):
             
         videoCapture.release()
         
+        print ('video done:', op.split(inpath)[-1] )
         print ("mean psnr:", np.mean(kep_psnr))
         print ("mean ssim:", np.mean(kep_ssim))
         print ("this video timeused:",time.time()-video_sttime)
