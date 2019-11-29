@@ -41,6 +41,9 @@ class Slomo_step2(Slomo_flow):
             
         self.train_op_G = self.Adam_finetune.minimize(self.G_loss_all_for_finetune, var_list=self.first_para+self.sec_para  )
         
+        self.sess.run(tf.global_variables_initializer())
+        self.saver.restore(self.sess, tf.train.latest_checkpoint(modelpath))
+        
     def process_one_video(self, interpola_cnt, inpath, outpath, keep_shape=True, withtrain=False):
         '''
         inpath:inputvideo's full path

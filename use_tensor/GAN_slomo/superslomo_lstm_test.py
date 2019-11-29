@@ -30,6 +30,9 @@ class Slomo_step2_LSTM(Slomo_step2):
         
         #self.out_last_flow=self.graph.get_tensor_by_name("second_unet/strided_slice_89:0")
         self.out_last_flow=self.graph.get_tensor_by_name("second_unet/second_batch_last_flow:0")
+        
+        self.sess.run(tf.global_variables_initializer())
+        self.saver.restore(self.sess, tf.train.latest_checkpoint(modelpath))
 
 
 if __name__=='__main__':

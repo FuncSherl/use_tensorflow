@@ -62,7 +62,7 @@ class Slomo_flow:
     def __init__(self,sess, modelpath=modelpath):
         self.sess=sess
         print ("loading model:",modelpath)
-        saver = tf.train.import_meta_graph(op.join(modelpath, meta_name) )
+        self.saver = tf.train.import_meta_graph(op.join(modelpath, meta_name) )
         
         
         # get weights
@@ -108,7 +108,7 @@ class Slomo_flow:
         self.Adam_finetune=tf.train.AdamOptimizer(lr_rate, beta1=beta1, name="superslomo_adam_G_fintune")
         
         self.sess.run(tf.global_variables_initializer())
-        saver.restore(self.sess, tf.train.latest_checkpoint(modelpath))
+        self.saver.restore(self.sess, tf.train.latest_checkpoint(modelpath))
         
         
     def getframes_throw_flow(self, frame0, frame2, cnt):
