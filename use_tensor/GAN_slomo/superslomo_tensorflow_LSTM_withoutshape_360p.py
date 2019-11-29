@@ -31,7 +31,7 @@ TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S}".format(datetime.now())
 
 train_size=10100 
 test_size=800
-batchsize=6  #train
+batchsize=3  #train
 batchsize_test=batchsize #here it must equal to batchsize,or the placement size will error
 
 #
