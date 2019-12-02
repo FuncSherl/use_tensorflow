@@ -80,7 +80,7 @@ img_channel=3
 eval_step=int (test_size/batchsize/G_group_img_num)
 mean_dataset=[102.1, 109.9, 110.0]  #0->1 is [0.4, 0.43, 0.43]
 
-logdir="./logs_superslomo/SuperSlomo_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))
+logdir="./logs_superslomo/SuperSlomo_"+TIMESTAMP+('_base_lr-%f_batchsize-%d_maxstep-%d'%(base_lr,batchsize, maxstep))+"_splitunet_lstm"
 
 kepimgdir=op.join(logdir, "zerostateimgs")
 os.makedirs(kepimgdir,  exist_ok=True)
