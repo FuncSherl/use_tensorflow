@@ -175,7 +175,7 @@ def read_tfrecord_batch(tfdir, imgsize, batchsize=12, img_channel=3, training=Tr
     '''
     tep=os.listdir(tfdir)
     tep.sort()
-    #random.shuffle(tep)
+    random.shuffle(tep)
     tep=list(map(lambda x:op.join(tfdir, x), tep))
     print (tep)
     dataset = tf.data.TFRecordDataset(tep).repeat()
