@@ -176,6 +176,86 @@ def my_unet_split(inputdata, outChannels, training=True,  withbias=True, withbn=
     return tep
 
 
+def my_unet_part_split(inputdata, outChannels, training=True,  withbias=True, withbn=False):
+    '''
+    layercnt:下降和上升各有几层,原则上应该是一对一
+    inputdata:[b, h, w, 6]
+    '''
+    #print ("my_unet_split:",inputdata)  #Tensor("first_unet/concat:0", shape=(10, 180, 320, 6), dtype=float32)
+    frame0=inputdata[:, :, :, :3]
+    frame2=inputdata[:, :, :, 3:]
+    
+    #############################################################################################frame0 down
+    frame0_tep1=my_conv(frame0, 7, 16, scopename='unet_start0', stride=1,  withbias=withbias)
+    frame0_tep1=my_lrelu(frame0_tep1, 'unet_start0', 0.1)
+    
+    frame0_tep2=my_conv(frame0_tep1, 7, 16, scopename='unet_start1', stride=1,  withbias=withbias)
+    frame0_tep2=my_lrelu(frame0_tep2, 'unet_start1', 0.1)
+    
+    print (frame0_tep2)
+    #unet down
+    frame0_down1=unet_down(frame0_tep2, 32, 'unet_down_0', filterlen=5, training=training,withbias=withbias, withbn=withbn)
+    
+    frame0_down2=unet_down(frame0_down1, 64, 'unet_down_1', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+    frame0_down3=unet_down(frame0_down2, 128, 'unet_down_2', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+    #frame0_down4=unet_down(frame0_down3, 256, 'unet_down_3', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+    #frame0_down5=unet_down(frame0_down4, 256, 'unet_down_4', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+    
+    #############################################################################################frame2 down 共享权重
+    frame2_tep1=my_conv(frame2, 7, 16, scopename='unet_start0', stride=1,  withbias=withbias)
+    frame2_tep1=my_lrelu(frame2_tep1, 'unet_start0', 0.1)
+    
+    frame2_tep2=my_conv(frame2_tep1, 7, 16, scopename='unet_start1', stride=1,  withbias=withbias)
+    frame2_tep2=my_lrelu(frame2_tep2, 'unet_start1', 0.1)
+    
+    print (frame2_tep2)
+    #unet down
+    frame2_down1=unet_down(frame2_tep2, 32, 'unet_down_0', filterlen=5, training=training,withbias=withbias, withbn=withbn)
+    
+    frame2_down2=unet_down(frame2_down1, 64, 'unet_down_1', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+    frame2_down3=unet_down(frame2_down2, 128, 'unet_down_2', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+    #frame2_down4=unet_down(frame2_down3, 256, 'unet_down_3', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+    #frame2_down5=unet_down(frame2_down4, 256, 'unet_down_4', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    #############################################################################################unet_down common area
+    frame_down4 =unet_down( tf.concat([frame0_down3, frame2_down3],-1) , 512, 'unet_down_3', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    frame_down5 =unet_down(frame_down4, 512, 'unet_down_4', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+   
+    
+    ##############################################################################################unet up
+    tep=unet_up(frame_down5, 512, frame_down4,'unet_up_0', training=training,withbias=withbias, withbn=withbn)
+    
+    tep=unet_up(tep, 256, tf.concat([frame0_down3, frame2_down3], -1),'unet_up_1', training=training,withbias=withbias, withbn=withbn)
+    
+    tep=unet_up(tep, 128, tf.concat([frame0_down2, frame2_down2], -1),'unet_up_2', training=training,withbias=withbias, withbn=withbn)
+    
+    tep=unet_up(tep, 64, tf.concat([frame0_down1, frame2_down1], -1),'unet_up_3', training=training,withbias=withbias, withbn=withbn)
+    
+    tep=unet_up(tep, 32, tf.concat([frame0_tep2, frame2_tep2], -1),'unet_up_4', training=training,withbias=withbias, withbn=withbn)
+    
+    #final
+    tep=my_conv(tep, 3, outChannels*2, scopename='unet_end0', stride=1, withbias=withbias)
+    
+    if withbn: tep=my_batchnorm( tep,training, 'unet_up_end0_bn2')
+    tep=my_lrelu(tep, 'unet_end0_relu', 0.1)
+    print (tep)
+    
+    #final2
+    tep=my_conv(tep, 3, outChannels, scopename='unet_end1', stride=1, withbias=withbias)
+    
+    if withbn: tep=my_batchnorm( tep,training, 'unet_up_end1_bn2')
+    tep=my_lrelu(tep, 'unet_end1_relu', 0.1)
+    print (tep)
+    
+    
+    return tep
+
 
 
 def my_D_block(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=True, training=True, withbn=False):
