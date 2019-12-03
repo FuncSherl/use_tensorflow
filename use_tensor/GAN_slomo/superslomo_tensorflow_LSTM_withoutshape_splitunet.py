@@ -128,7 +128,8 @@ class SuperSlomo:
             
             firstinput=tf.concat([self.frame0_eval, self.frame2_eval], -1)
             #self.first_opticalflow_eval=my_unet( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
-            self.first_opticalflow_eval=my_unet_split( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
+            #self.first_opticalflow_eval=my_unet_split( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
+            self.first_opticalflow_eval=my_unet_part_split( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
             
         self.first_opticalflow_0_1=self.first_opticalflow[:, :, :, :2]
         self.first_opticalflow_0_1=tf.identity(self.first_opticalflow_0_1, name="first_opticalflow_0_1")
