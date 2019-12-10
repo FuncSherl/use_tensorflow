@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 train_txt=r'./adobe240fps/train_list.txt'
 test_txt=r'./adobe240fps/test_list.txt'
 
-pc_id=2
+pc_id=3
 
 if pc_id==0: #
     videodir=r'E:\DL_datasets\DeepVideoDeblurring_Dataset_Original_High_FPS_Videos\original_high_fps_videos'  
@@ -27,6 +27,14 @@ elif pc_id==1: #lab pc
     modelpath = "/home/sherl/Pictures/v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
     modelpath="/home/sherl/Pictures/v25/GAN_2019-10-27_16-11-30_base_lr-0.000200_batchsize-12_maxstep-240000_rid_GAN_ssim_down"
     modelpath="/home/sherl/Pictures/v25/GAN_2019-10-29_17-35-34_base_lr-0.000200_batchsize-6_maxstep-240000"
+    
+elif pc_id==3: #lab pc windows
+    videodir=r'D:\data_DL\Adobe240fps/original_high_fps_videos' #
+    extratdir=r'D:\data_DL\Adobe240fps/extracted_videos' #
+    tfrec_dir=r'D:\data_DL\Adobe240fps/tfrecords_step2' #
+    #modelpath = "/home/sherl/Pictures/v24/GAN_2019-08-20_21-49-57_base_lr-0.000200_batchsize-12_maxstep-240000_fix_a_bug_BigProgress"
+    #modelpath="/home/sherl/Pictures/v25/GAN_2019-10-27_16-11-30_base_lr-0.000200_batchsize-12_maxstep-240000_rid_GAN_ssim_down"
+    modelpath="D:\DL_model\Pictures\superslomo\SuperSlomo_2019-11-13_17-28-10_base_lr-0.000100_batchsize-6_maxstep-240000_TrainWith360pVersion"
     
 elif pc_id==2: #server
     videodir=r'/home/vrlab/Documents/xvhao/use_tensorflow/use_tensor/GAN_slomo/data/original_high_fps_videos'
