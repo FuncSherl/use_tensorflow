@@ -256,6 +256,128 @@ def my_unet_part_split(inputdata, outChannels, training=True,  withbias=True, wi
     
     return tep
 
+def my_unet_split_with_flipconv(inputdata, outChannels, training=True,  withbias=True, withbn=False):
+    '''
+    layercnt:下降和上升各有几层,原则上应该是一对一
+    inputdata:[b, h, w, 6]
+    '''
+    #print ("my_unet_split:",inputdata)  #Tensor("first_unet/concat:0", shape=(10, 180, 320, 6), dtype=float32)
+    frame0=inputdata[:, :, :, :3]
+    frame2=inputdata[:, :, :, 3:]
+    
+    #############################################################################################frame0 down
+    frame0_tep1=my_conv(frame0, 7, 16, scopename='unet_start0', stride=1,  withbias=withbias)
+    frame0_tep1=my_lrelu(frame0_tep1, 'unet_start0', 0.1)
+    
+    frame0_tep2=my_conv(frame0_tep1, 7, 16, scopename='unet_start1', stride=1,  withbias=withbias)
+    frame0_tep2=my_lrelu(frame0_tep2, 'unet_start1', 0.1)
+    
+    print (frame0_tep2)
+    #unet down
+    frame0_down1=unet_down(frame0_tep2, 32, 'unet_down_0', filterlen=5, training=training,withbias=withbias, withbn=withbn)
+    
+    frame0_down2=unet_down(frame0_down1, 64, 'unet_down_1', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+    frame0_down3=unet_down(frame0_down2, 128, 'unet_down_2', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+    frame0_down4=unet_down(frame0_down3, 256, 'unet_down_3', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+    frame0_down5=unet_down(frame0_down4, 256, 'unet_down_4', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+    
+    #############################################################################################frame2 down 共享权重
+    frame2_tep1=my_conv(frame2, 7, 16, scopename='unet_start0', stride=1,  withbias=withbias)
+    frame2_tep1=my_lrelu(frame2_tep1, 'unet_start0', 0.1)
+    
+    frame2_tep2=my_conv(frame2_tep1, 7, 16, scopename='unet_start1', stride=1,  withbias=withbias)
+    frame2_tep2=my_lrelu(frame2_tep2, 'unet_start1', 0.1)
+    
+    print (frame2_tep2)
+    #unet down
+    frame2_down1=unet_down(frame2_tep2, 32, 'unet_down_0', filterlen=5, training=training,withbias=withbias, withbn=withbn)
+    
+    frame2_down2=unet_down(frame2_down1, 64, 'unet_down_1', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+    frame2_down3=unet_down(frame2_down2, 128, 'unet_down_2', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+    frame2_down4=unet_down(frame2_down3, 256, 'unet_down_3', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+    frame2_down5=unet_down(frame2_down4, 256, 'unet_down_4', filterlen=3, training=training,withbias=withbias, withbn=withbn)
+    
+   
+    
+    ##############################################################################################unet up
+    tep=unet_up(my_novel_conv_withweight(frame0_down5, frame2_down5,  'unet_up_0_flip'), 512, my_novel_conv_withweight(frame0_down4, frame2_down4,  'unet_up_0_flip_1'),'unet_up_0', training=training,withbias=withbias, withbn=withbn)
+    
+    tep=unet_up(tep, 256, my_novel_conv_withweight(frame0_down3, frame2_down3,  'unet_up_1_flip'),'unet_up_1', training=training,withbias=withbias, withbn=withbn)
+    
+    tep=unet_up(tep, 128, my_novel_conv_withweight(frame0_down2, frame2_down2,  'unet_up_2_flip'),'unet_up_2', training=training,withbias=withbias, withbn=withbn)
+    
+    tep=unet_up(tep, 64,  my_novel_conv_withweight(frame0_down1, frame2_down1,  'unet_up_3_flip'),'unet_up_3', training=training,withbias=withbias, withbn=withbn)
+    
+    tep=unet_up(tep, 32,  my_novel_conv_withweight(frame0_tep2,  frame2_tep2,   'unet_up_4_flip'),'unet_up_4', training=training,withbias=withbias, withbn=withbn)
+    
+    #final
+    tep=my_conv(tep, 3, outChannels*2, scopename='unet_end0', stride=1, withbias=withbias)
+    
+    if withbn: tep=my_batchnorm( tep,training, 'unet_up_end0_bn2')
+    tep=my_lrelu(tep, 'unet_end0_relu', 0.1)
+    print (tep)
+    
+    #final2
+    tep=my_conv(tep, 3, outChannels, scopename='unet_end1', stride=1, withbias=withbias)
+    
+    if withbn: tep=my_batchnorm( tep,training, 'unet_up_end1_bn2')
+    tep=my_lrelu(tep, 'unet_end1_relu', 0.1)
+    print (tep)
+    
+    
+    return tep
+
+def my_novel_conv_withweight(inputdata, inputdata2,     scopename,filterlen=3, outchannel=None, stride=1, padding="SAME", reuse=tf.AUTO_REUSE, withbias=False, training=True):
+    '''
+    stride:这里代表希望将输出大小变为原图的   1/stride (注意同deconv区分)
+    '''
+    inputshape=inputdata.get_shape().as_list()
+    if not outchannel: outchannel= 1 #inputshape[-1] #如果未定义，就等于输入channel
+    
+    with tf.variable_scope(scopename,  reuse=reuse) as scope: 
+        kernel=tf.get_variable('weights', [outchannel, filterlen,filterlen, inputshape[-1]], dtype=datatype, \
+                               initializer=tf.random_normal_initializer(stddev=stddev))
+        #tf.nn.conv2d中的filter参数，是[filter_height, filter_width, in_channels, out_channels]的形式，
+        #但是这个为了进行反转，特意这么设置，后面送进去卷积前要transpose
+        tep_kernel=tf.transpose(kernel, [1,2,3,0])
+        print ('tep_kernel:',tep_kernel)
+        ori_cnn=tf.nn.depthwise_conv2d(inputdata, tep_kernel, strides=[1,stride,stride,1], padding=padding)
+                    
+        
+        #left2right
+        tep_kernel=tf.image.flip_left_right(kernel)
+        tep_kernel=tf.transpose(tep_kernel, [1,2,3,0])
+        print ('tep_kernel:',tep_kernel)
+        left_cnn=tf.nn.depthwise_conv2d(inputdata2, tep_kernel, strides=[1,stride,stride,1], padding=padding)
+                
+        #up 2 down
+        tep_kernel=tf.image.flip_up_down(kernel)
+        tep_kernel=tf.transpose(tep_kernel, [1,2,3,0])
+        print ('tep_kernel:',tep_kernel)
+        up_cnn=tf.nn.depthwise_conv2d(inputdata2, tep_kernel, strides=[1,stride,stride,1], padding=padding)
+                
+        #这里需要一个操作来集合这3个
+        one_channel=tf.abs(ori_cnn-left_cnn)
+        ano_channel=tf.abs(ori_cnn-up_cnn)
+        
+        
+        if withbias:
+            bias=tf.get_variable('bias', [inputshape[-1]], dtype=datatype, initializer=tf.constant_initializer(bias_init))
+            one_channel=tf.nn.bias_add(one_channel, bias)
+            ano_channel=tf.nn.bias_add(ano_channel, bias)
+            
+            
+        #return tf.concat( [one_channel,ano_channel], -1)
+        flip_resu=one_channel+ano_channel
+        return tf.concat([inputdata, flip_resu, inputdata2])
+
 
 
 def my_D_block(inputdata, outchannel, scopename,stride=2, filterlen=3, withbias=True, training=True, withbn=False):

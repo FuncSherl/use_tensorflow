@@ -122,12 +122,13 @@ class SuperSlomo:
         
         with tf.variable_scope("first_unet",  reuse=tf.AUTO_REUSE) as scope:
             firstinput=tf.concat([self.frame0, self.frame2], -1)
-            self.first_opticalflow=my_unet( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
+            #self.first_opticalflow=my_unet( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
+            self.first_opticalflow=my_unet_split_with_flipconv( firstinput, 4,training=self.training , withbias=True, withbn=False)
             
             firstinput=tf.concat([self.frame0_eval, self.frame2_eval], -1)
-            self.first_opticalflow_eval=my_unet( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
+            #self.first_opticalflow_eval=my_unet( firstinput, 4,training=self.training , withbias=True, withbn=False)  #注意这里是直接作为optical flow
             #self.first_opticalflow=my_unet_split( firstinput, 4,training=self.training , withbias=True, withbn=True)  #注意这里是直接作为optical flow
-            #self.first_opticalflow=my_unet_split_with_flipconv( firstinput, 4,training=self.training , withbias=True, withbn=True)
+            self.first_opticalflow=my_unet_split_with_flipconv( firstinput, 4,training=self.training , withbias=True, withbn=False)
         
         
         self.first_opticalflow_0_1=self.first_opticalflow[:, :, :, :2]
