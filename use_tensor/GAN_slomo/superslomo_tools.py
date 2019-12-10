@@ -307,7 +307,7 @@ def my_unet_split_with_flipconv(inputdata, outChannels, training=True,  withbias
    
     
     ##############################################################################################unet up
-    tep=unet_up(my_novel_conv_withweight(frame0_down5, frame2_down5,  'unet_up_0_flip'), 512, my_novel_conv_withweight(frame0_down4, frame2_down4,  'unet_up_0_flip_1'),'unet_up_0', training=training,withbias=withbias, withbn=withbn)
+    tep=unet_up(  my_novel_conv_withweight(frame0_down5, frame2_down5,  'unet_up_0_flip'), 512, my_novel_conv_withweight(frame0_down4, frame2_down4,'unet_up_0_flip_1'),  'unet_up_0'  , training=training,withbias=withbias, withbn=withbn)
     
     tep=unet_up(tep, 256, my_novel_conv_withweight(frame0_down3, frame2_down3,  'unet_up_1_flip'),'unet_up_1', training=training,withbias=withbias, withbn=withbn)
     
@@ -334,7 +334,7 @@ def my_unet_split_with_flipconv(inputdata, outChannels, training=True,  withbias
     
     return tep
 
-def my_novel_conv_withweight(inputdata, inputdata2,     scopename,filterlen=3, outchannel=None, stride=1, padding="SAME", reuse=tf.AUTO_REUSE, withbias=False, training=True):
+def my_novel_conv_withweight(inputdata, inputdata2, scopename,filterlen=3, outchannel=None, stride=1, padding="SAME", reuse=tf.AUTO_REUSE, withbias=False, training=True):
     '''
     stride:这里代表希望将输出大小变为原图的   1/stride (注意同deconv区分)
     '''
