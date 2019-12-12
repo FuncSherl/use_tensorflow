@@ -40,7 +40,7 @@ if __name__=='__main__':
         #slomo=Slomo_flow(sess)
         slomo=Slomo_step2_LSTM(sess)
         #slomo=Step_two(sess)
-        slomo.process_video_list(inputvideo, outputvideodir, 1, version, keep_shape=True,withtraining=True)
+        slomo.process_video_list(inputvideo, outputvideodir, 7, version, keep_shape=True,withtraining=False)
         #slomo.eval_video_list(inputvideo,  1)
         #slomo.eval_on_ucf_mini(ucf_path)
         #slomo.generate_middlebury_allframes(middleburey_path, 1)

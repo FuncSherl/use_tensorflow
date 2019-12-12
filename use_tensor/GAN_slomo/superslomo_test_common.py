@@ -521,10 +521,10 @@ class Slomo_flow:
         frames_kep=[]
         
         while success1 and success2 and (frame1 is not None) and (frame2 is not None):
-            tep=np.zeros([size[1], size[0]*2+gap, 3], dtype=np.uint8)
+            tep=np.zeros([size[1], size[0], 3], dtype=np.uint8)
             
-            tep[:, :size[0]]=cv2.cvtColor(cv2.resize(frame1, tuple(size)) , cv2.COLOR_BGR2RGB)
-            tep[:, -size[0]:]=cv2.cvtColor(cv2.resize(frame2, tuple(size)), cv2.COLOR_BGR2RGB)
+            tep[:, :int(size[0]/2)]=cv2.cvtColor(cv2.resize(frame1, tuple(size)) , cv2.COLOR_BGR2RGB)[:, :int(size[0]/2)]
+            tep[:, -int(size[0]/2):]=cv2.cvtColor(cv2.resize(frame2, tuple(size)), cv2.COLOR_BGR2RGB)[:, -int(size[0]/2):]
             frames_kep.append(tep)
             cnt1+=1
             cnt2+=1

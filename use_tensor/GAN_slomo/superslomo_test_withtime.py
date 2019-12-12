@@ -118,16 +118,17 @@ class Slomo_step2(Slomo_flow):
         self.convert_mp4_h264(outpath, outh264path, False)
         print ("conver to h264 formate done!")
         
-        return fps
+        
         '''
         outgifpath=op.splitext(outpath)[0]+'.gif'
         print ('for convent, converting mp4->gif:',outpath,'->',outgifpath)
         self.convert_mp42gif(outpath, outgifpath)
-        
+        '''
         print ("for ppt show,merging two videos:")
         outgifpath=op.splitext(outpath)[0]+'_merged.gif'
         self.merge_two_videos(inpath, outpath, outgifpath)
-        '''
+        return fps
+    
         
     def train_once(self, seri_frames, lastflow, timerates=0.5):
         seri_frames_len=len(seri_frames)
