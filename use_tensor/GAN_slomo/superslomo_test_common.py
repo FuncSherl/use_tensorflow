@@ -517,14 +517,18 @@ class Slomo_flow:
         success1, frame1= videoCapture1.read()
         success2, frame2= videoCapture2.read()
         
-        gap=10
+        gap=2
         frames_kep=[]
         
         while success1 and success2 and (frame1 is not None) and (frame2 is not None):
             tep=np.zeros([size[1], size[0], 3], dtype=np.uint8)
             
-            tep[:, :int(size[0]/2)]=cv2.cvtColor(cv2.resize(frame1, tuple(size)) , cv2.COLOR_BGR2RGB)[:, :int(size[0]/2)]
-            tep[:, -int(size[0]/2):]=cv2.cvtColor(cv2.resize(frame2, tuple(size)), cv2.COLOR_BGR2RGB)[:, -int(size[0]/2):]
+            tep[:, :int(size[0]/2-gap)]=cv2.cvtColor(cv2.resize(frame1, tuple(size)) , cv2.COLOR_BGR2RGB)[:, :int(size[0]/2-gap)]
+            tep[:, -int(size[0]/2-gap):]=cv2.cvtColor(cv2.resize(frame2, tuple(size)), cv2.COLOR_BGR2RGB)[:, -int(size[0]/2-gap):]
+            
+            tep=cv2.putText(tep,r'original',(0,40),cv2.FONT_HERSHEY_COMPLEX,1,(0,0,255),2)
+            tep=cv2.putText(tep,r'X8',(int(size[0]/2+gap),40),cv2.FONT_HERSHEY_COMPLEX,1,(0,0,255),2)
+            
             frames_kep.append(tep)
             cnt1+=1
             cnt2+=1
@@ -538,10 +542,13 @@ class Slomo_flow:
         videoCapture1.release()
         videoCapture2.release()
         #将帧合成gif
-        print ('writing to gif:', outgif)
-        imageio.mimsave(outgif, frames_kep, 'GIF', duration = 1.0/fps)
-        
-    
+        #print ('writing to gif:', outgif)
+        #imageio.mimsave(outgif, frames_kep, 'GIF', duration = 1.0/fps)
+        print ('writing to h264:', outgif)
+        videoWrite = cv2.VideoWriter(outgif, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), int (fps),tuple(size))
+        for i in frames_kep:
+            videoWrite.write(cv2.cvtColor(i, cv2.COLOR_RGB2BGR))
+        videoWrite.release()
         
     
     def show_video_info(self, inpath):

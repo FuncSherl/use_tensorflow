@@ -125,7 +125,7 @@ class Slomo_step2(Slomo_flow):
         self.convert_mp42gif(outpath, outgifpath)
         '''
         print ("for ppt show,merging two videos:")
-        outgifpath=op.splitext(outpath)[0]+'_merged.gif'
+        outgifpath=op.splitext(outpath)[0]+'_merged.mp4'
         self.merge_two_videos(inpath, outpath, outgifpath)
         return fps
     
